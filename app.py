@@ -230,7 +230,7 @@ def send_welcome(message):
 
 @bot.message_handler(commands=['update'])
 def force_update_data(message):
-    bot.reply_to(message, "⏳ Téléchargement en arrière-plan des 5 dernières saisons (avec délai anti-surcharge)...")
+    bot.reply_to(message, "⏳ Téléchargement en arrière-plan des 5 dernières saisons (avec validation des fichiers)...")
     threading.Thread(target=tache_arriere_plan_maj, args=(message.chat.id,)).start()
 
 def tache_arriere_plan_maj(chat_id):
@@ -252,14 +252,13 @@ def tache_arriere_plan_maj(chat_id):
                 url = f"https://www.football-data.co.uk/mmz4281/{code_saison}/{code}.csv"
                 try:
                     res = requests.get(url, headers=headers, timeout=10)
-                    if res.status_code == 200 and len(res.content) > 100:
+                    if res.status_code == 200 and b',' in res.content and b'<!DOCTYPE html>' not in res.content:
                         nom_fichier = f"matchs_{nom_propre}_{code_saison}.csv"
                         with open(nom_fichier, 'wb') as f:
                             f.write(res.content)
                         telecharges += 1
-                    time.sleep(0.5)
+                    time.sleep(0.3)
                 except Exception as e:
-                    print(f"Erreur sur {nom_propre} ({code_saison}): {e}")
                     continue
 
         if telecharges > 0:
@@ -269,13 +268,13 @@ def tache_arriere_plan_maj(chat_id):
             bot.send_message(
                 chat_id, 
                 f"✅ *Mise à jour des 5 saisons terminée avec succès !*\n\n"
-                f"📥 {telecharges} fichiers récupérés.\n"
+                f"📥 {telecharges} vrais fichiers CSV valides récupérés.\n"
                 f"📊 {nb_matchs} matchs en mémoire.\n"
                 f"🎯 Précision IA : *{round(prec * 100, 2)}%*", 
                 parse_mode="Markdown"
             )
         else:
-            bot.send_message(chat_id, "⚠️ Aucun fichier n'a pu être téléchargé.")
+            bot.send_message(chat_id, "⚠️ Aucun fichier valide n'a pu être téléchargé.")
             
     except Exception as e:
         bot.send_message(chat_id, f"❌ Erreur critique lors de la mise à jour : {str(e)}")
