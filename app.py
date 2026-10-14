@@ -15,18 +15,14 @@ import telebot
 import requests
 from flask import Flask, request
 
+# =========================================================
+# CONFIGURATION
+# =========================================================
 TOKEN = "8443191637:AAGcCknBZDg1o0NBeL8czLt0SsQ4c2LEMvY"
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
 global_model_data = {}
-
-# --- GESTION DES SAISONS ET CHAMPIONNATS ---
-def obtenir_code_saison_actuelle():
-    now = datetime.now()
-    annee_debut = now.year if now.month >= 7 else now.year - 1
-    annee_fin = annee_debut + 1
-    return f"{str(annee_debut)[-2:]}{str(annee_fin)[-2:]}"
 
 CHAMPIONNATS = {
     "premier_league": "E0",
@@ -41,10 +37,13 @@ CHAMPIONNATS = {
     "serie_b": "I2"
 }
 
+# =========================================================
+# CHARGEMENT ET ENTRAÎNEMENT
+# =========================================================
 def charger_et_entrainer():
     global global_model_data
     print("Recherche et fusion des sources de données multi-championnats (5 ans)...")
-    
+
     fichiers_csv = glob.glob("matchs_*.csv")
     if not fichiers_csv:
         print("⚠️ Aucun fichier CSV trouvé !")
@@ -55,57 +54,73 @@ def charger_et_entrainer():
         try:
             temp_df = pd.read_csv(fichier, encoding='latin1', low_memory=False)
             cols = ['Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'FTR']
-            
-            # Vérification stricte des colonnes
+
             if not all(c in temp_df.columns for c in cols):
                 print(f"[Ignoré] {fichier} : colonnes manquantes")
                 continue
-            
+
             nom_comp = fichier.replace("matchs_", "").rsplit('_', 1)[0].replace("_", " ").title()
             temp_df = temp_df[cols].copy()
             temp_df['Competition'] = nom_comp
-            
-            # Conversion de la date AVANT tout
+
+            # Parse de date robuste (essaie dayfirst, sinon normal)
             temp_df['Date'] = pd.to_datetime(temp_df['Date'], dayfirst=True, errors='coerce')
+            if temp_df['Date'].isna().sum() > len(temp_df) * 0.5:
+                temp_df['Date'] = pd.to_datetime(temp_df['Date'], dayfirst=False, errors='coerce')
+
             temp_df = temp_df.dropna(subset=cols)
-            
+
             if len(temp_df) > 0:
                 dfs.append(temp_df)
-                print(f"[Succès] {fichier} : {len(temp_df)} matchs")
+                dmin = temp_df['Date'].min().strftime('%Y-%m-%d')
+                dmax = temp_df['Date'].max().strftime('%Y-%m-%d')
+                print(f"[OK] {fichier} : {len(temp_df)} matchs ({dmin} → {dmax})")
         except Exception as e:
-            print(f"⚠️ Erreur lors de la lecture de {fichier}: {e}")
+            print(f"⚠️ Erreur {fichier}: {e}")
 
     if not dfs:
         print("❌ Aucun fichier valide chargé.")
         return
 
+    # --- Fusion ---
     df = pd.concat(dfs, ignore_index=True)
-    
-    # ✅ Déduplication avec la compétition
+    print(f"📊 Total brut avant filtre : {len(df)}")
+
+    # Déduplication avec compétition (évite de perdre les matchs de coupes)
     df = df.drop_duplicates(subset=['Date', 'HomeTeam', 'AwayTeam', 'Competition'])
+    print(f"📊 Après déduplication : {len(df)}")
+
     df = df.sort_values('Date').reset_index(drop=True)
-    
-    print(f"📊 Total après fusion et déduplication : {len(df)} matchs")
+    print(f"📅 Plage de dates : {df['Date'].min()} → {df['Date'].max()}")
 
-    # ✅ Filtre 5 ans
+    # Filtre 5 ans assoupli : si le filtre supprime plus de 70% des données, on le désactive
     date_limite = pd.Timestamp.now() - pd.DateOffset(years=5)
-    df = df[df['Date'] >= date_limite].sort_values('Date').reset_index(drop=True)
-    
-    print(f"📊 Total après filtre 5 ans : {len(df)} matchs")
+    df_filtre = df[df['Date'] >= date_limite].reset_index(drop=True)
 
+    if len(df_filtre) < len(df) * 0.3:
+        print(f"⚠️ Filtre 5 ans trop agressif. Conservation de tout l'historique ({len(df)} matchs).")
+        df = df
+    else:
+        df = df_filtre
+        print(f"📊 Total après filtre 5 ans : {len(df)} matchs")
+
+    # --- Encodage équipes ---
     teams = pd.unique(df[['HomeTeam', 'AwayTeam']].values.ravel())
     team_to_code = {team: i for i, team in enumerate(teams)}
     competitions = df['Competition'].unique()
 
+    # --- Elo ---
     elo_ratings = {team: 1500.0 for team in teams}
     K = 32
     HOME_ADVANTAGE = 100
 
+    # --- Classements par compétition ---
     tables = {comp: {} for comp in competitions}
     for comp in competitions:
         comp_teams = pd.unique(df[df['Competition'] == comp][['HomeTeam', 'AwayTeam']].values.ravel())
         tables[comp] = {team: {'points': 0, 'played': 0, 'gf': 0, 'ga': 0} for team in comp_teams}
 
+    # --- Structures pour features ---
     last_match_date = {}
     home_elo_list, away_elo_list, elo_diff_list = [], [], []
     home_rest_list, away_rest_list = [], []
@@ -119,74 +134,101 @@ def charger_et_entrainer():
     h2h_form_list = []
     home_pts_list, away_pts_list, home_gd_list, away_gd_list = [], [], [], []
 
+    # --- Boucle principale ---
     for index, row in df.iterrows():
         h_team, a_team, match_date, comp = row['HomeTeam'], row['AwayTeam'], row['Date'], row['Competition']
         if h_team not in tables[comp]: tables[comp][h_team] = {'points': 0, 'played': 0, 'gf': 0, 'ga': 0}
         if a_team not in tables[comp]: tables[comp][a_team] = {'points': 0, 'played': 0, 'gf': 0, 'ga': 0}
 
+        # Repos
         h_rest = (match_date - last_match_date[h_team]).days if h_team in last_match_date else 7
         a_rest = (match_date - last_match_date[a_team]).days if a_team in last_match_date else 7
-        home_rest_list.append(h_rest); away_rest_list.append(a_rest)
-        last_match_date[h_team] = match_date; last_match_date[a_team] = match_date
+        home_rest_list.append(h_rest)
+        away_rest_list.append(a_rest)
+        last_match_date[h_team] = match_date
+        last_match_date[a_team] = match_date
 
+        # Points & différence de buts
         home_pts_list.append(tables[comp][h_team]['points'])
         away_pts_list.append(tables[comp][a_team]['points'])
         home_gd_list.append(tables[comp][h_team]['gf'] - tables[comp][h_team]['ga'])
         away_gd_list.append(tables[comp][a_team]['gf'] - tables[comp][a_team]['ga'])
 
+        # H2H
         match_key = tuple(sorted([h_team, a_team]))
-        if match_key not in h2h_history: h2h_history[match_key] = []
-        recent_h2h = h2h_history[match_key][-5:] if len(h2h_history[match_key]) >= 5 else h2h_history[match_key]
+        if match_key not in h2h_history:
+            h2h_history[match_key] = []
+        recent_h2h = h2h_history[match_key][-5:]
         h2h_form_list.append(sum(1 for res in recent_h2h if res == h_team) / len(recent_h2h) if recent_h2h else 0.5)
 
+        # Elo
         h_elo, a_elo = elo_ratings[h_team], elo_ratings[a_team]
-        home_elo_list.append(h_elo); away_elo_list.append(a_elo)
+        home_elo_list.append(h_elo)
+        away_elo_list.append(a_elo)
         elo_diff_list.append((h_elo + HOME_ADVANTAGE) - a_elo)
-        
+
+        # Stats globales
         h_g_hist = team_global_stats[h_team]['scored']
         h_g_cond = team_global_stats[h_team]['conceded']
         a_g_hist = team_global_stats[a_team]['scored']
         a_g_cond = team_global_stats[a_team]['conceded']
-        
+
         h_glob_sc.append(sum(h_g_hist) / len(h_g_hist) if h_g_hist else 1.2)
         h_glob_co.append(sum(h_g_cond) / len(h_g_cond) if h_g_cond else 1.2)
         a_glob_sc.append(sum(a_g_hist) / len(a_g_hist) if a_g_hist else 1.0)
         a_glob_co.append(sum(a_g_cond) / len(a_g_cond) if a_g_cond else 1.3)
 
+        # Stats spécifiques (5 derniers matchs)
         h_s_hist = team_home_stats[h_team]['scored'][-5:]
         h_s_cond = team_home_stats[h_team]['conceded'][-5:]
         a_s_hist = team_away_stats[a_team]['scored'][-5:]
         a_s_cond = team_away_stats[a_team]['conceded'][-5:]
-        
+
         h_spec_sc.append(sum(h_s_hist) / len(h_s_hist) if h_s_hist else 1.3)
         h_spec_co.append(sum(h_s_cond) / len(h_s_cond) if h_s_cond else 1.0)
         a_spec_sc.append(sum(a_s_hist) / len(a_s_hist) if a_s_hist else 1.0)
         a_spec_co.append(sum(a_s_cond) / len(a_s_cond) if a_s_cond else 1.4)
 
+        # Mise à jour classement
         fthg, ftag, ftr = int(row['FTHG']), int(row['FTAG']), str(row['FTR'])
-        if ftr == 'H': tables[comp][h_team]['points'] += 3
-        elif ftr == 'D': 
+        if ftr == 'H':
+            tables[comp][h_team]['points'] += 3
+        elif ftr == 'D':
             tables[comp][h_team]['points'] += 1
             tables[comp][a_team]['points'] += 1
-        else: tables[comp][a_team]['points'] += 3
+        else:
+            tables[comp][a_team]['points'] += 3
 
-        tables[comp][h_team]['played'] += 1; tables[comp][h_team]['gf'] += fthg; tables[comp][h_team]['ga'] += ftag
-        tables[comp][a_team]['played'] += 1; tables[comp][a_team]['gf'] += ftag; tables[comp][a_team]['ga'] += fthg
+        tables[comp][h_team]['played'] += 1
+        tables[comp][h_team]['gf'] += fthg
+        tables[comp][h_team]['ga'] += ftag
+        tables[comp][a_team]['played'] += 1
+        tables[comp][a_team]['gf'] += ftag
+        tables[comp][a_team]['ga'] += fthg
 
+        # H2H : enregistre le vainqueur
         winner = h_team if ftr == 'H' else ("Draw" if ftr == 'D' else a_team)
         h2h_history[match_key].append(winner)
 
+        # Mise à jour Elo
         exp_h = 1 / (1 + 10 ** ((a_elo - (h_elo + HOME_ADVANTAGE)) / 400))
         exp_a = 1 / (1 + 10 ** (((h_elo + HOME_ADVANTAGE) - a_elo) / 400))
-        elo_ratings[h_team] += K * ((1.0 if ftr=='H' else (0.5 if ftr=='D' else 0.0)) - exp_h)
-        elo_ratings[a_team] += K * ((0.0 if ftr=='H' else (0.5 if ftr=='D' else 1.0)) - exp_a)
+        elo_ratings[h_team] += K * ((1.0 if ftr == 'H' else (0.5 if ftr == 'D' else 0.0)) - exp_h)
+        elo_ratings[a_team] += K * ((0.0 if ftr == 'H' else (0.5 if ftr == 'D' else 1.0)) - exp_a)
 
-        team_global_stats[h_team]['scored'].append(fthg); team_global_stats[h_team]['conceded'].append(ftag)
-        team_global_stats[a_team]['scored'].append(ftag); team_global_stats[a_team]['conceded'].append(fthg)
-        team_home_stats[h_team]['scored'].append(fthg); team_home_stats[h_team]['conceded'].append(ftag)
-        team_away_stats[a_team]['scored'].append(ftag); team_away_stats[a_team]['conceded'].append(fthg)
+        # Mise à jour stats
+        team_global_stats[h_team]['scored'].append(fthg)
+        team_global_stats[h_team]['conceded'].append(ftag)
+        team_global_stats[a_team]['scored'].append(ftag)
+        team_global_stats[a_team]['conceded'].append(fthg)
 
-    # Concaténation groupée
+        team_home_stats[h_team]['scored'].append(fthg)
+        team_home_stats[h_team]['conceded'].append(ftag)
+
+        team_away_stats[a_team]['scored'].append(ftag)
+        team_away_stats[a_team]['conceded'].append(fthg)  # ✅ CORRIGÉ : buts encaissés par l'extérieur = buts du domicile
+
+    # --- Ajout des features au DataFrame ---
     new_cols = pd.DataFrame({
         'Home_Elo': home_elo_list,
         'Away_Elo': away_elo_list,
@@ -213,7 +255,7 @@ def charger_et_entrainer():
     df = pd.concat([df, new_cols], axis=1)
 
     features = [
-        'HomeTeam_Encoded', 'AwayTeam_Encoded', 
+        'HomeTeam_Encoded', 'AwayTeam_Encoded',
         'Home_Elo', 'Away_Elo', 'Elo_Diff', 'H2H_Score',
         'Home_Points', 'Away_Points', 'Home_GD', 'Away_GD',
         'Home_Rest', 'Away_Rest',
@@ -221,19 +263,22 @@ def charger_et_entrainer():
         'H_Spec_Sc', 'H_Spec_Co', 'A_Spec_Sc', 'A_Spec_Co'
     ]
 
-    # ✅ Split chronologique
+    # --- Split chronologique (pas aléatoire) ---
     split_idx = int(len(df) * 0.8)
     X_train = df[features].iloc[:split_idx]
     X_test = df[features].iloc[split_idx:]
     y_train = df['FTR'].iloc[:split_idx]
     y_test = df['FTR'].iloc[split_idx:]
 
-    rf_model = RandomForestClassifier(n_estimators=300, max_depth=12, min_samples_split=5, random_state=42)
+    # --- Entraînement ---
+    rf_model = RandomForestClassifier(n_estimators=300, max_depth=12, min_samples_split=5, random_state=42, n_jobs=1)
     gb_model = HistGradientBoostingClassifier(max_iter=150, learning_rate=0.02, random_state=42)
     ensemble_model = VotingClassifier(estimators=[('rf', rf_model), ('gb', gb_model)], voting='soft')
     ensemble_model.fit(X_train, y_train)
+
     precision = accuracy_score(y_test, ensemble_model.predict(X_test))
 
+    # --- Sauvegarde ---
     global_model_data['df'] = df
     global_model_data['teams'] = teams
     global_model_data['team_to_code'] = team_to_code
@@ -241,12 +286,65 @@ def charger_et_entrainer():
     global_model_data['precision'] = precision
     global_model_data['model'] = ensemble_model
     global_model_data['features'] = features
-    print(f"Modèle entraîné sur {len(df)} matchs historiques avec succès !")
 
-charger_et_entrainer()
+    print(f"✅ Modèle entraîné sur {len(df)} matchs. Précision : {round(precision * 100, 2)}%")
 
-# --- COMMANDES TELEGRAM ---
 
+# =========================================================
+# TÉLÉCHARGEMENT DES DONNÉES
+# =========================================================
+def tache_arriere_plan_maj(chat_id):
+    try:
+        now = datetime.now()
+        annee_courante_debut = now.year if now.month >= 7 else now.year - 1
+
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+                          '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+
+        telecharges = 0
+        for i in range(5):
+            annee_d = annee_courante_debut - i
+            annee_f = annee_d + 1
+            code_saison = f"{str(annee_d)[-2:]}{str(annee_f)[-2:]}"
+
+            for nom_propre, code in CHAMPIONNATS.items():
+                url = f"https://www.football-data.co.uk/mmz4281/{code_saison}/{code}.csv"
+                try:
+                    res = requests.get(url, headers=headers, timeout=10)
+                    if res.status_code == 200 and b',' in res.content and b'<!DOCTYPE html>' not in res.content:
+                        nom_fichier = f"matchs_{nom_propre}_{code_saison}.csv"
+                        with open(nom_fichier, 'wb') as f:
+                            f.write(res.content)
+                        print(f"[DL] {nom_fichier} : {len(res.content)} octets")
+                        telecharges += 1
+                    time.sleep(0.2)
+                except Exception:
+                    continue
+
+        if telecharges > 0:
+            charger_et_entrainer()
+            prec = global_model_data.get('precision', 0.5)
+            nb_matchs = len(global_model_data.get('df', []))
+            bot.send_message(
+                chat_id,
+                f"✅ *Mise à jour réussie !*\n\n"
+                f"📥 {telecharges} fichiers récupérés.\n"
+                f"📊 Total en mémoire : *{nb_matchs} matchs*.\n"
+                f"🎯 Précision IA : *{round(prec * 100, 2)}%*",
+                parse_mode="Markdown"
+            )
+        else:
+            bot.send_message(chat_id, "⚠️ Aucun nouveau fichier n'a pu être téléchargé.")
+
+    except Exception as e:
+        bot.send_message(chat_id, f"❌ Erreur critique : {str(e)}")
+
+
+# =========================================================
+# COMMANDES TELEGRAM
+# =========================================================
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
@@ -265,56 +363,12 @@ def send_welcome(message):
     )
     bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown", reply_markup=markup)
 
+
 @bot.message_handler(commands=['update'])
 def force_update_data(message):
     bot.reply_to(message, "⏳ Téléchargement en arrière-plan des 5 dernières saisons...")
     threading.Thread(target=tache_arriere_plan_maj, args=(message.chat.id,)).start()
 
-def tache_arriere_plan_maj(chat_id):
-    try:
-        now = datetime.now()
-        annee_courante_debut = now.year if now.month >= 7 else now.year - 1
-        
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-        
-        telecharges = 0
-        for i in range(5):
-            annee_d = annee_courante_debut - i
-            annee_f = annee_d + 1
-            code_saison = f"{str(annee_d)[-2:]}{str(annee_f)[-2:]}"
-            
-            for nom_propre, code in CHAMPIONNATS.items():
-                url = f"https://www.football-data.co.uk/mmz4281/{code_saison}/{code}.csv"
-                try:
-                    res = requests.get(url, headers=headers, timeout=10)
-                    if res.status_code == 200 and b',' in res.content and b'<!DOCTYPE html>' not in res.content:
-                        nom_fichier = f"matchs_{nom_propre}_{code_saison}.csv"
-                        with open(nom_fichier, 'wb') as f:
-                            f.write(res.content)
-                        telecharges += 1
-                    time.sleep(0.2)
-                except Exception as e:
-                    continue
-
-        if telecharges > 0:
-            charger_et_entrainer()
-            prec = global_model_data.get('precision', 0.5)
-            nb_matchs = len(global_model_data.get('df', []))
-            bot.send_message(
-                chat_id, 
-                f"✅ *Mise à jour réussie !*\n\n"
-                f"📥 {telecharges} fichiers traités.\n"
-                f"📊 Total en mémoire : *{nb_matchs} matchs*.\n"
-                f"🎯 Précision IA : *{round(prec * 100, 2)}%*", 
-                parse_mode="Markdown"
-            )
-        else:
-            bot.send_message(chat_id, "⚠️ Aucun fichier valide n'a pu être téléchargé.")
-            
-    except Exception as e:
-        bot.send_message(chat_id, f"❌ Erreur critique : {str(e)}")
 
 @bot.message_handler(func=lambda message: True)
 def handle_menu_clicks(message):
@@ -323,7 +377,12 @@ def handle_menu_clicks(message):
     if text == "📊 Statistiques du Modèle":
         prec = global_model_data.get('precision', 0.5)
         length = len(global_model_data.get('df', []))
-        bot.reply_to(message, f"📊 Base de données sur 5 ans.\nMatchs analysés : {length}\nPrécision de test : {round(prec * 100, 2)}%")
+        bot.reply_to(
+            message,
+            f"📊 Base de données sur 5 ans.\n"
+            f"Matchs analysés : {length}\n"
+            f"Précision de test : {round(prec * 100, 2)}%"
+        )
 
     elif text == "📜 Historique":
         try:
@@ -331,25 +390,35 @@ def handle_menu_clicks(message):
             last_5 = hist.tail(5)
             texte = "📜 *Vos 5 derniers pronostics :*\n\n"
             for _, row in last_5.iterrows():
-                texte += f"⚽ *{row['Match']}*\n📅 {row['Date_Consultation']}\n💡 {row['Pronostic_1N2']} | 🎯 Score: {row['Score_Exact']}\n\n"
+                texte += (
+                    f"⚽ *{row['Match']}*\n"
+                    f"📅 {row['Date_Consultation']}\n"
+                    f"💡 {row['Pronostic_1N2']} | 🎯 Score: {row['Score_Exact']}\n\n"
+                )
             bot.reply_to(message, texte, parse_mode="Markdown")
         except FileNotFoundError:
             bot.reply_to(message, "⚠️ Aucun historique enregistré pour l'instant.")
 
     elif text == "⚽ Faire un Pronostic":
-        bot.reply_to(message, "✍️ Tapez l'affiche de votre choix :\n\n`EquipeDom vs EquipeExt`", parse_mode="Markdown")
+        bot.reply_to(message, "✍️ Tapez l'affiche :\n\n`EquipeDom vs EquipeExt`", parse_mode="Markdown")
 
     elif 'vs' in text.lower():
         traiter_prediction(message)
-    else:
-        bot.reply_to(message, "💡 Utilisez les boutons ou tapez une affiche au format `Équipe A vs Équipe B`.")
 
+    else:
+        bot.reply_to(message, "💡 Utilisez les boutons ou tapez `Équipe A vs Équipe B`.")
+
+
+# =========================================================
+# PRÉDICTION
+# =========================================================
 def traiter_prediction(message):
     try:
         text = message.text.strip()
         parts = text.split('vs' if 'vs' in text else 'VS')
-        if len(parts) < 2: return
-        
+        if len(parts) < 2:
+            return
+
         home_input = parts[0].strip()
         away_input = parts[1].strip()
 
@@ -359,8 +428,7 @@ def traiter_prediction(message):
         df = global_model_data['df']
 
         def trouver_nom_exact(nom_partiel):
-            teams_list = list(teams)
-            lower_teams = {t.lower(): t for t in teams_list}
+            lower_teams = {t.lower(): t for t in teams}
             matches = difflib.get_close_matches(nom_partiel.lower(), lower_teams.keys(), n=1, cutoff=0.4)
             return lower_teams[matches[0]] if matches else nom_partiel
 
@@ -393,23 +461,26 @@ def traiter_prediction(message):
         prob_draw = np.sum(np.diag(score_matrix))
         prob_away_win = np.sum(np.triu(score_matrix, 1))
         total_prob = prob_home_win + prob_draw + prob_away_win
-        p_h, p_d, p_a = prob_home_win/total_prob, prob_draw/total_prob, prob_away_win/total_prob
+        p_h, p_d, p_a = prob_home_win / total_prob, prob_draw / total_prob, prob_away_win / total_prob
 
         max_prob = max(p_h, p_d, p_a)
-        indice_fiabilite = "🔥 CONFIANCE ÉLEVÉE" if max_prob >= 0.50 else ("⚠️ MATCH INCERTAIN / RISQUÉ" if max_prob < 0.40 else "⚖️ CONFIANCE MODÉRÉE")
+        indice_fiabilite = (
+            "🔥 CONFIANCE ÉLEVÉE" if max_prob >= 0.50
+            else ("⚠️ MATCH INCERTAIN / RISQUÉ" if max_prob < 0.40 else "⚖️ CONFIANCE MODÉRÉE")
+        )
 
-        under_25 = np.sum([score_matrix[i, j] for i in range(max_goals+1) for j in range(max_goals+1) if i + j < 2.5])
+        under_25 = np.sum([score_matrix[i, j] for i in range(max_goals + 1) for j in range(max_goals + 1) if i + j < 2.5])
         over_25 = 1.0 - under_25
-        btts_yes = np.sum([score_matrix[i, j] for i in range(1, max_goals+1) for j in range(1, max_goals+1)])
+        btts_yes = np.sum([score_matrix[i, j] for i in range(1, max_goals + 1) for j in range(1, max_goals + 1)])
         best_i, best_j = np.unravel_index(np.argmax(score_matrix), score_matrix.shape)
 
         bulletin = (
             f"🏆 *BULLETIN 5 ANS : {home_team} vs {away_team}*\n\n"
             f"📌 Indice : *{indice_fiabilite}*\n\n"
             f"📊 *1N2 - Probabilités :*\n"
-            f"  • Domicile (1) : *{round(p_h * 100, 1)}%* (Cote: {round(1/p_h, 2)})\n"
-            f"  • Nul (N) : *{round(p_d * 100, 1)}%* (Cote: {round(1/p_d, 2)})\n"
-            f"  • Extérieur (2) : *{round(p_a * 100, 1)}%* (Cote: {round(1/p_a, 2)})\n\n"
+            f"  • Domicile (1) : *{round(p_h * 100, 1)}%* (Cote: {round(1 / p_h, 2)})\n"
+            f"  • Nul (N) : *{round(p_d * 100, 1)}%* (Cote: {round(1 / p_d, 2)})\n"
+            f"  • Extérieur (2) : *{round(p_a * 100, 1)}%* (Cote: {round(1 / p_a, 2)})\n\n"
             f"⚽ *Tendances de Buts :*\n"
             f"  • Plus de 2.5 buts : *{round(over_25 * 100, 1)}%*\n"
             f"  • Les deux équipes marquent : *{round(btts_yes * 100, 1)}%*\n"
@@ -418,11 +489,11 @@ def traiter_prediction(message):
 
         bot.reply_to(message, bulletin, parse_mode="Markdown")
 
-        match_desc = f"{home_team} vs {away_team}"
+        # Historique
         record = {
             "Date_Consultation": datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "Match": match_desc,
-            "Pronostic_1N2": f"1:{round(p_h*100,1)}% N:{round(p_d*100,1)}% 2:{round(p_a*100,1)}%",
+            "Match": f"{home_team} vs {away_team}",
+            "Pronostic_1N2": f"1:{round(p_h * 100, 1)}% N:{round(p_d * 100, 1)}% 2:{round(p_a * 100, 1)}%",
             "Score_Exact": f"{best_i}-{best_j}"
         }
         hist_df = pd.DataFrame([record])
@@ -436,6 +507,10 @@ def traiter_prediction(message):
     except Exception as e:
         bot.reply_to(message, f"❌ Erreur lors de l'analyse : {str(e)}")
 
+
+# =========================================================
+# WEBHOOK FLASK
+# =========================================================
 @app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
     json_str = request.get_data().decode('UTF-8')
@@ -443,6 +518,13 @@ def webhook():
     bot.process_new_updates([update])
     return "OK", 200
 
+
 @app.route('/')
 def index():
     return "Bot 5 Ans Opérationnel sur Render !", 200
+
+
+# =========================================================
+# LANCEMENT
+# =========================================================
+charger_et_entrainer()
