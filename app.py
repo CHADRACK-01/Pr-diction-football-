@@ -1,0 +1,412 @@
+import os
+os.environ['LOKY_MAX_CPU_COUNT'] = '1'
+
+import glob
+import time
+import threading
+import difflib
+from datetime import datetime
+import pandas as pd
+import numpy as np
+from scipy.stats import poisson
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier, VotingClassifier
+from sklearn.metrics import accuracy_score
+import telebot
+import requests
+from flask import Flask, request
+
+TOKEN = "8443191637:AAGcCknBZDg1o0NBeL8czLt0SsQ4c2LEMvY"
+bot = telebot.TeleBot(TOKEN, threaded=False)
+app = Flask(__name__)
+
+global_model_data = {}
+
+# --- GESTION DES SAISONS ET CHAMPIONNATS ---
+def obtenir_code_saison_actuelle():
+    now = datetime.now()
+    annee_debut = now.year if now.month >= 7 else now.year - 1
+    annee_fin = annee_debut + 1
+    return f"{str(annee_debut)[-2:]}{str(annee_fin)[-2:]}"
+
+CHAMPIONNATS = {
+    "premier_league": "E0",
+    "championship": "E1",
+    "laliga": "SP1",
+    "laliga_2": "SP2",
+    "ligue_1": "F1",
+    "ligue_2": "F2",
+    "bundesliga_1": "D1",
+    "bundesliga_2": "D2",
+    "serie_a": "I1",
+    "serie_b": "I2"
+}
+
+def charger_et_entrainer():
+    global global_model_data
+    print("Recherche et fusion des sources de données multi-championnats (5 ans)...")
+    
+    fichiers_csv = glob.glob("matchs_*.csv")
+    if not fichiers_csv:
+        print("⚠️ Aucun fichier CSV trouvé !")
+        return
+
+    dfs = []
+    for fichier in fichiers_csv:
+        try:
+            temp_df = pd.read_csv(fichier, encoding='latin1', low_memory=False)
+            cols = ['Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'FTR']
+            
+            nom_comp = fichier.replace("matchs_", "").rsplit('_', 1)[0].replace("_", " ").title()
+            temp_df['Competition'] = nom_comp
+            
+            existing_cols = [c for c in cols if c in temp_df.columns]
+            if len(existing_cols) == 6:
+                dfs.append(temp_df)
+                print(f"[Succès] Source chargée : {fichier} ({len(temp_df)} matchs)")
+        except Exception as e:
+            print(f"⚠️ Erreur lors de la lecture de {fichier}: {e}")
+
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
+        df = df.drop_duplicates(subset=['Date', 'HomeTeam', 'AwayTeam'])
+    else:
+        return
+
+    df['Date'] = pd.to_datetime(df['Date'], dayfirst=True, errors='coerce')
+    df = df.dropna(subset=['Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'FTR'])
+
+    ANNEE_MIN = datetime.now().year - 5
+    df = df[df['Date'].dt.year >= ANNEE_MIN].sort_values('Date').reset_index(drop=True)
+
+    teams = pd.unique(df[['HomeTeam', 'AwayTeam']].values.ravel())
+    team_to_code = {team: i for i, team in enumerate(teams)}
+    competitions = df['Competition'].unique()
+
+    elo_ratings = {team: 1500.0 for team in teams}
+    K = 32
+    HOME_ADVANTAGE = 100
+
+    tables = {comp: {} for comp in competitions}
+    for comp in competitions:
+        comp_teams = pd.unique(df[df['Competition'] == comp][['HomeTeam', 'AwayTeam']].values.ravel())
+        tables[comp] = {team: {'points': 0, 'played': 0, 'gf': 0, 'ga': 0} for team in comp_teams}
+
+    last_match_date = {}
+    home_elo_list, away_elo_list, elo_diff_list = [], [], []
+    home_rest_list, away_rest_list = [], []
+    team_home_stats = {team: {'scored': [], 'conceded': []} for team in teams}
+    team_away_stats = {team: {'scored': [], 'conceded': []} for team in teams}
+    team_global_stats = {team: {'scored': [], 'conceded': []} for team in teams}
+    h2h_history = {}
+
+    h_glob_sc, h_glob_co, a_glob_sc, a_glob_co = [], [], [], []
+    h_spec_sc, h_spec_co, a_spec_sc, a_spec_co = [], [], [], []
+    h2h_form_list = []
+    home_pts_list, away_pts_list, home_gd_list, away_gd_list = [], [], [], []
+
+    for index, row in df.iterrows():
+        h_team, a_team, match_date, comp = row['HomeTeam'], row['AwayTeam'], row['Date'], row['Competition']
+        if h_team not in tables[comp]: tables[comp][h_team] = {'points': 0, 'played': 0, 'gf': 0, 'ga': 0}
+        if a_team not in tables[comp]: tables[comp][a_team] = {'points': 0, 'played': 0, 'gf': 0, 'ga': 0}
+
+        h_rest = (match_date - last_match_date[h_team]).days if h_team in last_match_date else 7
+        a_rest = (match_date - last_match_date[a_team]).days if a_team in last_match_date else 7
+        home_rest_list.append(h_rest); away_rest_list.append(a_rest)
+        last_match_date[h_team] = match_date; last_match_date[a_team] = match_date
+
+        home_pts_list.append(tables[comp][h_team]['points'])
+        away_pts_list.append(tables[comp][a_team]['points'])
+        home_gd_list.append(tables[comp][h_team]['gf'] - tables[comp][h_team]['ga'])
+        away_gd_list.append(tables[comp][a_team]['gf'] - tables[comp][a_team]['ga'])
+
+        match_key = tuple(sorted([h_team, a_team]))
+        if match_key not in h2h_history: h2h_history[match_key] = []
+        recent_h2h = h2h_history[match_key][-5:] if len(h2h_history[match_key]) >= 5 else h2h_history[match_key]
+        h2h_form_list.append(sum(1 for res in recent_h2h if res == h_team) / len(recent_h2h) if recent_h2h else 0.5)
+
+        h_elo, a_elo = elo_ratings[h_team], elo_ratings[a_team]
+        home_elo_list.append(h_elo); away_elo_list.append(a_elo)
+        elo_diff_list.append((h_elo + HOME_ADVANTAGE) - a_elo)
+        
+        h_g_hist = team_global_stats[h_team]['scored']
+        h_g_cond = team_global_stats[h_team]['conceded']
+        a_g_hist = team_global_stats[a_team]['scored']
+        a_g_cond = team_global_stats[a_team]['conceded']
+        
+        h_glob_sc.append(sum(h_g_hist) / len(h_g_hist) if h_g_hist else 1.2)
+        h_glob_co.append(sum(h_g_cond) / len(h_g_cond) if h_g_cond else 1.2)
+        a_glob_sc.append(sum(a_g_hist) / len(a_g_hist) if a_g_hist else 1.0)
+        a_glob_co.append(sum(a_g_cond) / len(a_g_cond) if a_g_cond else 1.3)
+
+        h_s_hist = team_home_stats[h_team]['scored'][-5:]
+        h_s_cond = team_home_stats[h_team]['conceded'][-5:]
+        a_s_hist = team_away_stats[a_team]['scored'][-5:]
+        a_s_cond = team_away_stats[a_team]['conceded'][-5:]
+        
+        h_spec_sc.append(sum(h_s_hist) / len(h_s_hist) if h_s_hist else 1.3)
+        h_spec_co.append(sum(h_s_cond) / len(h_s_cond) if h_s_cond else 1.0)
+        a_spec_sc.append(sum(a_s_hist) / len(a_s_hist) if a_s_hist else 1.0)
+        a_spec_co.append(sum(a_s_cond) / len(a_s_cond) if a_s_cond else 1.4)
+
+        fthg, ftag, ftr = int(row['FTHG']), int(row['FTAG']), str(row['FTR'])
+        if ftr == 'H': tables[comp][h_team]['points'] += 3
+        elif ftr == 'D': 
+            tables[comp][h_team]['points'] += 1
+            tables[comp][a_team]['points'] += 1
+        else: tables[comp][a_team]['points'] += 3
+
+        tables[comp][h_team]['played'] += 1; tables[comp][h_team]['gf'] += fthg; tables[comp][h_team]['ga'] += ftag
+        tables[comp][a_team]['played'] += 1; tables[comp][a_team]['gf'] += ftag; tables[comp][a_team]['ga'] += fthg
+
+        winner = h_team if ftr == 'H' else ("Draw" if ftr == 'D' else a_team)
+        h2h_history[match_key].append(winner)
+
+        exp_h = 1 / (1 + 10 ** ((a_elo - (h_elo + HOME_ADVANTAGE)) / 400))
+        exp_a = 1 / (1 + 10 ** (((h_elo + HOME_ADVANTAGE) - a_elo) / 400))
+        elo_ratings[h_team] += K * ((1.0 if ftr=='H' else (0.5 if ftr=='D' else 0.0)) - exp_h)
+        elo_ratings[a_team] += K * ((0.0 if ftr=='H' else (0.5 if ftr=='D' else 1.0)) - exp_a)
+
+        team_global_stats[h_team]['scored'].append(fthg); team_global_stats[h_team]['conceded'].append(ftag)
+        team_global_stats[a_team]['scored'].append(ftag); team_global_stats[a_team]['conceded'].append(fthg)
+        team_home_stats[h_team]['scored'].append(fthg); team_home_stats[h_team]['conceded'].append(ftag)
+        team_away_stats[a_team]['scored'].append(ftag); team_away_stats[a_team]['conceded'].append(ftag)
+
+    df['Home_Elo'], df['Away_Elo'], df['Elo_Diff'] = home_elo_list, away_elo_list, elo_diff_list
+    df['H2H_Score'] = h2h_form_list
+    df['Home_Points'], df['Away_Points'] = home_pts_list, away_pts_list
+    df['Home_GD'], df['Away_GD'] = home_gd_list, away_gd_list
+    df['Home_Rest'], df['Away_Rest'] = home_rest_list, away_rest_list
+    df['H_Glob_Sc'], df['H_Glob_Co'], df['A_Glob_Sc'], df['A_Glob_Co'] = h_glob_sc, h_glob_co, a_glob_sc, a_glob_co
+    df['H_Spec_Sc'], df['H_Spec_Co'], df['A_Spec_Sc'], df['A_Spec_Co'] = h_spec_sc, h_spec_co, a_spec_sc, a_spec_co
+
+    df['HomeTeam_Encoded'] = df['HomeTeam'].map(team_to_code)
+    df['AwayTeam_Encoded'] = df['AwayTeam'].map(team_to_code)
+
+    features = [
+        'HomeTeam_Encoded', 'AwayTeam_Encoded', 
+        'Home_Elo', 'Away_Elo', 'Elo_Diff', 'H2H_Score',
+        'Home_Points', 'Away_Points', 'Home_GD', 'Away_GD',
+        'Home_Rest', 'Away_Rest',
+        'H_Glob_Sc', 'H_Glob_Co', 'A_Glob_Sc', 'A_Glob_Co',
+        'H_Spec_Sc', 'H_Spec_Co', 'A_Spec_Sc', 'A_Spec_Co'
+    ]
+    X_train, X_test, y_train, y_test = train_test_split(df[features], df['FTR'], test_size=0.2, random_state=42)
+
+    rf_model = RandomForestClassifier(n_estimators=300, max_depth=12, min_samples_split=5, random_state=42)
+    gb_model = HistGradientBoostingClassifier(max_iter=150, learning_rate=0.02, random_state=42)
+    ensemble_model = VotingClassifier(estimators=[('rf', rf_model), ('gb', gb_model)], voting='soft')
+    ensemble_model.fit(X_train, y_train)
+    precision = accuracy_score(y_test, ensemble_model.predict(X_test))
+
+    global_model_data['df'] = df
+    global_model_data['teams'] = teams
+    global_model_data['team_to_code'] = team_to_code
+    global_model_data['team_global_stats'] = team_global_stats
+    global_model_data['precision'] = precision
+    print(f"Modèle entraîné sur {len(df)} matchs historiques avec succès !")
+
+charger_et_entrainer()
+
+# --- COMMANDES TELEGRAM ---
+
+@bot.message_handler(commands=['start', 'help'])
+def send_welcome(message):
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    btn_pred = telebot.types.KeyboardButton("⚽ Faire un Pronostic")
+    btn_hist = telebot.types.KeyboardButton("📜 Historique")
+    btn_stats = telebot.types.KeyboardButton("📊 Statistiques du Modèle")
+    markup.add(btn_pred, btn_hist, btn_stats)
+
+    prec = global_model_data.get('precision', 0.5)
+    nb_matchs = len(global_model_data.get('df', []))
+    welcome_text = (
+        "🤖 *Assistant Pro Multi-Sources (5 Ans)*\n\n"
+        f"📊 Matchs en mémoire : *{nb_matchs}*\n"
+        f"🎯 Précision IA : *{round(prec * 100, 2)}%*\n\n"
+        "👇 *Utilisez les boutons ci-dessous :*"
+    )
+    bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown", reply_markup=markup)
+
+@bot.message_handler(commands=['update'])
+def force_update_data(message):
+    bot.reply_to(message, "⏳ Téléchargement en arrière-plan des 5 dernières saisons (avec délai anti-surcharge)...")
+    threading.Thread(target=tache_arriere_plan_maj, args=(message.chat.id,)).start()
+
+def tache_arriere_plan_maj(chat_id):
+    try:
+        now = datetime.now()
+        annee_courante_debut = now.year if now.month >= 7 else now.year - 1
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        
+        telecharges = 0
+        for i in range(5):
+            annee_d = annee_courante_debut - i
+            annee_f = annee_d + 1
+            code_saison = f"{str(annee_d)[-2:]}{str(annee_f)[-2:]}"
+            
+            for nom_propre, code in CHAMPIONNATS.items():
+                url = f"https://www.football-data.co.uk/mmz4281/{code_saison}/{code}.csv"
+                try:
+                    res = requests.get(url, headers=headers, timeout=10)
+                    if res.status_code == 200 and len(res.content) > 100:
+                        nom_fichier = f"matchs_{nom_propre}_{code_saison}.csv"
+                        with open(nom_fichier, 'wb') as f:
+                            f.write(res.content)
+                        telecharges += 1
+                    time.sleep(0.5)
+                except Exception as e:
+                    print(f"Erreur sur {nom_propre} ({code_saison}): {e}")
+                    continue
+
+        if telecharges > 0:
+            charger_et_entrainer()
+            prec = global_model_data.get('precision', 0.5)
+            nb_matchs = len(global_model_data.get('df', []))
+            bot.send_message(
+                chat_id, 
+                f"✅ *Mise à jour des 5 saisons terminée avec succès !*\n\n"
+                f"📥 {telecharges} fichiers récupérés.\n"
+                f"📊 {nb_matchs} matchs en mémoire.\n"
+                f"🎯 Précision IA : *{round(prec * 100, 2)}%*", 
+                parse_mode="Markdown"
+            )
+        else:
+            bot.send_message(chat_id, "⚠️ Aucun fichier n'a pu être téléchargé.")
+            
+    except Exception as e:
+        bot.send_message(chat_id, f"❌ Erreur critique lors de la mise à jour : {str(e)}")
+
+@bot.message_handler(func=lambda message: True)
+def handle_menu_clicks(message):
+    text = message.text
+
+    if text == "📊 Statistiques du Modèle":
+        prec = global_model_data.get('precision', 0.5)
+        length = len(global_model_data.get('df', []))
+        bot.reply_to(message, f"📊 Base de données sur 5 ans.\nMatchs analysés : {length}\nPrécision de test : {round(prec * 100, 2)}%")
+
+    elif text == "📜 Historique":
+        try:
+            hist = pd.read_csv("historique_pronostics.csv")
+            last_5 = hist.tail(5)
+            texte = "📜 *Vos 5 derniers pronostics :*\n\n"
+            for _, row in last_5.iterrows():
+                texte += f"⚽ *{row['Match']}*\n📅 {row['Date_Consultation']}\n💡 {row['Pronostic_1N2']} | 🎯 Score: {row['Score_Exact']}\n\n"
+            bot.reply_to(message, texte, parse_mode="Markdown")
+        except FileNotFoundError:
+            bot.reply_to(message, "⚠️ Aucun historique enregistré pour l'instant.")
+
+    elif text == "⚽ Faire un Pronostic":
+        bot.reply_to(message, "✍️ Tapez l'affiche de votre choix :\n\n`EquipeDom vs EquipeExt`", parse_mode="Markdown")
+
+    elif 'vs' in text.lower():
+        traiter_prediction(message)
+    else:
+        bot.reply_to(message, "💡 Utilisez les boutons ou tapez une affiche au format `Équipe A vs Équipe B`.")
+
+def traiter_prediction(message):
+    try:
+        text = message.text.strip()
+        parts = text.split('vs' if 'vs' in text else 'VS')
+        if len(parts) < 2: return
+        
+        home_input = parts[0].strip()
+        away_input = parts[1].strip()
+
+        teams = global_model_data['teams']
+        team_to_code = global_model_data['team_to_code']
+        team_global_stats = global_model_data['team_global_stats']
+        df = global_model_data['df']
+
+        def trouver_nom_exact(nom_partiel):
+            teams_list = list(teams)
+            lower_teams = {t.lower(): t for t in teams_list}
+            matches = difflib.get_close_matches(nom_partiel.lower(), lower_teams.keys(), n=1, cutoff=0.4)
+            return lower_teams[matches[0]] if matches else nom_partiel
+
+        home_team = trouver_nom_exact(home_input)
+        away_team = trouver_nom_exact(away_input)
+
+        if home_team not in team_to_code or away_team not in team_to_code:
+            bot.reply_to(message, f"❌ Impossible de trouver '{home_input}' ou '{away_input}' dans la base.")
+            return
+
+        h_g_hist, h_g_cond = team_global_stats[home_team]['scored'], team_global_stats[home_team]['conceded']
+        a_g_hist, a_g_cond = team_global_stats[away_team]['scored'], team_global_stats[away_team]['conceded']
+
+        league_avg_home, league_avg_away = df['FTHG'].mean(), df['FTAG'].mean()
+        h_att = (sum(h_g_hist) / len(h_g_hist)) if h_g_hist else league_avg_home
+        h_def = (sum(h_g_cond) / len(h_g_cond)) if h_g_cond else league_avg_away
+        a_att = (sum(a_g_hist) / len(a_g_hist)) if a_g_hist else league_avg_away
+        a_def = (sum(a_g_cond) / len(a_g_cond)) if a_g_cond else league_avg_home
+
+        lambda_home = max(0.2, (h_att * a_def) / league_avg_home)
+        lambda_away = max(0.2, (a_att * h_def) / league_avg_away)
+
+        max_goals = 5
+        score_matrix = np.outer(
+            [poisson.pmf(i, lambda_home) for i in range(max_goals + 1)],
+            [poisson.pmf(j, lambda_away) for j in range(max_goals + 1)]
+        )
+
+        prob_home_win = np.sum(np.tril(score_matrix, -1))
+        prob_draw = np.sum(np.diag(score_matrix))
+        prob_away_win = np.sum(np.triu(score_matrix, 1))
+        total_prob = prob_home_win + prob_draw + prob_away_win
+        p_h, p_d, p_a = prob_home_win/total_prob, prob_draw/total_prob, prob_away_win/total_prob
+
+        max_prob = max(p_h, p_d, p_a)
+        indice_fiabilite = "🔥 CONFIANCE ÉLEVÉE" if max_prob >= 0.50 else ("⚠️ MATCH INCERTAIN / RISQUÉ" if max_prob < 0.40 else "⚖️ CONFIANCE MODÉRÉE")
+
+        under_25 = np.sum([score_matrix[i, j] for i in range(max_goals+1) for j in range(max_goals+1) if i + j < 2.5])
+        over_25 = 1.0 - under_25
+        btts_yes = np.sum([score_matrix[i, j] for i in range(1, max_goals+1) for j in range(1, max_goals+1)])
+        best_i, best_j = np.unravel_index(np.argmax(score_matrix), score_matrix.shape)
+
+        bulletin = (
+            f"🏆 *BULLETIN 5 ANS : {home_team} vs {away_team}*\n\n"
+            f"📌 Indice : *{indice_fiabilite}*\n\n"
+            f"📊 *1N2 - Probabilités :*\n"
+            f"  • Domicile (1) : *{round(p_h * 100, 1)}%* (Cote: {round(1/p_h, 2)})\n"
+            f"  • Nul (N) : *{round(p_d * 100, 1)}%* (Cote: {round(1/p_d, 2)})\n"
+            f"  • Extérieur (2) : *{round(p_a * 100, 1)}%* (Cote: {round(1/p_a, 2)})\n\n"
+            f"⚽ *Tendances de Buts :*\n"
+            f"  • Plus de 2.5 buts : *{round(over_25 * 100, 1)}%*\n"
+            f"  • Les deux équipes marquent : *{round(btts_yes * 100, 1)}%*\n"
+            f"  • 🎯 Score exact : *{best_i} - {best_j}*"
+        )
+
+        bot.reply_to(message, bulletin, parse_mode="Markdown")
+
+        match_desc = f"{home_team} vs {away_team}"
+        record = {
+            "Date_Consultation": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "Match": match_desc,
+            "Pronostic_1N2": f"1:{round(p_h*100,1)}% N:{round(p_d*100,1)}% 2:{round(p_a*100,1)}%",
+            "Score_Exact": f"{best_i}-{best_j}"
+        }
+        hist_df = pd.DataFrame([record])
+        try:
+            existing = pd.read_csv("historique_pronostics.csv")
+            updated = pd.concat([existing, hist_df], ignore_index=True)
+            updated.to_csv("historique_pronostics.csv", index=False)
+        except FileNotFoundError:
+            hist_df.to_csv("historique_pronostics.csv", index=False)
+
+    except Exception as e:
+        bot.reply_to(message, f"❌ Erreur lors de l'analyse : {str(e)}")
+
+@app.route(f'/{TOKEN}', methods=['POST'])
+def webhook():
+    json_str = request.get_data().decode('UTF-8')
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return "OK", 200
+
+@app.route('/')
+def index():
+    return "Bot 5 Ans Opérationnel sur Render !", 200
