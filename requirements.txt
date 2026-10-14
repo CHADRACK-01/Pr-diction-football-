@@ -5,3 +5,4 @@ scipy
 pyTelegramBotAPI
 requests
 flask
+gunicorn
