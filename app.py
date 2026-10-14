@@ -9,7 +9,6 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 from scipy.stats import poisson
-from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier, VotingClassifier
 from sklearn.metrics import accuracy_score
 import telebot
@@ -21,6 +20,13 @@ bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
 global_model_data = {}
+
+# --- GESTION DES SAISONS ET CHAMPIONNATS ---
+def obtenir_code_saison_actuelle():
+    now = datetime.now()
+    annee_debut = now.year if now.month >= 7 else now.year - 1
+    annee_fin = annee_debut + 1
+    return f"{str(annee_debut)[-2:]}{str(annee_fin)[-2:]}"
 
 CHAMPIONNATS = {
     "premier_league": "E0",
@@ -48,45 +54,44 @@ def charger_et_entrainer():
     for fichier in fichiers_csv:
         try:
             temp_df = pd.read_csv(fichier, encoding='latin1', low_memory=False)
-            temp_df.columns = [c.strip() for c in temp_df.columns]
+            cols = ['Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'FTR']
             
-            cols_mapping = {}
-            for col in temp_df.columns:
-                c_low = col.lower()
-                if c_low in ['date']: cols_mapping['Date'] = col
-                elif c_low in ['hometeam', 'home']: cols_mapping['HomeTeam'] = col
-                elif c_low in ['awayteam', 'away']: cols_mapping['AwayTeam'] = col
-                elif c_low in ['fthg', 'hg']: cols_mapping['FTHG'] = col
-                elif c_low in ['ftag', 'ag']: cols_mapping['FTAG'] = col
-                elif c_low in ['ftr', 'res']: cols_mapping['FTR'] = col
-
-            if len(cols_mapping) == 6:
-                temp_df = temp_df.rename(columns={v: k for k, v in cols_mapping.items()})
-                nom_comp = fichier.replace("matchs_", "").rsplit('_', 1)[0].replace("_", " ").title()
-                temp_df = temp_df.copy()
-                temp_df['Competition'] = nom_comp
-                
-                temp_df = temp_df.dropna(subset=['Date', 'HomeTeam', 'AwayTeam', 'FTR'])
-                dfs.append(temp_df[['Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'FTR', 'Competition']])
-                print(f"[Succès] Fichier validé : {fichier} ({len(temp_df)} matchs)")
-            else:
-                print(f"[Ignoré] Fichier incompatible : {fichier}")
+            # Vérification stricte des colonnes
+            if not all(c in temp_df.columns for c in cols):
+                print(f"[Ignoré] {fichier} : colonnes manquantes")
+                continue
+            
+            nom_comp = fichier.replace("matchs_", "").rsplit('_', 1)[0].replace("_", " ").title()
+            temp_df = temp_df[cols].copy()
+            temp_df['Competition'] = nom_comp
+            
+            # Conversion de la date AVANT tout
+            temp_df['Date'] = pd.to_datetime(temp_df['Date'], dayfirst=True, errors='coerce')
+            temp_df = temp_df.dropna(subset=cols)
+            
+            if len(temp_df) > 0:
+                dfs.append(temp_df)
+                print(f"[Succès] {fichier} : {len(temp_df)} matchs")
         except Exception as e:
-            print(f"⚠️ Erreur de lecture sur {fichier}: {e}")
+            print(f"⚠️ Erreur lors de la lecture de {fichier}: {e}")
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
-        df = df.drop_duplicates(subset=['Date', 'HomeTeam', 'AwayTeam'])
-    else:
-        print("⚠️ Aucun DataFrame valide après fusion.")
+    if not dfs:
+        print("❌ Aucun fichier valide chargé.")
         return
 
-    df['Date'] = pd.to_datetime(df['Date'], dayfirst=True, errors='coerce')
-    df = df.dropna(subset=['Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'FTR'])
+    df = pd.concat(dfs, ignore_index=True)
+    
+    # ✅ Déduplication avec la compétition
+    df = df.drop_duplicates(subset=['Date', 'HomeTeam', 'AwayTeam', 'Competition'])
+    df = df.sort_values('Date').reset_index(drop=True)
+    
+    print(f"📊 Total après fusion et déduplication : {len(df)} matchs")
 
-    ANNEE_MIN = datetime.now().year - 5
-    df = df[df['Date'].dt.year >= ANNEE_MIN].sort_values('Date').reset_index(drop=True)
-    print(f"📊 Total après filtrage (5 dernières années) : {len(df)} matchs.")
+    # ✅ Filtre 5 ans
+    date_limite = pd.Timestamp.now() - pd.DateOffset(years=5)
+    df = df[df['Date'] >= date_limite].sort_values('Date').reset_index(drop=True)
+    
+    print(f"📊 Total après filtre 5 ans : {len(df)} matchs")
 
     teams = pd.unique(df[['HomeTeam', 'AwayTeam']].values.ravel())
     team_to_code = {team: i for i, team in enumerate(teams)}
@@ -179,8 +184,9 @@ def charger_et_entrainer():
         team_global_stats[h_team]['scored'].append(fthg); team_global_stats[h_team]['conceded'].append(ftag)
         team_global_stats[a_team]['scored'].append(ftag); team_global_stats[a_team]['conceded'].append(fthg)
         team_home_stats[h_team]['scored'].append(fthg); team_home_stats[h_team]['conceded'].append(ftag)
-        team_away_stats[a_team]['scored'].append(ftag); team_away_stats[a_team]['conceded'].append(ftag)
+        team_away_stats[a_team]['scored'].append(ftag); team_away_stats[a_team]['conceded'].append(fthg)
 
+    # Concaténation groupée
     new_cols = pd.DataFrame({
         'Home_Elo': home_elo_list,
         'Away_Elo': away_elo_list,
@@ -214,7 +220,13 @@ def charger_et_entrainer():
         'H_Glob_Sc', 'H_Glob_Co', 'A_Glob_Sc', 'A_Glob_Co',
         'H_Spec_Sc', 'H_Spec_Co', 'A_Spec_Sc', 'A_Spec_Co'
     ]
-    X_train, X_test, y_train, y_test = train_test_split(df[features], df['FTR'], test_size=0.2, random_state=42)
+
+    # ✅ Split chronologique
+    split_idx = int(len(df) * 0.8)
+    X_train = df[features].iloc[:split_idx]
+    X_test = df[features].iloc[split_idx:]
+    y_train = df['FTR'].iloc[:split_idx]
+    y_test = df['FTR'].iloc[split_idx:]
 
     rf_model = RandomForestClassifier(n_estimators=300, max_depth=12, min_samples_split=5, random_state=42)
     gb_model = HistGradientBoostingClassifier(max_iter=150, learning_rate=0.02, random_state=42)
@@ -227,9 +239,13 @@ def charger_et_entrainer():
     global_model_data['team_to_code'] = team_to_code
     global_model_data['team_global_stats'] = team_global_stats
     global_model_data['precision'] = precision
+    global_model_data['model'] = ensemble_model
+    global_model_data['features'] = features
     print(f"Modèle entraîné sur {len(df)} matchs historiques avec succès !")
 
 charger_et_entrainer()
+
+# --- COMMANDES TELEGRAM ---
 
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
@@ -401,6 +417,21 @@ def traiter_prediction(message):
         )
 
         bot.reply_to(message, bulletin, parse_mode="Markdown")
+
+        match_desc = f"{home_team} vs {away_team}"
+        record = {
+            "Date_Consultation": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "Match": match_desc,
+            "Pronostic_1N2": f"1:{round(p_h*100,1)}% N:{round(p_d*100,1)}% 2:{round(p_a*100,1)}%",
+            "Score_Exact": f"{best_i}-{best_j}"
+        }
+        hist_df = pd.DataFrame([record])
+        try:
+            existing = pd.read_csv("historique_pronostics.csv")
+            updated = pd.concat([existing, hist_df], ignore_index=True)
+            updated.to_csv("historique_pronostics.csv", index=False)
+        except FileNotFoundError:
+            hist_df.to_csv("historique_pronostics.csv", index=False)
 
     except Exception as e:
         bot.reply_to(message, f"❌ Erreur lors de l'analyse : {str(e)}")
