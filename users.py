@@ -53,6 +53,17 @@ def initialiser_tables():
             )
         """)
 
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS transactions (
+                deposit_id TEXT PRIMARY KEY,
+                user_id BIGINT,
+                abonnement TEXT,
+                montant TEXT,
+                statut TEXT DEFAULT 'pending',
+                date_creation TIMESTAMP DEFAULT NOW()
+            )
+        """)
+
         conn.commit()
         cur.close()
         conn.close()
@@ -62,7 +73,7 @@ def initialiser_tables():
 
 
 # =========================================================
-# LECTURE
+# LECTURE UTILISATEUR
 # =========================================================
 def utilisateur_existe(user_id):
     try:
@@ -100,7 +111,7 @@ def get_user_status(user_id):
 
 
 # =========================================================
-# ÉCRITURE
+# ÉCRITURE UTILISATEUR
 # =========================================================
 def enregistrer_utilisateur(user_id, username, first_name):
     try:
@@ -220,3 +231,59 @@ def get_limite_jour(user_id):
 
 def peut_faire_pronostic(user_id):
     return get_compteur_jour(user_id) < get_limite_jour(user_id)
+
+
+# =========================================================
+# TRANSACTIONS PAWAPAY
+# =========================================================
+def enregistrer_transaction(deposit_id, user_id, abonnement, montant):
+    """Enregistre une nouvelle transaction avant l'appel PawaPay."""
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO transactions (deposit_id, user_id, abonnement, montant, statut)
+            VALUES (%s, %s, %s, %s, 'pending')
+            ON CONFLICT (deposit_id) DO NOTHING
+        """, (deposit_id, user_id, abonnement, montant))
+        conn.commit()
+        cur.close()
+        conn.close()
+        print(f"💾 Transaction enregistrée : {deposit_id}")
+        return True
+    except Exception as e:
+        print(f"⚠️ Erreur enregistrer_transaction : {e}")
+        return False
+
+
+def get_transaction(deposit_id):
+    """Récupère une transaction par son deposit_id."""
+    try:
+        conn = get_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT * FROM transactions WHERE deposit_id = %s", (deposit_id,))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        return dict(row) if row else None
+    except Exception as e:
+        print(f"⚠️ Erreur get_transaction : {e}")
+        return None
+
+
+def update_transaction_statut(deposit_id, statut):
+    """Met à jour le statut d'une transaction."""
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE transactions SET statut = %s WHERE deposit_id = %s",
+            (statut, deposit_id)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"⚠️ Erreur update_transaction_statut : {e}")
+        return False
