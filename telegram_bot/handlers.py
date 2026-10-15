@@ -10,10 +10,14 @@ from core.ml_model import (
     charger_et_entrainer, global_model_data, tache_arriere_plan_maj
 )
 from core.prediction import predire_match, sauvegarder_historique
+from core.daily_matches import get_matchs_du_jour, formater_matchs_du_jour
 
 
 def enregistrer_handlers(bot):
 
+    # =========================================================
+    # /start et /help
+    # =========================================================
     @bot.message_handler(commands=['start', 'help'])
     def send_welcome(message):
         user = message.from_user
@@ -28,6 +32,7 @@ def enregistrer_handlers(bot):
         markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
         markup.add(
             telebot.types.KeyboardButton("⚽ Faire un Pronostic"),
+            telebot.types.KeyboardButton("📅 Matchs du jour"),
             telebot.types.KeyboardButton("📜 Historique"),
             telebot.types.KeyboardButton("📊 Statistiques du Modèle"),
             telebot.types.KeyboardButton("⭐ Passer Premium"),
@@ -44,6 +49,10 @@ def enregistrer_handlers(bot):
         )
         bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown", reply_markup=markup)
 
+
+    # =========================================================
+    # /update
+    # =========================================================
     @bot.message_handler(commands=['update'])
     def force_update_data(message):
         bot.reply_to(message, "⏳ Synchronisation en arrière-plan...")
@@ -53,20 +62,40 @@ def enregistrer_handlers(bot):
             daemon=True
         ).start()
 
+
+    # =========================================================
+    # /myid
+    # =========================================================
     @bot.message_handler(commands=['myid'])
     def cmd_myid(message):
         bot.reply_to(message, f"🆔 Ton ID : `{message.from_user.id}`", parse_mode="Markdown")
 
+
+    # =========================================================
+    # Menu principal
+    # =========================================================
     @bot.message_handler(func=lambda message: True)
     def handle_menu_clicks(message):
         text = message.text
         user_id = message.from_user.id
 
+        # --- Statistiques du Modèle ---
         if text == "📊 Statistiques du Modèle":
             prec = global_model_data.get('precision', 0.5)
             length = len(global_model_data.get('df', []))
-            bot.reply_to(message, f"📊 Matchs analysés : {length}\n🎯 Précision : {round(prec * 100, 2)}%")
+            bot.reply_to(
+                message,
+                f"📊 Matchs analysés : {length}\n"
+                f"🎯 Précision : {round(prec * 100, 2)}%"
+            )
 
+        # --- Matchs du jour ---
+        elif text == "📅 Matchs du jour":
+            matchs = get_matchs_du_jour()
+            texte = formater_matchs_du_jour(matchs)
+            bot.reply_to(message, texte, parse_mode="Markdown")
+
+        # --- Historique ---
         elif text == "📜 Historique":
             try:
                 import pandas as pd
@@ -83,6 +112,7 @@ def enregistrer_handlers(bot):
             except FileNotFoundError:
                 bot.reply_to(message, "⚠️ Aucun historique.")
 
+        # --- Passer Premium ---
         elif text == "⭐ Passer Premium":
             if est_premium(user_id):
                 bot.reply_to(
@@ -104,6 +134,7 @@ def enregistrer_handlers(bot):
                 parse_mode="Markdown"
             )
 
+        # --- Faire un Pronostic ---
         elif text == "⚽ Faire un Pronostic":
             if not peut_faire_pronostic(user_id):
                 bot.reply_to(
@@ -115,6 +146,7 @@ def enregistrer_handlers(bot):
                 return
             bot.reply_to(message, "✍️ Tapez l'affiche :\n\n`EquipeDom vs EquipeExt`", parse_mode="Markdown")
 
+        # --- Prédiction (format "Equipe A vs Equipe B") ---
         elif 'vs' in text.lower():
             if not peut_faire_pronostic(user_id):
                 bot.reply_to(
@@ -161,5 +193,6 @@ def enregistrer_handlers(bot):
 
             incrementer_compteur(user_id)
 
+        # --- Fallback ---
         else:
             bot.reply_to(message, "💡 Utilisez les boutons.")
