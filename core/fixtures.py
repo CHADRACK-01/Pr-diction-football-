@@ -1,21 +1,27 @@
 import requests
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
-
-# Clé API publique gratuite (aucune inscription requise)
-# Limite : 30 requêtes/minute, 10 résultats par endpoint
+# =========================================================
+# CONFIGURATION
+# =========================================================
 THESPORTSDB_KEY = "3"
 BASE_URL = "https://www.thesportsdb.com/api/v1/json"
 
+# Fuseau horaire de Kinshasa (UTC+1)
+TZ_KINSHASA = timezone(timedelta(hours=1))
 
+
+# =========================================================
+# RÉCUPÉRATION DES MATCHS DU JOUR
+# =========================================================
 def get_matchs_du_jour(date_cible=None, sport="Soccer"):
     """
     Récupère les matchs du jour via TheSportsDB.
-    - date_cible : datetime.date (défaut = aujourd'hui)
+    - date_cible : datetime.date (défaut = aujourd'hui à Kinshasa)
     - sport : "Soccer" par défaut
     """
     if date_cible is None:
-        date_cible = datetime.now().date()
+        date_cible = datetime.now(TZ_KINSHASA).date()
 
     date_str = date_cible.strftime("%Y-%m-%d")
     url = f"{BASE_URL}/{THESPORTSDB_KEY}/eventsday.php"
@@ -30,16 +36,20 @@ def get_matchs_du_jour(date_cible=None, sport="Soccer"):
         return []
 
     events = data.get("events") or []
+    print(f"📅 TheSportsDB : {len(events)} match(s) trouvé(s) pour {date_str}")
     return events
 
 
+# =========================================================
+# FORMATAGE POUR TELEGRAM
+# =========================================================
 def formater_matchs_du_jour(events, limite=10):
     """Formate la liste des matchs pour Telegram."""
+    date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
+
     if not events:
-        date_str = datetime.now().strftime("%d/%m/%Y")
         return f"📅 *Aucun match aujourd'hui ({date_str})* dans TheSportsDB."
 
-    date_str = datetime.now().strftime("%d/%m/%Y")
     texte = f"📅 *Matchs du jour — {date_str}*\n"
     texte += f"_{len(events)} match(s) trouvé(s)_\n\n"
 
