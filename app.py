@@ -399,20 +399,25 @@ def initier_paiement_pawapay(phone: str, provider_code: str, user_id: int,
                               montant: str, abonnement_key: str):
     """
     Initie un dépôt Mobile Money via PawaPay.
-    deposit_id = 'premium_<user_id>_<abonnement>_<uuid>'
+    depositId doit faire EXACTEMENT 36 caractères.
+    Format : premium_<user_id>_<abo>_<uuid8>
     """
     if not PAWAPAY_TOKEN:
         return {"success": False, "message": "Token PawaPay non configuré."}
 
     phone_clean = phone.replace("+", "").replace(" ", "").replace("-", "")
-    deposit_id = f"premium_{user_id}_{abonnement_key}_{uuid.uuid4().hex[:8]}"
+
+    # Générer un depositId de 36 caractères exactement
+    base_id = f"premium_{user_id}_{abonnement_key}_{uuid.uuid4().hex[:8]}"
+    deposit_id = (base_id + "0" * 36)[:36]
+
+    print(f"🔧 depositId généré : '{deposit_id}' (longueur={len(deposit_id)})")
 
     headers = {
         "Authorization": f"Bearer {PAWAPAY_TOKEN}",
         "Content-Type": "application/json"
     }
 
-    # Payload SANS 'country' (rejeté par l'API PawaPay v2)
     payload = {
         "depositId": deposit_id,
         "amount": montant,
