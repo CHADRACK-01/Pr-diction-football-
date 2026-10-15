@@ -1,4 +1,3 @@
-from datetime import datetime
 from core.fixtures import get_matchs_du_jour, formater_matchs_du_jour as format_fixtures
 
 
