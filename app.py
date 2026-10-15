@@ -5,6 +5,7 @@ import glob
 import time
 import threading
 import difflib
+import uuid
 from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
@@ -22,7 +23,8 @@ from config import (
 from users import (
     initialiser_tables, enregistrer_utilisateur,
     get_statut_label, peut_faire_pronostic, get_compteur_jour,
-    get_limite_jour, incrementer_compteur, set_premium
+    get_limite_jour, incrementer_compteur, set_premium,
+    est_premium
 )
 
 # =========================================================
@@ -36,6 +38,43 @@ global_model_data = {}
 
 HOME_ADVANTAGE = 100
 ELO_K = 32
+
+# =========================================================
+# PAWAPAY
+# =========================================================
+PAWAPAY_TOKEN = os.environ.get("PAWAPAY_TOKEN", "").strip()
+PAWAPAY_BASE_URL = "https://api.sandbox.pawapay.io/v2"
+
+# Abonnements disponibles
+ABONNEMENTS = {
+    "journalier": {
+        "nom": "Journalier",
+        "prix": "2000",
+        "devise": "CDF",
+        "duree_jours": 1,
+        "emoji": "📅"
+    },
+    "hebdomadaire": {
+        "nom": "Hebdomadaire",
+        "prix": "6000",
+        "devise": "CDF",
+        "duree_jours": 7,
+        "emoji": "📆"
+    },
+    "mensuel": {
+        "nom": "Mensuel",
+        "prix": "10000",
+        "devise": "CDF",
+        "duree_jours": 30,
+        "emoji": "🗓️"
+    }
+}
+
+PROVIDERS = {
+    "Vodacom M-Pesa": "VODACOM_MPESA_COD",
+    "Airtel Money": "AIRTEL_COD",
+    "Orange Money": "ORANGE_COD",
+}
 
 
 def obtenir_code_saison_actuelle():
@@ -67,7 +106,6 @@ def charger_et_entrainer():
             cols_requises = ['Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'FTR']
 
             if not all(c in temp_df.columns for c in cols_requises):
-                print(f"[Ignoré] {os.path.basename(fichier)} : colonnes manquantes")
                 continue
 
             nom_base = os.path.basename(fichier)
@@ -84,12 +122,10 @@ def charger_et_entrainer():
 
             if len(temp_df) > 0:
                 dfs.append(temp_df)
-                print(f"[OK] {nom_base} : {len(temp_df)} matchs")
         except Exception as e:
             print(f"⚠️ Erreur {fichier}: {e}")
 
     if not dfs:
-        print("❌ Aucun fichier valide chargé.")
         return
 
     df = pd.concat(dfs, ignore_index=True)
@@ -99,10 +135,7 @@ def charger_et_entrainer():
     date_limite = pd.Timestamp.now() - pd.DateOffset(years=5)
     df_filtre = df[df['Date'] >= date_limite].reset_index(drop=True)
 
-    if len(df_filtre) < len(df) * 0.3:
-        df = df
-    else:
-        df = df_filtre
+    df = df_filtre if len(df_filtre) >= len(df) * 0.3 else df
 
     print(f"📊 Total : {len(df)} matchs")
 
@@ -293,7 +326,6 @@ def tache_arriere_plan_maj(chat_id):
                 if os.path.exists(dest_path):
                     os.remove(dest_path)
                 os.rename(f_path, dest_path)
-                print(f"[Archivage] {nom_f} déplacé.")
 
         for i in range(1, 5):
             annee_d = annee_courante_debut - i
@@ -311,7 +343,6 @@ def tache_arriere_plan_maj(chat_id):
                         if res.status_code == 200 and b',' in res.content and b'<!DOCTYPE html>' not in res.content:
                             with open(chemin_archive, 'wb') as f:
                                 f.write(res.content)
-                            print(f"[DL Archive] {nom_fichier}")
                         time.sleep(0.1)
                     except Exception:
                         continue
@@ -339,7 +370,6 @@ def tache_arriere_plan_maj(chat_id):
                 annee_fichier = int("20" + saison_str[:2])
                 if annee_fichier < annee_limite_archive:
                     os.remove(f_path)
-                    print(f"[Nettoyage] {nom_f} supprimé.")
             except Exception:
                 continue
 
@@ -358,6 +388,67 @@ def tache_arriere_plan_maj(chat_id):
         )
     except Exception as e:
         bot.send_message(chat_id, f"❌ Erreur critique : {str(e)}")
+
+
+# =========================================================
+# PAWAPAY - INITIATION DE PAIEMENT
+# =========================================================
+def initier_paiement_pawapay(phone: str, provider_code: str, user_id: int,
+                              montant: str, abonnement_key: str):
+    """
+    Initie un dépôt Mobile Money via PawaPay.
+    deposit_id = 'premium_<user_id>_<abonnement>_<uuid>'
+    """
+    if not PAWAPAY_TOKEN:
+        return {"success": False, "message": "Token PawaPay non configuré."}
+
+    phone_clean = phone.replace("+", "").replace(" ", "").replace("-", "")
+    deposit_id = f"premium_{user_id}_{abonnement_key}_{uuid.uuid4().hex[:8]}"
+
+    headers = {
+        "Authorization": f"Bearer {PAWAPAY_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "depositId": deposit_id,
+        "amount": montant,
+        "currency": "CDF",
+        "country": "COD",
+        "payer": {
+            "type": "MMO",
+            "accountDetails": {
+                "phoneNumber": phone_clean,
+                "provider": provider_code
+            }
+        }
+    }
+
+    try:
+        response = requests.post(
+            f"{PAWAPAY_BASE_URL}/deposits",
+            json=payload,
+            headers=headers,
+            timeout=30
+        )
+
+        print(f"🔔 PawaPay réponse [{response.status_code}] : {response.text[:300]}")
+
+        if response.status_code in (200, 201, 202):
+            data = response.json()
+            return {
+                "success": True,
+                "deposit_id": deposit_id,
+                "status": data.get("status", "UNKNOWN"),
+                "message": "Paiement initié. Vérifie ton téléphone."
+            }
+        else:
+            return {
+                "success": False,
+                "message": f"Erreur PawaPay ({response.status_code}) : {response.text[:200]}"
+            }
+    except Exception as e:
+        return {"success": False, "message": f"Exception : {str(e)}"}
 
 
 # =========================================================
@@ -405,6 +496,14 @@ def cmd_myid(message):
     bot.reply_to(message, f"🆔 Ton ID : `{message.from_user.id}`", parse_mode="Markdown")
 
 
+@bot.message_handler(commands=['annuler'])
+def cmd_annuler(message):
+    bot.reply_to(message, "❌ Action annulée.")
+
+
+# =========================================================
+# MENU PRINCIPAL
+# =========================================================
 @bot.message_handler(func=lambda message: True)
 def handle_menu_clicks(message):
     text = message.text
@@ -430,19 +529,39 @@ def handle_menu_clicks(message):
         except FileNotFoundError:
             bot.reply_to(message, "⚠️ Aucun historique.")
 
+    # ------- PASSER PREMIUM -------
     elif text == "⭐ Passer Premium":
-        bot.reply_to(
-            message,
+        if est_premium(user_id):
+            bot.reply_to(
+                message,
+                "✅ *Tu es déjà Premium !*\n\nProfite bien de tes pronostics illimités 🚀",
+                parse_mode="Markdown"
+            )
+            return
+
+        texte = (
             "⭐ *Abonnement Premium*\n\n"
-            "💰 Tarif : 2000 FCFA / mois\n"
-            "🎁 Avantages :\n"
+            "🎁 *Avantages Premium :*\n"
             "  • Pronostics illimités\n"
             "  • Score exact + Over/BTTS\n"
             "  • Support prioritaire\n\n"
-            "📲 Paiement : Mobile Money\n"
-            "_Bientôt disponible..._",
-            parse_mode="Markdown"
+            "💳 *Choisis ta formule :*\n\n"
         )
+        for key, abo in ABONNEMENTS.items():
+            texte += (
+                f"{abo['emoji']} *{abo['nom']}* : "
+                f"`{abo['prix']} {abo['devise']}` "
+                f"({abo['duree_jours']} jour(s))\n"
+            )
+
+        markup = telebot.types.InlineKeyboardMarkup(row_width=1)
+        for key, abo in ABONNEMENTS.items():
+            markup.add(telebot.types.InlineKeyboardButton(
+                f"{abo['emoji']} {abo['nom']} - {abo['prix']} {abo['devise']}",
+                callback_data=f"abo|{key}"
+            ))
+
+        bot.reply_to(message, texte, parse_mode="Markdown", reply_markup=markup)
 
     elif text == "⚽ Faire un Pronostic":
         if not peut_faire_pronostic(user_id):
@@ -468,6 +587,144 @@ def handle_menu_clicks(message):
 
     else:
         bot.reply_to(message, "💡 Utilisez les boutons.")
+
+
+# =========================================================
+# CALLBACK : CHOIX DE L'ABONNEMENT
+# =========================================================
+@bot.callback_query_handler(func=lambda call: call.data.startswith("abo|"))
+def traiter_choix_abonnement(call):
+    user_id = call.from_user.id
+    abo_key = call.data.split("|")[1]
+
+    if abo_key not in ABONNEMENTS:
+        bot.answer_callback_query(call.id, "Formule inconnue.")
+        return
+
+    abo = ABONNEMENTS[abo_key]
+
+    # Stocker l'abonnement choisi pour la session
+    global_model_data.setdefault('paiements', {})[user_id] = {
+        "abonnement": abo_key,
+        "prix": abo['prix'],
+        "duree_jours": abo['duree_jours']
+    }
+
+    bot.answer_callback_query(call.id, f"{abo['nom']} sélectionné")
+
+    msg = bot.send_message(
+        call.message.chat.id,
+        f"✅ *Formule choisie : {abo['emoji']} {abo['nom']}*\n"
+        f"💰 Montant : `{abo['prix']} {abo['devise']}`\n"
+        f"⏱️ Durée : {abo['duree_jours']} jour(s)\n\n"
+        "📲 Envoie maintenant ton numéro de téléphone au format :\n"
+        "`+243XXXXXXXXX`\n\n"
+        "Exemple : `+243812345678`\n\n"
+        "_Tape /annuler pour annuler._",
+        parse_mode="Markdown"
+    )
+    bot.register_next_step_handler(msg, demander_provider)
+
+
+# =========================================================
+# CONVERSATION PAIEMENT - ÉTAPE 2 : NUMÉRO + OPÉRATEUR
+# =========================================================
+def demander_provider(message):
+    text = message.text.strip() if message.text else ""
+
+    if text == "/annuler":
+        bot.reply_to(message, "❌ Paiement annulé.")
+        global_model_data.get('paiements', {}).pop(message.from_user.id, None)
+        return
+
+    phone = text.replace("+", "").replace(" ", "").replace("-", "")
+
+    if not phone.startswith("243") or len(phone) != 12 or not phone.isdigit():
+        msg = bot.reply_to(
+            message,
+            "❌ *Numéro invalide.*\n\n"
+            "Format attendu : `+243XXXXXXXXX`\n\n"
+            "Réessaie ou tape /annuler.",
+            parse_mode="Markdown"
+        )
+        bot.register_next_step_handler(msg, demander_provider)
+        return
+
+    user_id = message.from_user.id
+    paiements = global_model_data.get('paiements', {})
+    if user_id not in paiements:
+        bot.reply_to(message, "❌ Session expirée. Recommence avec ⭐ Passer Premium.")
+        return
+
+    paiements[user_id]["phone"] = phone
+
+    markup = telebot.types.InlineKeyboardMarkup(row_width=1)
+    for label, code in PROVIDERS.items():
+        markup.add(telebot.types.InlineKeyboardButton(
+            label,
+            callback_data=f"provider|{code}"
+        ))
+
+    bot.reply_to(
+        message,
+        f"📱 Numéro : `+{phone}`\n\n"
+        "Choisis ton opérateur Mobile Money :",
+        parse_mode="Markdown",
+        reply_markup=markup
+    )
+
+
+# =========================================================
+# CALLBACK : CHOIX DE L'OPÉRATEUR + LANCEMENT PAIEMENT
+# =========================================================
+@bot.callback_query_handler(func=lambda call: call.data.startswith("provider|"))
+def traiter_provider(call):
+    user_id = call.from_user.id
+    provider_code = call.data.split("|")[1]
+
+    paiements = global_model_data.get('paiements', {})
+    if user_id not in paiements or "phone" not in paiements[user_id]:
+        bot.answer_callback_query(call.id, "Session expirée.")
+        return
+
+    info = paiements[user_id]
+    phone = info["phone"]
+    abo_key = info["abonnement"]
+    prix = info["prix"]
+    duree = info["duree_jours"]
+    abo = ABONNEMENTS[abo_key]
+
+    bot.answer_callback_query(call.id, "Traitement en cours...")
+    bot.edit_message_text(
+        chat_id=call.message.chat.id,
+        message_id=call.message.message_id,
+        text=f"📱 Numéro : `+{phone}`\n"
+             f"🏦 Opérateur : *{provider_code}*\n"
+             f"💳 Formule : *{abo['nom']}*\n"
+             f"💰 Montant : `{prix} {abo['devise']}`\n\n"
+             f"⏳ Initiation du paiement en cours...",
+        parse_mode="Markdown"
+    )
+
+    resultat = initier_paiement_pawapay(phone, provider_code, user_id, prix, abo_key)
+
+    if resultat["success"]:
+        bot.send_message(
+            call.message.chat.id,
+            f"✅ *Paiement initié !*\n\n"
+            f"💰 Montant : *{prix} {abo['devise']}*\n"
+            f"📲 Vérifie ton téléphone et confirme avec ton code PIN.\n\n"
+            f"Une fois validé, tu recevras une notification automatique et ton compte sera activé pour *{duree} jour(s)*.",
+            parse_mode="Markdown"
+        )
+    else:
+        bot.send_message(
+            call.message.chat.id,
+            f"❌ *Échec du paiement*\n\n{resultat['message']}",
+            parse_mode="Markdown"
+        )
+
+    paiements.pop(user_id, None)
 
 
 # =========================================================
@@ -597,16 +854,26 @@ def webhook_pawapay():
 
         if data.get("status") == "COMPLETED":
             deposit_id = data.get("depositId", "")
+            # Format : premium_<user_id>_<abonnement>_<uuid>
             parts = deposit_id.split("_")
-            if len(parts) >= 2:
+            if len(parts) >= 3:
                 user_id = int(parts[1])
-                expiration = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d %H:%M")
+                abo_key = parts[2]
+
+                # Récupérer la durée de l'abonnement
+                duree = ABONNEMENTS.get(abo_key, {}).get("duree_jours", 30)
+                nom_abo = ABONNEMENTS.get(abo_key, {}).get("nom", "Mensuel")
+
+                expiration = (datetime.now() + timedelta(days=duree)).strftime("%Y-%m-%d %H:%M")
                 set_premium(user_id, expiration)
+
                 bot.send_message(
                     user_id,
-                    "🎉 *Paiement confirmé !*\n\n"
-                    "Tu es maintenant ⭐ *Premium* pour 30 jours.\n"
-                    "Profite de tes pronostics illimités 🚀",
+                    f"🎉 *Paiement confirmé !*\n\n"
+                    f"✅ Formule activée : *{nom_abo}*\n"
+                    f"⏱️ Durée : *{duree} jour(s)*\n"
+                    f"📅 Expire le : *{expiration}*\n\n"
+                    f"Profite de tes pronostics illimités 🚀",
                     parse_mode="Markdown"
                 )
         return jsonify({"status": "ok"}), 200
