@@ -1,6 +1,11 @@
 import os
 
 # =========================================================
+# TELEGRAM
+# =========================================================
+TOKEN = "8443191637:AAGcCknBZDg1o0NBeL8czLt0SsQ4c2LEMvY"
+
+# =========================================================
 # DÉTECTION DE L'ENVIRONNEMENT
 # =========================================================
 if os.environ.get("RENDER") == "true":
@@ -9,7 +14,7 @@ else:
     DOSSIER_BASE = "data"
 
 # =========================================================
-# CHEMINS (pour fichiers temporaires locaux uniquement)
+# CHEMINS
 # =========================================================
 DOSSIER_PASSE = os.path.join(DOSSIER_BASE, "archives_passe")
 DOSSIER_ACTUEL = os.path.join(DOSSIER_BASE, "saison_actuelle")
