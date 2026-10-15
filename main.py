@@ -1,12 +1,13 @@
 import threading
 import telebot
-from flask import Flask, request
+from flask import Flask, request, jsonify
+from datetime import datetime, timedelta
 
 from config import TOKEN, FICHIER_HISTORIQUE
 from users import (
     initialiser_fichier_utilisateurs, enregistrer_utilisateur,
     get_statut_label, peut_faire_pronostic, get_compteur_jour,
-    get_limite_jour, incrementer_compteur
+    get_limite_jour, incrementer_compteur, set_premium
 )
 from model import (
     charger_et_entrainer, global_model_data,
@@ -182,7 +183,7 @@ def handle_menu_clicks(message):
 
 
 # =========================================================
-# WEBHOOK FLASK (utilisé sur Render)
+# WEBHOOK TELEGRAM (Render)
 # =========================================================
 @app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
@@ -192,18 +193,56 @@ def webhook():
     return "OK", 200
 
 
+# =========================================================
+# WEBHOOK PAWAPAY (confirmation de paiement)
+# =========================================================
+@app.route('/webhook/pawapay', methods=['POST'])
+def webhook_pawapay():
+    """Reçoit la confirmation de paiement de PawaPay."""
+    try:
+        data = request.get_json()
+        print(f"🔔 Webhook PawaPay reçu : {data}")
+
+        # PawaPay envoie le statut final ici
+        if data.get("status") == "COMPLETED":
+            deposit_id = data.get("depositId", "")
+            # Format attendu : premium_<user_id>_<timestamp>
+            parts = deposit_id.split("_")
+            if len(parts) >= 2:
+                user_id = int(parts[1])
+
+                # Passer l'utilisateur en Premium pour 30 jours
+                expiration = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d %H:%M")
+                set_premium(user_id, expiration)
+
+                # Notifier l'utilisateur sur Telegram
+                bot.send_message(
+                    user_id,
+                    "🎉 *Paiement confirmé !*\n\n"
+                    "Tu es maintenant ⭐ *Premium* pour 30 jours.\n"
+                    "Profite de tes pronostics illimités 🚀",
+                    parse_mode="Markdown"
+                )
+
+        return jsonify({"status": "ok"}), 200
+    except Exception as e:
+        print(f"❌ Erreur webhook PawaPay : {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# =========================================================
+# ROUTE DE BASE
+# =========================================================
 @app.route('/')
 def index():
     return "Bot opérationnel !", 200
 
 
 # =========================================================
-# LANCEMENT
+# LANCEMENT LOCAL
 # =========================================================
 if __name__ == "__main__":
     initialiser_fichier_utilisateurs()
     charger_et_entrainer()
-
-    # En local → polling. Sur Render → webhook via gunicorn.
     print("🚀 Bot lancé en mode polling local...")
     bot.infinity_polling()
