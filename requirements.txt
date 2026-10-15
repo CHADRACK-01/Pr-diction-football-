@@ -1,8 +1,9 @@
+pyTelegramBotAPI
 pandas
 numpy
-scikit-learn
 scipy
-pyTelegramBotAPI
+scikit-learn
 requests
-flask
+Flask
+psycopg2-binary
 gunicorn
