@@ -20,7 +20,7 @@ from config import (
     FICHIER_HISTORIQUE
 )
 from users import (
-    initialiser_fichier_utilisateurs, enregistrer_utilisateur,
+    initialiser_tables, enregistrer_utilisateur,
     get_statut_label, peut_faire_pronostic, get_compteur_jour,
     get_limite_jour, incrementer_compteur, set_premium
 )
@@ -626,5 +626,5 @@ def index():
 # =========================================================
 # LANCEMENT AU BOOT (Render)
 # =========================================================
-initialiser_fichier_utilisateurs()
+initialiser_tables()
 charger_et_entrainer()
