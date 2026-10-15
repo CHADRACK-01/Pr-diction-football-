@@ -10,7 +10,7 @@ from core.ml_model import (
     charger_et_entrainer, global_model_data, tache_arriere_plan_maj
 )
 from core.prediction import predire_match, sauvegarder_historique
-from core.daily_matches import get_matchs_du_jour, formater_matchs_du_jour
+from core.daily_matches import matchs_du_jour
 
 
 def enregistrer_handlers(bot):
@@ -91,9 +91,12 @@ def enregistrer_handlers(bot):
 
         # --- Matchs du jour ---
         elif text == "📅 Matchs du jour":
-            matchs = get_matchs_du_jour()
-            texte = formater_matchs_du_jour(matchs)
-            bot.reply_to(message, texte, parse_mode="Markdown")
+            bot.reply_to(message, "⏳ Recherche des matchs du jour...")
+            try:
+                texte = matchs_du_jour()
+                bot.send_message(message.chat.id, texte, parse_mode="Markdown")
+            except Exception as e:
+                bot.send_message(message.chat.id, f"❌ Erreur : {str(e)}")
 
         # --- Historique ---
         elif text == "📜 Historique":
@@ -146,7 +149,7 @@ def enregistrer_handlers(bot):
                 return
             bot.reply_to(message, "✍️ Tapez l'affiche :\n\n`EquipeDom vs EquipeExt`", parse_mode="Markdown")
 
-        # --- Prédiction (format "Equipe A vs Equipe B") ---
+        # --- Prédiction ---
         elif 'vs' in text.lower():
             if not peut_faire_pronostic(user_id):
                 bot.reply_to(
