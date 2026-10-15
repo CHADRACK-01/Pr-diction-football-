@@ -15,9 +15,10 @@ import telebot
 import requests
 from flask import Flask, request, jsonify
 
-# =========================================================
-# IMPORT DE LA GESTION UTILISATEURS
-# =========================================================
+from config import (
+    DOSSIER_PASSE, DOSSIER_ACTUEL, CHAMPIONNATS,
+    FICHIER_HISTORIQUE
+)
 from users import (
     initialiser_fichier_utilisateurs, enregistrer_utilisateur,
     get_statut_label, peut_faire_pronostic, get_compteur_jour,
@@ -33,33 +34,8 @@ app = Flask(__name__)
 
 global_model_data = {}
 
-CHAMPIONNATS = {
-    "premier_league": "E0",
-    "championship": "E1",
-    "laliga": "SP1",
-    "laliga_2": "SP2",
-    "ligue_1": "F1",
-    "ligue_2": "F2",
-    "bundesliga_1": "D1",
-    "bundesliga_2": "D2",
-    "serie_a": "I1",
-    "serie_b": "I2"
-}
-
-# =========================================================
-# GESTION DES DOSSIERS (PASSÉ / ACTUEL)
-# =========================================================
-if os.environ.get("RENDER") == "true":
-    DOSSIER_BASE = "/data"
-else:
-    DOSSIER_BASE = "data"
-
-DOSSIER_PASSE = os.path.join(DOSSIER_BASE, "archives_passe")
-DOSSIER_ACTUEL = os.path.join(DOSSIER_BASE, "saison_actuelle")
-FICHIER_HISTORIQUE = os.path.join(DOSSIER_BASE, "historique_pronostics.csv")
-
-os.makedirs(DOSSIER_PASSE, exist_ok=True)
-os.makedirs(DOSSIER_ACTUEL, exist_ok=True)
+HOME_ADVANTAGE = 100
+ELO_K = 32
 
 
 def obtenir_code_saison_actuelle():
@@ -91,7 +67,7 @@ def charger_et_entrainer():
             cols_requises = ['Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'FTR']
 
             if not all(c in temp_df.columns for c in cols_requises):
-                print(f"[Ignoré] {fichier} : colonnes manquantes")
+                print(f"[Ignoré] {os.path.basename(fichier)} : colonnes manquantes")
                 continue
 
             nom_base = os.path.basename(fichier)
@@ -108,6 +84,7 @@ def charger_et_entrainer():
 
             if len(temp_df) > 0:
                 dfs.append(temp_df)
+                print(f"[OK] {nom_base} : {len(temp_df)} matchs")
         except Exception as e:
             print(f"⚠️ Erreur {fichier}: {e}")
 
@@ -127,13 +104,13 @@ def charger_et_entrainer():
     else:
         df = df_filtre
 
+    print(f"📊 Total : {len(df)} matchs")
+
     teams = pd.unique(df[['HomeTeam', 'AwayTeam']].values.ravel())
     team_to_code = {team: i for i, team in enumerate(teams)}
     competitions = df['Competition'].unique()
 
     elo_ratings = {team: 1500.0 for team in teams}
-    K = 32
-    HOME_ADVANTAGE = 100
 
     tables = {comp: {} for comp in competitions}
     for comp in competitions:
@@ -222,8 +199,8 @@ def charger_et_entrainer():
 
         exp_h = 1 / (1 + 10 ** ((a_elo - (h_elo + HOME_ADVANTAGE)) / 400))
         exp_a = 1 / (1 + 10 ** (((h_elo + HOME_ADVANTAGE) - a_elo) / 400))
-        elo_ratings[h_team] += K * ((1.0 if ftr == 'H' else (0.5 if ftr == 'D' else 0.0)) - exp_h)
-        elo_ratings[a_team] += K * ((0.0 if ftr == 'H' else (0.5 if ftr == 'D' else 1.0)) - exp_a)
+        elo_ratings[h_team] += ELO_K * ((1.0 if ftr == 'H' else (0.5 if ftr == 'D' else 0.0)) - exp_h)
+        elo_ratings[a_team] += ELO_K * ((0.0 if ftr == 'H' else (0.5 if ftr == 'D' else 1.0)) - exp_a)
 
         team_global_stats[h_team]['scored'].append(fthg)
         team_global_stats[h_team]['conceded'].append(ftag)
@@ -436,11 +413,7 @@ def handle_menu_clicks(message):
     if text == "📊 Statistiques du Modèle":
         prec = global_model_data.get('precision', 0.5)
         length = len(global_model_data.get('df', []))
-        bot.reply_to(
-            message,
-            f"📊 Matchs analysés : {length}\n"
-            f"🎯 Précision : {round(prec * 100, 2)}%"
-        )
+        bot.reply_to(message, f"📊 Matchs analysés : {length}\n🎯 Précision : {round(prec * 100, 2)}%")
 
     elif text == "📜 Historique":
         try:
