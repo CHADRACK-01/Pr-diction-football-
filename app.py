@@ -24,7 +24,8 @@ from users import (
     initialiser_tables, enregistrer_utilisateur,
     get_statut_label, peut_faire_pronostic, get_compteur_jour,
     get_limite_jour, incrementer_compteur, set_premium,
-    est_premium
+    est_premium,
+    enregistrer_transaction, get_transaction, update_transaction_statut
 )
 
 # =========================================================
@@ -399,19 +400,20 @@ def initier_paiement_pawapay(phone: str, provider_code: str, user_id: int,
                               montant: str, abonnement_key: str):
     """
     Initie un dépôt Mobile Money via PawaPay.
-    depositId doit faire EXACTEMENT 36 caractères.
-    Format : premium_<user_id>_<abo>_<uuid8>
+    depositId = UUID v4 pur (36 caractères avec tirets).
+    La correspondance depositId → (user_id, abonnement) est stockée en DB.
     """
     if not PAWAPAY_TOKEN:
         return {"success": False, "message": "Token PawaPay non configuré."}
 
     phone_clean = phone.replace("+", "").replace(" ", "").replace("-", "")
 
-    # Générer un depositId de 36 caractères exactement
-    base_id = f"premium_{user_id}_{abonnement_key}_{uuid.uuid4().hex[:8]}"
-    deposit_id = (base_id + "0" * 36)[:36]
+    # Générer un UUID v4 pur
+    deposit_id = str(uuid.uuid4())
+    print(f"🔧 depositId (UUID v4) : '{deposit_id}' (longueur={len(deposit_id)})")
 
-    print(f"🔧 depositId généré : '{deposit_id}' (longueur={len(deposit_id)})")
+    # Enregistrer la transaction en base AVANT l'appel PawaPay
+    enregistrer_transaction(deposit_id, user_id, abonnement_key, montant)
 
     headers = {
         "Authorization": f"Bearer {PAWAPAY_TOKEN}",
@@ -443,6 +445,7 @@ def initier_paiement_pawapay(phone: str, provider_code: str, user_id: int,
 
         if response.status_code in (200, 201, 202):
             data = response.json()
+            update_transaction_statut(deposit_id, "initiated")
             return {
                 "success": True,
                 "deposit_id": deposit_id,
@@ -450,11 +453,13 @@ def initier_paiement_pawapay(phone: str, provider_code: str, user_id: int,
                 "message": "Paiement initié. Vérifie ton téléphone."
             }
         else:
+            update_transaction_statut(deposit_id, "failed")
             return {
                 "success": False,
                 "message": f"Erreur PawaPay ({response.status_code}) : {response.text[:300]}"
             }
     except Exception as e:
+        update_transaction_statut(deposit_id, "error")
         return {"success": False, "message": f"Exception : {str(e)}"}
 
 
@@ -858,28 +863,46 @@ def webhook_pawapay():
         data = request.get_json()
         print(f"🔔 Webhook PawaPay reçu : {data}")
 
-        if data.get("status") == "COMPLETED":
-            deposit_id = data.get("depositId", "")
-            parts = deposit_id.split("_")
-            if len(parts) >= 3:
-                user_id = int(parts[1])
-                abo_key = parts[2]
+        deposit_id = data.get("depositId", "")
+        statut_pawapay = data.get("status", "")
 
-                duree = ABONNEMENTS.get(abo_key, {}).get("duree_jours", 30)
-                nom_abo = ABONNEMENTS.get(abo_key, {}).get("nom", "Mensuel")
+        if not deposit_id:
+            return jsonify({"status": "error", "message": "depositId manquant"}), 400
 
-                expiration = (datetime.now() + timedelta(days=duree)).strftime("%Y-%m-%d %H:%M")
-                set_premium(user_id, expiration)
+        # Récupérer la transaction depuis la DB
+        transaction = get_transaction(deposit_id)
+        if not transaction:
+            print(f"⚠️ Transaction introuvable : {deposit_id}")
+            return jsonify({"status": "error", "message": "Transaction inconnue"}), 404
 
-                bot.send_message(
-                    user_id,
-                    f"🎉 *Paiement confirmé !*\n\n"
-                    f"✅ Formule activée : *{nom_abo}*\n"
-                    f"⏱️ Durée : *{duree} jour(s)*\n"
-                    f"📅 Expire le : *{expiration}*\n\n"
-                    f"Profite de tes pronostics illimités 🚀",
-                    parse_mode="Markdown"
-                )
+        user_id = transaction['user_id']
+        abo_key = transaction['abonnement']
+
+        if statut_pawapay == "COMPLETED":
+            duree = ABONNEMENTS.get(abo_key, {}).get("duree_jours", 30)
+            nom_abo = ABONNEMENTS.get(abo_key, {}).get("nom", "Mensuel")
+
+            expiration = (datetime.now() + timedelta(days=duree)).strftime("%Y-%m-%d %H:%M")
+            set_premium(user_id, expiration)
+            update_transaction_statut(deposit_id, "completed")
+
+            bot.send_message(
+                user_id,
+                f"🎉 *Paiement confirmé !*\n\n"
+                f"✅ Formule activée : *{nom_abo}*\n"
+                f"⏱️ Durée : *{duree} jour(s)*\n"
+                f"📅 Expire le : *{expiration}*\n\n"
+                f"Profite de tes pronostics illimités 🚀",
+                parse_mode="Markdown"
+            )
+        elif statut_pawapay in ("REJECTED", "FAILED"):
+            update_transaction_statut(deposit_id, "rejected")
+            bot.send_message(
+                user_id,
+                f"❌ *Paiement échoué*\n\nRaison : `{statut_pawapay}`\n\nRéessaie avec ⭐ Passer Premium.",
+                parse_mode="Markdown"
+            )
+
         return jsonify({"status": "ok"}), 200
     except Exception as e:
         print(f"❌ Erreur webhook PawaPay : {e}")
