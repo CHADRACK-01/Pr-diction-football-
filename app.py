@@ -5,7 +5,7 @@ import glob
 import time
 import threading
 import difflib
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
 from scipy.stats import poisson
@@ -13,7 +13,16 @@ from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassif
 from sklearn.metrics import accuracy_score
 import telebot
 import requests
-from flask import Flask, request
+from flask import Flask, request, jsonify
+
+# =========================================================
+# IMPORT DE LA GESTION UTILISATEURS
+# =========================================================
+from users import (
+    initialiser_fichier_utilisateurs, enregistrer_utilisateur,
+    get_statut_label, peut_faire_pronostic, get_compteur_jour,
+    get_limite_jour, incrementer_compteur, set_premium
+)
 
 # =========================================================
 # CONFIGURATION
@@ -40,8 +49,14 @@ CHAMPIONNATS = {
 # =========================================================
 # GESTION DES DOSSIERS (PASSÉ / ACTUEL)
 # =========================================================
-DOSSIER_PASSE = "archives_passe"
-DOSSIER_ACTUEL = "saison_actuelle"
+if os.environ.get("RENDER") == "true":
+    DOSSIER_BASE = "/data"
+else:
+    DOSSIER_BASE = "data"
+
+DOSSIER_PASSE = os.path.join(DOSSIER_BASE, "archives_passe")
+DOSSIER_ACTUEL = os.path.join(DOSSIER_BASE, "saison_actuelle")
+FICHIER_HISTORIQUE = os.path.join(DOSSIER_BASE, "historique_pronostics.csv")
 
 os.makedirs(DOSSIER_PASSE, exist_ok=True)
 os.makedirs(DOSSIER_ACTUEL, exist_ok=True)
@@ -55,7 +70,7 @@ def obtenir_code_saison_actuelle():
 
 
 # =========================================================
-# CHARGEMENT ET ENTRAÎNEMENT (LECTURE DES 2 CATÉGORIES)
+# CHARGEMENT ET ENTRAÎNEMENT
 # =========================================================
 def charger_et_entrainer():
     global global_model_data
@@ -104,7 +119,6 @@ def charger_et_entrainer():
     df = df.drop_duplicates(subset=['Date', 'HomeTeam', 'AwayTeam', 'Competition'])
     df = df.sort_values('Date').reset_index(drop=True)
 
-    # Fenêtre glissante de 5 ans
     date_limite = pd.Timestamp.now() - pd.DateOffset(years=5)
     df_filtre = df[df['Date'] >= date_limite].reset_index(drop=True)
 
@@ -113,7 +127,6 @@ def charger_et_entrainer():
     else:
         df = df_filtre
 
-    # --- Encodage équipes & Elo ---
     teams = pd.unique(df[['HomeTeam', 'AwayTeam']].values.ravel())
     team_to_code = {team: i for i, team in enumerate(teams)}
     competitions = df['Competition'].unique()
@@ -282,7 +295,7 @@ def charger_et_entrainer():
 
 
 # =========================================================
-# TÉLÉCHARGEMENT INTELLIGENT (ARCHIVAGE & SAISON ACTUELLE)
+# TÉLÉCHARGEMENT
 # =========================================================
 def tache_arriere_plan_maj(chat_id):
     try:
@@ -295,7 +308,6 @@ def tache_arriere_plan_maj(chat_id):
                           '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
 
-        # 1. Archivage automatique
         fichiers_actuels_existants = glob.glob(os.path.join(DOSSIER_ACTUEL, "*.csv"))
         for f_path in fichiers_actuels_existants:
             nom_f = os.path.basename(f_path)
@@ -306,7 +318,6 @@ def tache_arriere_plan_maj(chat_id):
                 os.rename(f_path, dest_path)
                 print(f"[Archivage] {nom_f} déplacé.")
 
-        # 2. Téléchargement des archives manquantes
         for i in range(1, 5):
             annee_d = annee_courante_debut - i
             annee_f = annee_d + 1
@@ -328,7 +339,6 @@ def tache_arriere_plan_maj(chat_id):
                     except Exception:
                         continue
 
-        # 3. Mise à jour saison actuelle
         telecharges_actuel = 0
         for nom_propre, code in CHAMPIONNATS.items():
             url = f"https://www.football-data.co.uk/mmz4281/{saison_actuelle_code}/{code}.csv"
@@ -344,7 +354,6 @@ def tache_arriere_plan_maj(chat_id):
             except Exception:
                 continue
 
-        # 4. Nettoyage
         annee_limite_archive = annee_courante_debut - 5
         for f_path in glob.glob(os.path.join(DOSSIER_PASSE, "*.csv")):
             nom_f = os.path.basename(f_path)
@@ -364,13 +373,12 @@ def tache_arriere_plan_maj(chat_id):
         bot.send_message(
             chat_id,
             f"✅ *Synchronisation réussie !*\n\n"
-            f"📂 Saisons passées chargées depuis les archives.\n"
+            f"📂 Saisons passées chargées.\n"
             f"🔄 Saison actuelle ({saison_actuelle_code}) : {telecharges_actuel} fichiers.\n"
             f"📊 Total : *{nb_matchs} matchs*.\n"
             f"🎯 Précision IA : *{round(prec * 100, 2)}%*",
             parse_mode="Markdown"
         )
-
     except Exception as e:
         bot.send_message(chat_id, f"❌ Erreur critique : {str(e)}")
 
@@ -380,17 +388,29 @@ def tache_arriere_plan_maj(chat_id):
 # =========================================================
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
-    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    btn_pred = telebot.types.KeyboardButton("⚽ Faire un Pronostic")
-    btn_hist = telebot.types.KeyboardButton("📜 Historique")
-    btn_stats = telebot.types.KeyboardButton("📊 Statistiques du Modèle")
-    markup.add(btn_pred, btn_hist, btn_stats)
+    user = message.from_user
+    enregistrer_utilisateur(user.id, user.username, user.first_name)
 
+    statut_label = get_statut_label(user.id)
     prec = global_model_data.get('precision', 0.5)
     nb_matchs = len(global_model_data.get('df', []))
+    compteur = get_compteur_jour(user.id)
+    limite = get_limite_jour(user.id)
+
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    markup.add(
+        telebot.types.KeyboardButton("⚽ Faire un Pronostic"),
+        telebot.types.KeyboardButton("📜 Historique"),
+        telebot.types.KeyboardButton("📊 Statistiques du Modèle"),
+        telebot.types.KeyboardButton("⭐ Passer Premium"),
+    )
+
     welcome_text = (
-        "🤖 *Assistant Pro (Mode Archivage Intelligent)*\n\n"
-        f"📊 Matchs en mémoire : *{nb_matchs}*\n"
+        f"🤖 *Assistant Pro*\n\n"
+        f"👤 Bienvenue *{user.first_name}* !\n"
+        f"📊 Statut : *{statut_label}*\n"
+        f"🎫 Pronostics aujourd'hui : *{compteur}/{limite}*\n\n"
+        f"📈 Matchs en mémoire : *{nb_matchs}*\n"
         f"🎯 Précision IA : *{round(prec * 100, 2)}%*\n\n"
         "👇 *Utilisez les boutons ci-dessous :*"
     )
@@ -399,47 +419,82 @@ def send_welcome(message):
 
 @bot.message_handler(commands=['update'])
 def force_update_data(message):
-    bot.reply_to(message, "⏳ Mise à jour ciblée de la saison en cours et vérification des archives...")
-    threading.Thread(target=tache_arriere_plan_maj, args=(message.chat.id,)).start()
+    bot.reply_to(message, "⏳ Synchronisation en arrière-plan...")
+    threading.Thread(target=tache_arriere_plan_maj, args=(message.chat.id,), daemon=True).start()
+
+
+@bot.message_handler(commands=['myid'])
+def cmd_myid(message):
+    bot.reply_to(message, f"🆔 Ton ID : `{message.from_user.id}`", parse_mode="Markdown")
 
 
 @bot.message_handler(func=lambda message: True)
 def handle_menu_clicks(message):
     text = message.text
+    user_id = message.from_user.id
 
     if text == "📊 Statistiques du Modèle":
         prec = global_model_data.get('precision', 0.5)
         length = len(global_model_data.get('df', []))
         bot.reply_to(
             message,
-            f"📊 Gestion par dossiers (Passé + Actuel).\n"
-            f"Matchs analysés : {length}\n"
-            f"Précision de test : {round(prec * 100, 2)}%"
+            f"📊 Matchs analysés : {length}\n"
+            f"🎯 Précision : {round(prec * 100, 2)}%"
         )
 
     elif text == "📜 Historique":
         try:
-            hist = pd.read_csv("historique_pronostics.csv")
+            hist = pd.read_csv(FICHIER_HISTORIQUE)
             last_5 = hist.tail(5)
             texte = "📜 *Vos 5 derniers pronostics :*\n\n"
             for _, row in last_5.iterrows():
                 texte += (
                     f"⚽ *{row['Match']}*\n"
                     f"📅 {row['Date_Consultation']}\n"
-                    f"💡 {row['Pronostic_1N2']} | 🎯 Score: {row['Score_Exact']}\n\n"
+                    f"💡 {row['Pronostic_1N2']} | 🎯 {row['Score_Exact']}\n\n"
                 )
             bot.reply_to(message, texte, parse_mode="Markdown")
         except FileNotFoundError:
-            bot.reply_to(message, "⚠️ Aucun historique enregistré pour l'instant.")
+            bot.reply_to(message, "⚠️ Aucun historique.")
+
+    elif text == "⭐ Passer Premium":
+        bot.reply_to(
+            message,
+            "⭐ *Abonnement Premium*\n\n"
+            "💰 Tarif : 2000 FCFA / mois\n"
+            "🎁 Avantages :\n"
+            "  • Pronostics illimités\n"
+            "  • Score exact + Over/BTTS\n"
+            "  • Support prioritaire\n\n"
+            "📲 Paiement : Mobile Money\n"
+            "_Bientôt disponible..._",
+            parse_mode="Markdown"
+        )
 
     elif text == "⚽ Faire un Pronostic":
+        if not peut_faire_pronostic(user_id):
+            bot.reply_to(
+                message,
+                f"⚠️ *Limite atteinte* ({get_limite_jour(user_id)}/jour).\n\n"
+                "Passe en ⭐ *Premium* pour des pronostics illimités.",
+                parse_mode="Markdown"
+            )
+            return
         bot.reply_to(message, "✍️ Tapez l'affiche :\n\n`EquipeDom vs EquipeExt`", parse_mode="Markdown")
 
     elif 'vs' in text.lower():
+        if not peut_faire_pronostic(user_id):
+            bot.reply_to(
+                message,
+                f"⚠️ *Limite atteinte* ({get_limite_jour(user_id)}/jour).\n\n"
+                "Passe en ⭐ *Premium* !",
+                parse_mode="Markdown"
+            )
+            return
         traiter_prediction(message)
 
     else:
-        bot.reply_to(message, "💡 Utilisez les boutons ou tapez `Équipe A vs Équipe B`.")
+        bot.reply_to(message, "💡 Utilisez les boutons.")
 
 
 # =========================================================
@@ -472,7 +527,6 @@ def traiter_prediction(message):
             bot.reply_to(message, f"❌ Impossible de trouver '{home_input}' ou '{away_input}' dans la base.")
             return
 
-        # --- Modèle Poisson basé sur les stats des équipes ---
         h_g_hist = team_global_stats[home_team]['scored']
         h_g_cond = team_global_stats[home_team]['conceded']
         a_g_hist = team_global_stats[away_team]['scored']
@@ -500,10 +554,12 @@ def traiter_prediction(message):
         p_h, p_d, p_a = prob_home_win / total_prob, prob_draw / total_prob, prob_away_win / total_prob
 
         max_prob = max(p_h, p_d, p_a)
-        indice_fiabilite = (
-            "🔥 CONFIANCE ÉLEVÉE" if max_prob >= 0.50
-            else ("⚠️ MATCH INCERTAIN / RISQUÉ" if max_prob < 0.40 else "⚖️ CONFIANCE MODÉRÉE")
-        )
+        if max_prob >= 0.50:
+            indice_fiabilite = "🔥 CONFIANCE ÉLEVÉE"
+        elif max_prob < 0.40:
+            indice_fiabilite = "⚠️ MATCH INCERTAIN / RISQUÉ"
+        else:
+            indice_fiabilite = "⚖️ CONFIANCE MODÉRÉE"
 
         under_25 = np.sum([score_matrix[i, j] for i in range(max_goals + 1) for j in range(max_goals + 1) if i + j < 2.5])
         over_25 = 1.0 - under_25
@@ -525,7 +581,6 @@ def traiter_prediction(message):
 
         bot.reply_to(message, bulletin, parse_mode="Markdown")
 
-        # Historique
         record = {
             "Date_Consultation": datetime.now().strftime("%Y-%m-%d %H:%M"),
             "Match": f"{home_team} vs {away_team}",
@@ -534,18 +589,20 @@ def traiter_prediction(message):
         }
         hist_df = pd.DataFrame([record])
         try:
-            existing = pd.read_csv("historique_pronostics.csv")
+            existing = pd.read_csv(FICHIER_HISTORIQUE)
             updated = pd.concat([existing, hist_df], ignore_index=True)
-            updated.to_csv("historique_pronostics.csv", index=False)
+            updated.to_csv(FICHIER_HISTORIQUE, index=False)
         except FileNotFoundError:
-            hist_df.to_csv("historique_pronostics.csv", index=False)
+            hist_df.to_csv(FICHIER_HISTORIQUE, index=False)
+
+        incrementer_compteur(message.from_user.id)
 
     except Exception as e:
         bot.reply_to(message, f"❌ Erreur lors de l'analyse : {str(e)}")
 
 
 # =========================================================
-# WEBHOOK FLASK & LANCEMENT
+# WEBHOOK TELEGRAM
 # =========================================================
 @app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
@@ -555,9 +612,46 @@ def webhook():
     return "OK", 200
 
 
+# =========================================================
+# WEBHOOK PAWAPAY
+# =========================================================
+@app.route('/webhook/pawapay', methods=['POST'])
+def webhook_pawapay():
+    """Reçoit la confirmation de paiement de PawaPay."""
+    try:
+        data = request.get_json()
+        print(f"🔔 Webhook PawaPay reçu : {data}")
+
+        if data.get("status") == "COMPLETED":
+            deposit_id = data.get("depositId", "")
+            parts = deposit_id.split("_")
+            if len(parts) >= 2:
+                user_id = int(parts[1])
+                expiration = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d %H:%M")
+                set_premium(user_id, expiration)
+                bot.send_message(
+                    user_id,
+                    "🎉 *Paiement confirmé !*\n\n"
+                    "Tu es maintenant ⭐ *Premium* pour 30 jours.\n"
+                    "Profite de tes pronostics illimités 🚀",
+                    parse_mode="Markdown"
+                )
+        return jsonify({"status": "ok"}), 200
+    except Exception as e:
+        print(f"❌ Erreur webhook PawaPay : {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# =========================================================
+# ROUTE DE BASE
+# =========================================================
 @app.route('/')
 def index():
-    return "Bot Archivage Intelligent (Passé + Actuel) Opérationnel sur Render !", 200
+    return "Bot opérationnel !", 200
 
 
+# =========================================================
+# LANCEMENT AU BOOT (Render)
+# =========================================================
+initialiser_fichier_utilisateurs()
 charger_et_entrainer()
