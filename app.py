@@ -16,6 +16,9 @@ import telebot
 import requests
 from flask import Flask, request, jsonify
 
+# --- NEONPAY IMPORTS ---
+from neonpay import create_neonpay, PaymentStage, PaymentStatus
+
 from config import (
     DOSSIER_PASSE, DOSSIER_ACTUEL, CHAMPIONNATS,
     FICHIER_HISTORIQUE
@@ -41,44 +44,73 @@ HOME_ADVANTAGE = 100
 ELO_K = 32
 
 # =========================================================
-# PAWAPAY
+# NEONPAY (TELEGRAM STARS)
 # =========================================================
-PAWAPAY_TOKEN = os.environ.get("PAWAPAY_TOKEN", "").strip()
-PAWAPAY_BASE_URL = "https://api.sandbox.pawapay.io/v2"
+print("💫 Initialisation de NeonPay (Telegram Stars)...")
+neonpay = create_neonpay(bot)
 
-print(f"🔧 PAWAPAY_TOKEN chargé : {'OUI' if PAWAPAY_TOKEN else 'NON'} (longueur={len(PAWAPAY_TOKEN)})")
-
-# Abonnements disponibles
-ABONNEMENTS = {
+# On définit des prix en étoiles. 
+# 1 étoile ≈ 0.02 USD. PawaPay proposait ~2000 CDF (~0.7 USD) pour journalier.
+# Pour compenser la commission de 30% de Telegram, on arrondit.
+ABONNEMENTS_STARS = {
     "journalier": {
         "nom": "Journalier",
-        "prix": "2000",
-        "devise": "CDF",
+        "prix_stars": 100,   # ~5 500 CDF (soit ~2 USD)
         "duree_jours": 1,
         "emoji": "📅"
     },
     "hebdomadaire": {
         "nom": "Hebdomadaire",
-        "prix": "6000",
-        "devise": "CDF",
+        "prix_stars": 300,   # ~16 500 CDF (soit ~6 USD)
         "duree_jours": 7,
         "emoji": "📆"
     },
     "mensuel": {
         "nom": "Mensuel",
-        "prix": "10000",
-        "devise": "CDF",
+        "prix_stars": 500,   # ~27 500 CDF (soit ~10 USD)
         "duree_jours": 30,
         "emoji": "🗓️"
     }
 }
 
-PROVIDERS = {
-    "Vodacom M-Pesa": "VODACOM_MPESA_COD",
-    "Airtel Money": "AIRTEL_COD",
-    "Orange Money": "ORANGE_COD",
-}
+# Créer les PaymentStages pour NeonPay
+stages_neonpay = {}
+for key, abo in ABONNEMENTS_STARS.items():
+    stage = PaymentStage(
+        title=f"Abonnement {abo['nom']}",
+        description=f"Pronostics illimités pendant {abo['duree_jours']} jour(s)",
+        price=abo['prix_stars'],
+        label=abo['nom']
+    )
+    neonpay.create_payment_stage(key, stage)
+    stages_neonpay[key] = stage
+    print(f"   💫 Offre créée : {abo['nom']} - {abo['prix_stars']} Stars")
 
+# Handler de succès NeonPay
+@neonpay.on_payment
+async def handle_payment(result):
+    """Callback appelé par NeonPay quand un paiement est complété."""
+    if result.status == PaymentStatus.COMPLETED:
+        user_id = result.user_id
+        stage_id = result.stage_id  # ex: "journalier", "hebdomadaire", "mensuel"
+
+        duree = ABONNEMENTS_STARS[stage_id]["duree_jours"]
+        nom_abo = ABONNEMENTS_STARS[stage_id]["nom"]
+
+        expiration = (datetime.now() + timedelta(days=duree)).strftime("%Y-%m-%d %H:%M")
+        set_premium(user_id, expiration)
+
+        # Envoyer le message de confirmation
+        bot.send_message(
+            user_id,
+            f"🎉 *Paiement Stars confirmé !*\n\n"
+            f"✅ Formule activée : *{nom_abo}*\n"
+            f"⏱️ Durée : *{duree} jour(s)*\n"
+            f"📅 Expire le : *{expiration}*\n\n"
+            f"Profite de tes pronostics illimités 🚀",
+            parse_mode="Markdown"
+        )
+        print(f"💫 Paiement Stars validé pour user {user_id} - {nom_abo}")
 
 def obtenir_code_saison_actuelle():
     now = datetime.now()
@@ -86,9 +118,8 @@ def obtenir_code_saison_actuelle():
     annee_f = annee_d + 1
     return f"{str(annee_d)[-2:]}{str(annee_f)[-2:]}"
 
-
 # =========================================================
-# CHARGEMENT ET ENTRAÎNEMENT
+# CHARGEMENT ET ENTRAÎNEMENT (identique)
 # =========================================================
 def charger_et_entrainer():
     global global_model_data
@@ -306,9 +337,8 @@ def charger_et_entrainer():
 
     print(f"✅ Modèle entraîné sur {len(df)} matchs. Précision : {round(precision * 100, 2)}%")
 
-
 # =========================================================
-# TÉLÉCHARGEMENT
+# TÉLÉCHARGEMENT (identique)
 # =========================================================
 def tache_arriere_plan_maj(chat_id):
     try:
@@ -392,77 +422,6 @@ def tache_arriere_plan_maj(chat_id):
     except Exception as e:
         bot.send_message(chat_id, f"❌ Erreur critique : {str(e)}")
 
-
-# =========================================================
-# PAWAPAY - INITIATION DE PAIEMENT
-# =========================================================
-def initier_paiement_pawapay(phone: str, provider_code: str, user_id: int,
-                              montant: str, abonnement_key: str):
-    """
-    Initie un dépôt Mobile Money via PawaPay.
-    depositId = UUID v4 pur (36 caractères avec tirets).
-    La correspondance depositId → (user_id, abonnement) est stockée en DB.
-    """
-    if not PAWAPAY_TOKEN:
-        return {"success": False, "message": "Token PawaPay non configuré."}
-
-    phone_clean = phone.replace("+", "").replace(" ", "").replace("-", "")
-
-    # Générer un UUID v4 pur
-    deposit_id = str(uuid.uuid4())
-    print(f"🔧 depositId (UUID v4) : '{deposit_id}' (longueur={len(deposit_id)})")
-
-    # Enregistrer la transaction en base AVANT l'appel PawaPay
-    enregistrer_transaction(deposit_id, user_id, abonnement_key, montant)
-
-    headers = {
-        "Authorization": f"Bearer {PAWAPAY_TOKEN}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "depositId": deposit_id,
-        "amount": montant,
-        "currency": "CDF",
-        "payer": {
-            "type": "MMO",
-            "accountDetails": {
-                "phoneNumber": phone_clean,
-                "provider": provider_code
-            }
-        }
-    }
-
-    try:
-        response = requests.post(
-            f"{PAWAPAY_BASE_URL}/deposits",
-            json=payload,
-            headers=headers,
-            timeout=30
-        )
-
-        print(f"🔔 PawaPay réponse [{response.status_code}] : {response.text[:500]}")
-
-        if response.status_code in (200, 201, 202):
-            data = response.json()
-            update_transaction_statut(deposit_id, "initiated")
-            return {
-                "success": True,
-                "deposit_id": deposit_id,
-                "status": data.get("status", "UNKNOWN"),
-                "message": "Paiement initié. Vérifie ton téléphone."
-            }
-        else:
-            update_transaction_statut(deposit_id, "failed")
-            return {
-                "success": False,
-                "message": f"Erreur PawaPay ({response.status_code}) : {response.text[:300]}"
-            }
-    except Exception as e:
-        update_transaction_statut(deposit_id, "error")
-        return {"success": False, "message": f"Exception : {str(e)}"}
-
-
 # =========================================================
 # COMMANDES TELEGRAM
 # =========================================================
@@ -496,22 +455,18 @@ def send_welcome(message):
     )
     bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown", reply_markup=markup)
 
-
 @bot.message_handler(commands=['update'])
 def force_update_data(message):
     bot.reply_to(message, "⏳ Synchronisation en arrière-plan...")
     threading.Thread(target=tache_arriere_plan_maj, args=(message.chat.id,), daemon=True).start()
 
-
 @bot.message_handler(commands=['myid'])
 def cmd_myid(message):
     bot.reply_to(message, f"🆔 Ton ID : `{message.from_user.id}`", parse_mode="Markdown")
 
-
 @bot.message_handler(commands=['annuler'])
 def cmd_annuler(message):
     bot.reply_to(message, "❌ Action annulée.")
-
 
 # =========================================================
 # MENU PRINCIPAL
@@ -541,7 +496,7 @@ def handle_menu_clicks(message):
         except FileNotFoundError:
             bot.reply_to(message, "⚠️ Aucun historique.")
 
-    # ------- PASSER PREMIUM -------
+    # ------- PASSER PREMIUM (NEONPAY) -------
     elif text == "⭐ Passer Premium":
         if est_premium(user_id):
             bot.reply_to(
@@ -557,20 +512,20 @@ def handle_menu_clicks(message):
             "  • Pronostics illimités\n"
             "  • Score exact + Over/BTTS\n"
             "  • Support prioritaire\n\n"
-            "💳 *Choisis ta formule :*\n\n"
+            "💳 *Choisis ta formule (Paiement par Telegram Stars 🌟) :*\n\n"
         )
-        for key, abo in ABONNEMENTS.items():
+        for key, abo in ABONNEMENTS_STARS.items():
             texte += (
                 f"{abo['emoji']} *{abo['nom']}* : "
-                f"`{abo['prix']} {abo['devise']}` "
+                f"`{abo['prix_stars']} Stars` "
                 f"({abo['duree_jours']} jour(s))\n"
             )
 
         markup = telebot.types.InlineKeyboardMarkup(row_width=1)
-        for key, abo in ABONNEMENTS.items():
+        for key, abo in ABONNEMENTS_STARS.items():
             markup.add(telebot.types.InlineKeyboardButton(
-                f"{abo['emoji']} {abo['nom']} - {abo['prix']} {abo['devise']}",
-                callback_data=f"abo|{key}"
+                f"{abo['emoji']} {abo['nom']} - {abo['prix_stars']} Stars",
+                callback_data=f"abo_stars|{key}"
             ))
 
         bot.reply_to(message, texte, parse_mode="Markdown", reply_markup=markup)
@@ -600,146 +555,33 @@ def handle_menu_clicks(message):
     else:
         bot.reply_to(message, "💡 Utilisez les boutons.")
 
-
 # =========================================================
-# CALLBACK : CHOIX DE L'ABONNEMENT
+# CALLBACK : CHOIX DE L'ABONNEMENT (NEONPAY)
 # =========================================================
-@bot.callback_query_handler(func=lambda call: call.data.startswith("abo|"))
+@bot.callback_query_handler(func=lambda call: call.data.startswith("abo_stars|"))
 def traiter_choix_abonnement(call):
     user_id = call.from_user.id
     abo_key = call.data.split("|")[1]
 
-    if abo_key not in ABONNEMENTS:
+    if abo_key not in ABONNEMENTS_STARS:
         bot.answer_callback_query(call.id, "Formule inconnue.")
         return
 
-    abo = ABONNEMENTS[abo_key]
-
-    global_model_data.setdefault('paiements', {})[user_id] = {
-        "abonnement": abo_key,
-        "prix": abo['prix'],
-        "duree_jours": abo['duree_jours']
-    }
-
+    abo = ABONNEMENTS_STARS[abo_key]
     bot.answer_callback_query(call.id, f"{abo['nom']} sélectionné")
 
-    msg = bot.send_message(
-        call.message.chat.id,
-        f"✅ *Formule choisie : {abo['emoji']} {abo['nom']}*\n"
-        f"💰 Montant : `{abo['prix']} {abo['devise']}`\n"
-        f"⏱️ Durée : {abo['duree_jours']} jour(s)\n\n"
-        "📲 Envoie maintenant ton numéro de téléphone au format :\n"
-        "`+243XXXXXXXXX`\n\n"
-        "Exemple : `+243812345678`\n\n"
-        "_Tape /annuler pour annuler._",
-        parse_mode="Markdown"
-    )
-    bot.register_next_step_handler(msg, demander_provider)
+    # Envoyer l'invoice Telegram Stars via NeonPay
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
+    loop.create_task(neonpay.send_payment(user_id=user_id, stage_id=abo_key))
 
 # =========================================================
-# CONVERSATION PAIEMENT - ÉTAPE 2 : NUMÉRO + OPÉRATEUR
-# =========================================================
-def demander_provider(message):
-    text = message.text.strip() if message.text else ""
-
-    if text == "/annuler":
-        bot.reply_to(message, "❌ Paiement annulé.")
-        global_model_data.get('paiements', {}).pop(message.from_user.id, None)
-        return
-
-    phone = text.replace("+", "").replace(" ", "").replace("-", "")
-
-    if not phone.startswith("243") or len(phone) != 12 or not phone.isdigit():
-        msg = bot.reply_to(
-            message,
-            "❌ *Numéro invalide.*\n\n"
-            "Format attendu : `+243XXXXXXXXX`\n\n"
-            "Réessaie ou tape /annuler.",
-            parse_mode="Markdown"
-        )
-        bot.register_next_step_handler(msg, demander_provider)
-        return
-
-    user_id = message.from_user.id
-    paiements = global_model_data.get('paiements', {})
-    if user_id not in paiements:
-        bot.reply_to(message, "❌ Session expirée. Recommence avec ⭐ Passer Premium.")
-        return
-
-    paiements[user_id]["phone"] = phone
-
-    markup = telebot.types.InlineKeyboardMarkup(row_width=1)
-    for label, code in PROVIDERS.items():
-        markup.add(telebot.types.InlineKeyboardButton(
-            label,
-            callback_data=f"provider|{code}"
-        ))
-
-    bot.reply_to(
-        message,
-        f"📱 Numéro : `+{phone}`\n\n"
-        "Choisis ton opérateur Mobile Money :",
-        parse_mode="Markdown",
-        reply_markup=markup
-    )
-
-
-# =========================================================
-# CALLBACK : CHOIX DE L'OPÉRATEUR + LANCEMENT PAIEMENT
-# =========================================================
-@bot.callback_query_handler(func=lambda call: call.data.startswith("provider|"))
-def traiter_provider(call):
-    user_id = call.from_user.id
-    provider_code = call.data.split("|")[1]
-
-    paiements = global_model_data.get('paiements', {})
-    if user_id not in paiements or "phone" not in paiements[user_id]:
-        bot.answer_callback_query(call.id, "Session expirée.")
-        return
-
-    info = paiements[user_id]
-    phone = info["phone"]
-    abo_key = info["abonnement"]
-    prix = info["prix"]
-    duree = info["duree_jours"]
-    abo = ABONNEMENTS[abo_key]
-
-    bot.answer_callback_query(call.id, "Traitement en cours...")
-    bot.edit_message_text(
-        chat_id=call.message.chat.id,
-        message_id=call.message.message_id,
-        text=f"📱 Numéro : `+{phone}`\n"
-             f"🏦 Opérateur : *{provider_code}*\n"
-             f"💳 Formule : *{abo['nom']}*\n"
-             f"💰 Montant : `{prix} {abo['devise']}`\n\n"
-             f"⏳ Initiation du paiement en cours...",
-        parse_mode="Markdown"
-    )
-
-    resultat = initier_paiement_pawapay(phone, provider_code, user_id, prix, abo_key)
-
-    if resultat["success"]:
-        bot.send_message(
-            call.message.chat.id,
-            f"✅ *Paiement initié !*\n\n"
-            f"💰 Montant : *{prix} {abo['devise']}*\n"
-            f"📲 Vérifie ton téléphone et confirme avec ton code PIN.\n\n"
-            f"Une fois validé, tu recevras une notification automatique et ton compte sera activé pour *{duree} jour(s)*.",
-            parse_mode="Markdown"
-        )
-    else:
-        bot.send_message(
-            call.message.chat.id,
-            f"❌ *Échec du paiement*\n\n{resultat['message']}",
-            parse_mode="Markdown"
-        )
-
-    paiements.pop(user_id, None)
-
-
-# =========================================================
-# PRÉDICTION
+# PRÉDICTION (identique)
 # =========================================================
 def traiter_prediction(message):
     try:
@@ -841,7 +683,6 @@ def traiter_prediction(message):
     except Exception as e:
         bot.reply_to(message, f"❌ Erreur lors de l'analyse : {str(e)}")
 
-
 # =========================================================
 # WEBHOOK TELEGRAM
 # =========================================================
@@ -852,70 +693,12 @@ def webhook():
     bot.process_new_updates([update])
     return "OK", 200
 
-
-# =========================================================
-# WEBHOOK PAWAPAY
-# =========================================================
-@app.route('/webhook/pawapay', methods=['POST'])
-def webhook_pawapay():
-    """Reçoit la confirmation de paiement de PawaPay."""
-    try:
-        data = request.get_json()
-        print(f"🔔 Webhook PawaPay reçu : {data}")
-
-        deposit_id = data.get("depositId", "")
-        statut_pawapay = data.get("status", "")
-
-        if not deposit_id:
-            return jsonify({"status": "error", "message": "depositId manquant"}), 400
-
-        # Récupérer la transaction depuis la DB
-        transaction = get_transaction(deposit_id)
-        if not transaction:
-            print(f"⚠️ Transaction introuvable : {deposit_id}")
-            return jsonify({"status": "error", "message": "Transaction inconnue"}), 404
-
-        user_id = transaction['user_id']
-        abo_key = transaction['abonnement']
-
-        if statut_pawapay == "COMPLETED":
-            duree = ABONNEMENTS.get(abo_key, {}).get("duree_jours", 30)
-            nom_abo = ABONNEMENTS.get(abo_key, {}).get("nom", "Mensuel")
-
-            expiration = (datetime.now() + timedelta(days=duree)).strftime("%Y-%m-%d %H:%M")
-            set_premium(user_id, expiration)
-            update_transaction_statut(deposit_id, "completed")
-
-            bot.send_message(
-                user_id,
-                f"🎉 *Paiement confirmé !*\n\n"
-                f"✅ Formule activée : *{nom_abo}*\n"
-                f"⏱️ Durée : *{duree} jour(s)*\n"
-                f"📅 Expire le : *{expiration}*\n\n"
-                f"Profite de tes pronostics illimités 🚀",
-                parse_mode="Markdown"
-            )
-        elif statut_pawapay in ("REJECTED", "FAILED"):
-            update_transaction_statut(deposit_id, "rejected")
-            bot.send_message(
-                user_id,
-                f"❌ *Paiement échoué*\n\nRaison : `{statut_pawapay}`\n\nRéessaie avec ⭐ Passer Premium.",
-                parse_mode="Markdown"
-            )
-
-        return jsonify({"status": "ok"}), 200
-    except Exception as e:
-        print(f"❌ Erreur webhook PawaPay : {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-
 # =========================================================
 # ROUTE DE BASE
 # =========================================================
 @app.route('/')
 def index():
-    return "Bot opérationnel !", 200
-
+    return "Bot opérationnel (NeonPay) !", 200
 
 # =========================================================
 # LANCEMENT AU BOOT (Render)
