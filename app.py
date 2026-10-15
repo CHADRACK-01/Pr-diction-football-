@@ -389,6 +389,247 @@ def envoyer_facture_stars(chat_id, user_id, abo_key):
             title=f"Abonnement {abo['nom']}",
             description=f"Pronostics illimités pendant {abo['duree_jours']} jour(s)",
             invoice_payload=f"abo_{abo_key}_{user_id}",
+            provider_token="",
+            currency="XTR",
+            prices=[telebot.types.LabeledPrice(label=abo['nom'], amount=abo['prix_stars'])],
+            start_parameter=f"abo_{abo_key}",
+        )
+        print(f"💫 Facture Stars envoyée : {abo['nom']} - {abo['prix_stars']} Stars")
+        return True
+    except Exception as e:
+        print(f"❌ Erreur envoi facture : {e}")
+        bot.send_message(chat_id, f"❌ Erreur lors de l'envoi de la facture : {str(e)}")
+        return False
+
+
+# =========================================================
+# COMMANDES TELEGRAM
+# =========================================================
+@bot.message_handler(commands=['start', 'help'])
+def send_welcome(message):
+    user = message.from_user
+    enregistrer_utilisateur(user.id, user.username, user.first_name)
+
+    statut_label = get_statut_label(user.id)
+    prec = global_model_data.get('precision', 0.5)
+    nb_matchs = len(global_model_data.get('df', []))
+    compteur = get_compteur_jour(user.id)
+    limite = get_limite_jour(user.id)
+
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    markup.add(
+        telebot.types.KeyboardButton("⚽ Faire un Pronostic"),
+        telebot.types.KeyboardButton("📜 Historique"),
+        telebot.types.KeyboardButton("📊 Statistiques du Modèle"),
+        telebot.types.KeyboardButton("⭐ Passer Premium"),
+    )
+
+    welcome_text = (
+        f"🤖 *Assistant Pro*\n\n"
+        f"👤 Bienvenue *{user.first_name}* !\n"
+        f"📊 Statut : *{statut_label}*\n"
+        f"🎫 Pronostics aujourd'hui : *{compteur}/{limite}*\n\n"
+        f"📈 Matchs en mémoire : *{nb_matchs}*\n"
+        f"🎯 Précision IA : *{round(prec * 100, 2)}%*\n\n"
+        "👇 *Utilisez les boutons ci-dessous :*"
+    )
+    bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown", reply_markup=markup)
+
+
+@bot.message_handler(commands=['update'])
+def force_update_data(message):
+    bot.reply_to(message, "⏳ Synchronisation en arrière-plan...")
+    threading.Thread(target=tache_arriere_plan_maj, args=(message.chat.id,), daemon=True).start()
+
+
+@bot.message_handler(commands=['myid'])
+def cmd_myid(message):
+    bot.reply_to(message, f"🆔 Ton ID : `{message.from_user.id}`", parse_mode="Markdown")
+
+
+# =========================================================
+# MENU PRINCIPAL
+# =========================================================
+@bot.message_handler(func=lambda message: True)
+def handle_menu_clicks(message):
+    text = message.text
+    user_id = message.from_user.id
+
+    if text == "📊 Statistiques du Modèle":
+        prec = global_model_data.get('precision', 0.5)
+        length = len(global_model_data.get('df', []))
+        bot.reply_to(message, f"📊 Matchs analysés : {length}\n🎯 Précision : {round(prec * 100, 2)}%")
+
+    elif text == "📜 Historique":
+        try:
+            hist = pd.read_csv(FICHIER_HISTORIQUE)
+            last_5 = hist.tail(5)
+            texte = "📜 *Vos 5 derniers pronostics :*\n\n"
+            for _, row in last_5.iterrows():
+                texte += (
+                    f"⚽ *{row['Match']}*\n"
+                    f"📅 {row['Date_Consultation']}\n"
+                    f"💡 {row['Pronostic_1N2']} | 🎯 {row['Score_Exact']}\n\n"
+                )
+            bot.reply_to(message, texte, parse_mode="Markdown")
+        except FileNotFoundError:
+            bot.reply_to(message, "⚠️ Aucun historique.")
+
+    elif text == "⭐ Passer Premium":
+        if est_premium(user_id):
+            bot.reply_to(
+                message,
+                "✅ *Tu es déjà Premium !*\n\nProfite bien de tes pronostics illimités 🚀",
+                parse_mode="Markdown"
+            )
+            return
+
+        texte = (
+            "⭐ *Abonnement Premium*\n\n"
+            "🎁 *Avantages Premium :*\n"
+            "  • Pronostics illimités\n"
+            "  • Score exact + Over/BTTS\n"
+            "  • Support prioritaire\n\n"
+            "💳 *Choisis ta formule (Paiement par Telegram Stars 🌟) :*\n\n"
+        )
+        for key, abo in ABONNEMENTS_STARS.items():
+            texte += (
+                f"{abo['emoji']} *{abo['nom']}* : "
+                f"`{abo['prix_stars']} Stars` "
+                f
+
+    features = [
+        'HomeTeam_Encoded', 'AwayTeam_Encoded',
+        'Home_Elo', 'Away_Elo', 'Elo_Diff', 'H2H_Score',
+        'Home_Points', 'Away_Points', 'Home_GD', 'Away_GD',
+        'Home_Rest', 'Away_Rest',
+        'H_Glob_Sc', 'H_Glob_Co', 'A_Glob_Sc', 'A_Glob_Co',
+        'H_Spec_Sc', 'H_Spec_Co', 'A_Spec_Sc', 'A_Spec_Co'
+    ]
+
+    split_idx = int(len(df) * 0.8)
+    X_train = df[features].iloc[:split_idx]
+    X_test = df[features].iloc[split_idx:]
+    y_train = df['FTR'].iloc[:split_idx]
+    y_test = df['FTR'].iloc[split_idx:]
+
+    rf_model = RandomForestClassifier(n_estimators=400, max_depth=14, min_samples_split=4, random_state=42, n_jobs=1)
+    gb_model = HistGradientBoostingClassifier(max_iter=200, learning_rate=0.03, random_state=42)
+    ensemble_model = VotingClassifier(estimators=[('rf', rf_model), ('gb', gb_model)], voting='soft')
+    ensemble_model.fit(X_train, y_train)
+
+    precision = accuracy_score(y_test, ensemble_model.predict(X_test))
+
+    global_model_data['df'] = df
+    global_model_data['teams'] = teams
+    global_model_data['team_to_code'] = team_to_code
+    global_model_data['team_global_stats'] = team_global_stats
+    global_model_data['precision'] = precision
+    global_model_data['model'] = ensemble_model
+    global_model_data['features'] = features
+
+    print(f"✅ Modèle entraîné sur {len(df)} matchs. Précision : {round(precision * 100, 2)}%")
+
+
+# =========================================================
+# TÉLÉCHARGEMENT
+# =========================================================
+def tache_arriere_plan_maj(chat_id):
+    try:
+        now = datetime.now()
+        annee_courante_debut = now.year if now.month >= 7 else now.year - 1
+        saison_actuelle_code = obtenir_code_saison_actuelle()
+
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+                          '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+
+        fichiers_actuels_existants = glob.glob(os.path.join(DOSSIER_ACTUEL, "*.csv"))
+        for f_path in fichiers_actuels_existants:
+            nom_f = os.path.basename(f_path)
+            if saison_actuelle_code not in nom_f:
+                dest_path = os.path.join(DOSSIER_PASSE, nom_f)
+                if os.path.exists(dest_path):
+                    os.remove(dest_path)
+                os.rename(f_path, dest_path)
+
+        for i in range(1, 5):
+            annee_d = annee_courante_debut - i
+            annee_f = annee_d + 1
+            code_saison = f"{str(annee_d)[-2:]}{str(annee_f)[-2:]}"
+
+            for nom_propre, code in CHAMPIONNATS.items():
+                nom_fichier = f"matchs_{nom_propre}_{code_saison}.csv"
+                chemin_archive = os.path.join(DOSSIER_PASSE, nom_fichier)
+
+                if not os.path.exists(chemin_archive):
+                    url = f"https://www.football-data.co.uk/mmz4281/{code_saison}/{code}.csv"
+                    try:
+                        res = requests.get(url, headers=headers, timeout=10)
+                        if res.status_code == 200 and b',' in res.content and b'<!DOCTYPE html>' not in res.content:
+                            with open(chemin_archive, 'wb') as f:
+                                f.write(res.content)
+                        time.sleep(0.1)
+                    except Exception:
+                        continue
+
+        telecharges_actuel = 0
+        for nom_propre, code in CHAMPIONNATS.items():
+            url = f"https://www.football-data.co.uk/mmz4281/{saison_actuelle_code}/{code}.csv"
+            nom_fichier = f"matchs_{nom_propre}_{saison_actuelle_code}.csv"
+            chemin_actuel = os.path.join(DOSSIER_ACTUEL, nom_fichier)
+            try:
+                res = requests.get(url, headers=headers, timeout=10)
+                if res.status_code == 200 and b',' in res.content and b'<!DOCTYPE html>' not in res.content:
+                    with open(chemin_actuel, 'wb') as f:
+                        f.write(res.content)
+                    telecharges_actuel += 1
+                time.sleep(0.1)
+            except Exception:
+                continue
+
+        annee_limite_archive = annee_courante_debut - 5
+        for f_path in glob.glob(os.path.join(DOSSIER_PASSE, "*.csv")):
+            nom_f = os.path.basename(f_path)
+            try:
+                saison_str = nom_f.split('_')[-1].replace('.csv', '')
+                annee_fichier = int("20" + saison_str[:2])
+                if annee_fichier < annee_limite_archive:
+                    os.remove(f_path)
+            except Exception:
+                continue
+
+        charger_et_entrainer()
+        prec = global_model_data.get('precision', 0.5)
+        nb_matchs = len(global_model_data.get('df', []))
+
+        bot.send_message(
+            chat_id,
+            f"✅ *Synchronisation réussie !*\n\n"
+            f"📂 Saisons passées chargées.\n"
+            f"🔄 Saison actuelle ({saison_actuelle_code}) : {telecharges_actuel} fichiers.\n"
+            f"📊 Total : *{nb_matchs} matchs*.\n"
+            f"🎯 Précision IA : *{round(prec * 100, 2)}%*",
+            parse_mode="Markdown"
+        )
+    except Exception as e:
+        bot.send_message(chat_id, f"❌ Erreur critique : {str(e)}")
+
+
+# =========================================================
+# TELEGRAM STARS - ENVOI D'UNE FACTURE
+# =========================================================
+def envoyer_facture_stars(chat_id, user_id, abo_key):
+    """Envoie une facture Telegram Stars (XTR) via l'API native Telegram."""
+    abo = ABONNEMENTS_STARS[abo_key]
+
+    try:
+        bot.send_invoice(
+            chat_id=chat_id,
+            title=f"Abonnement {abo['nom']}",
+            description=f"Pronostics illimités pendant {abo['duree_jours']} jour(s)",
+            invoice_payload=f"abo_{abo_key}_{user_id}",
             provider_token="",  # ← VIDE pour les paiements en Stars
             currency="XTR",      # ← Code des Telegram Stars
             prices=[telebot.types.LabeledPrice(label=abo['nom'], amount=abo['prix_stars'])],
