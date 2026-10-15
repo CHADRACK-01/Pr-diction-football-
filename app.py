@@ -45,6 +45,8 @@ ELO_K = 32
 PAWAPAY_TOKEN = os.environ.get("PAWAPAY_TOKEN", "").strip()
 PAWAPAY_BASE_URL = "https://api.sandbox.pawapay.io/v2"
 
+print(f"🔧 PAWAPAY_TOKEN chargé : {'OUI' if PAWAPAY_TOKEN else 'NON'} (longueur={len(PAWAPAY_TOKEN)})")
+
 # Abonnements disponibles
 ABONNEMENTS = {
     "journalier": {
@@ -410,11 +412,11 @@ def initier_paiement_pawapay(phone: str, provider_code: str, user_id: int,
         "Content-Type": "application/json"
     }
 
+    # Payload SANS 'country' (rejeté par l'API PawaPay v2)
     payload = {
         "depositId": deposit_id,
         "amount": montant,
         "currency": "CDF",
-        "country": "COD",
         "payer": {
             "type": "MMO",
             "accountDetails": {
@@ -432,7 +434,7 @@ def initier_paiement_pawapay(phone: str, provider_code: str, user_id: int,
             timeout=30
         )
 
-        print(f"🔔 PawaPay réponse [{response.status_code}] : {response.text[:300]}")
+        print(f"🔔 PawaPay réponse [{response.status_code}] : {response.text[:500]}")
 
         if response.status_code in (200, 201, 202):
             data = response.json()
@@ -445,7 +447,7 @@ def initier_paiement_pawapay(phone: str, provider_code: str, user_id: int,
         else:
             return {
                 "success": False,
-                "message": f"Erreur PawaPay ({response.status_code}) : {response.text[:200]}"
+                "message": f"Erreur PawaPay ({response.status_code}) : {response.text[:300]}"
             }
     except Exception as e:
         return {"success": False, "message": f"Exception : {str(e)}"}
@@ -603,7 +605,6 @@ def traiter_choix_abonnement(call):
 
     abo = ABONNEMENTS[abo_key]
 
-    # Stocker l'abonnement choisi pour la session
     global_model_data.setdefault('paiements', {})[user_id] = {
         "abonnement": abo_key,
         "prix": abo['prix'],
@@ -854,13 +855,11 @@ def webhook_pawapay():
 
         if data.get("status") == "COMPLETED":
             deposit_id = data.get("depositId", "")
-            # Format : premium_<user_id>_<abonnement>_<uuid>
             parts = deposit_id.split("_")
             if len(parts) >= 3:
                 user_id = int(parts[1])
                 abo_key = parts[2]
 
-                # Récupérer la durée de l'abonnement
                 duree = ABONNEMENTS.get(abo_key, {}).get("duree_jours", 30)
                 nom_abo = ABONNEMENTS.get(abo_key, {}).get("nom", "Mensuel")
 
