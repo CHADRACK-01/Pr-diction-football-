@@ -41,11 +41,21 @@ CHAMPIONNATS = {
 # =========================================================
 # BASE DE DONNÉES POSTGRESQL (AIVEN)
 # =========================================================
-DB_HOST = os.environ.get("DB_HOST", "")
-DB_PORT = os.environ.get("DB_PORT", "5432")
-DB_USER = os.environ.get("DB_USER", "")
-DB_PASSWORD = os.environ.get("DB_PASSWORD", "")
-DB_NAME = os.environ.get("DB_NAME", "")
+DB_HOST = os.environ.get("DB_HOST", "").strip()
+DB_PORT = os.environ.get("DB_PORT", "5432").strip()
+DB_USER = os.environ.get("DB_USER", "").strip()
+DB_PASSWORD = os.environ.get("DB_PASSWORD", "").strip()
+DB_NAME = os.environ.get("DB_NAME", "").strip()
+
+# Debug : afficher ce qui est chargé
+print("=" * 60)
+print("🔧 VÉRIFICATION DES VARIABLES D'ENVIRONNEMENT")
+print(f"🔧 DB_HOST     = '{DB_HOST}'")
+print(f"🔧 DB_PORT     = '{DB_PORT}'")
+print(f"🔧 DB_USER     = '{DB_USER}'")
+print(f"🔧 DB_NAME     = '{DB_NAME}'")
+print(f"🔧 DB_PASSWORD chargé : {'OUI' if DB_PASSWORD else 'NON'} (longueur={len(DB_PASSWORD)})")
+print("=" * 60)
 
 # =========================================================
 # LIMITES PAR STATUT
