@@ -14,21 +14,25 @@ TZ_KINSHASA = timezone(timedelta(hours=1))
 # =========================================================
 # RÉCUPÉRATION DES MATCHS DU JOUR
 # =========================================================
-def get_matchs_du_jour(date_cible=None, sport="Soccer"):
+def get_matchs_du_jour(date_cible=None):
     """
     Récupère les matchs du jour via TheSportsDB.
     - date_cible : datetime.date (défaut = aujourd'hui à Kinshasa)
-    - sport : "Soccer" par défaut
     """
     if date_cible is None:
         date_cible = datetime.now(TZ_KINSHASA).date()
 
     date_str = date_cible.strftime("%Y-%m-%d")
     url = f"{BASE_URL}/{THESPORTSDB_KEY}/eventsday.php"
-    params = {"d": date_str, "s": sport}
+
+    # Appel SANS paramètre 's' (comme l'URL qui marche dans le navigateur)
+    params = {"d": date_str}
+
+    print(f"📅 Appel TheSportsDB : {url}?d={date_str}")
 
     try:
-        response = requests.get(url, params=params, timeout=15)
+        response = requests.get(url, params=params, timeout=20)
+        print(f"📅 Réponse HTTP : {response.status_code}")
         response.raise_for_status()
         data = response.json()
     except Exception as e:
@@ -36,8 +40,11 @@ def get_matchs_du_jour(date_cible=None, sport="Soccer"):
         return []
 
     events = data.get("events") or []
-    print(f"📅 TheSportsDB : {len(events)} match(s) trouvé(s) pour {date_str}")
-    return events
+    # Filtrer uniquement les matchs de football
+    events_soccer = [ev for ev in events if ev.get("strSport") == "Soccer"]
+
+    print(f"📅 TheSportsDB : {len(events)} événement(s), {len(events_soccer)} match(s) de foot pour {date_str}")
+    return events_soccer
 
 
 # =========================================================
