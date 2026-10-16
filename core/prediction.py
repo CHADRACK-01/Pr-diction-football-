@@ -8,8 +8,42 @@ from config import FICHIER_HISTORIQUE
 from core.ml_model import global_model_data
 
 
+def trouver_nom_exact(nom_partiel, teams):
+    """Recherche intelligente d'équipe : priorité aux initiales (PSG → Paris SG)."""
+    recherche = nom_partiel.lower().strip()
+
+    # 1. Correspondance exacte
+    for t in teams:
+        if t.lower() == recherche:
+            return t
+
+    # 2. Correspondance par initiales (PSG → Paris SG)
+    initiales_recherche = recherche.replace(" ", "").replace(".", "")
+    for t in teams:
+        initiales_equipe = "".join(w[0] for w in t.lower().split() if w)
+        if initiales_equipe == initiales_recherche:
+            return t
+
+    # 3. Correspondance de mots-clés
+    mots_recherche = set(recherche.split())
+    for t in teams:
+        mots_equipe = set(t.lower().split())
+        if mots_recherche and mots_recherche.issubset(mots_equipe):
+            return t
+
+    # 4. Préfixe
+    for t in teams:
+        if t.lower().startswith(recherche):
+            return t
+
+    # 5. Fallback difflib (seuil strict)
+    lower_teams = {t.lower(): t for t in teams}
+    matches = difflib.get_close_matches(recherche, lower_teams.keys(), n=1, cutoff=0.6)
+    return lower_teams[matches[0]] if matches else nom_partiel
+
+
 def predire_match(home_input, away_input):
-    """Retourne un dict avec toutes les probas. Aucun appel Telegram ici."""
+    """Retourne un dict avec toutes les probas."""
     if not global_model_data:
         return {"erreur": "Modèle non chargé."}
 
@@ -18,13 +52,8 @@ def predire_match(home_input, away_input):
     team_global_stats = global_model_data['team_global_stats']
     df = global_model_data['df']
 
-    def trouver_nom_exact(nom_partiel):
-        lower_teams = {t.lower(): t for t in teams}
-        matches = difflib.get_close_matches(nom_partiel.lower(), lower_teams.keys(), n=1, cutoff=0.4)
-        return lower_teams[matches[0]] if matches else nom_partiel
-
-    home_team = trouver_nom_exact(home_input)
-    away_team = trouver_nom_exact(away_input)
+    home_team = trouver_nom_exact(home_input, teams)
+    away_team = trouver_nom_exact(away_input, teams)
 
     if home_team not in team_to_code or away_team not in team_to_code:
         return {"erreur": f"Équipe introuvable : '{home_input}' ou '{away_input}'"}
