@@ -1,8 +1,10 @@
-# Package users - Gestion complète des utilisateurs et données
-
 from users.db import (
     get_connection,
-    initialiser_tables
+    initialiser_tables,
+    get_taille_base,
+    get_detail_tables,
+    nettoyer_logs_anciens,
+    nettoyer_paiements_anciens
 )
 
 from users.matchs import (
@@ -43,6 +45,21 @@ from users.accounts import (
     get_filleuls,
     get_palier_atteint,
     get_prochain_palier
+)
+
+from users.paiements import (
+    creer_demande_paiement,
+    get_demande,
+    get_demandes_en_attente,
+    valider_demande,
+    refuser_demande,
+    compter_demandes_en_attente,
+    generer_code,
+    generer_lot_codes,
+    utiliser_code,
+    get_codes_disponibles,
+    get_codes_utilises,
+    compter_codes_disponibles
 )
 
 from users.admin import (
