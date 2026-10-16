@@ -6,7 +6,6 @@ from flask import Flask, request
 
 from config import TOKEN
 from users import initialiser_tables
-from core.ml_model import charger_et_entrainer
 from telegram_bot.handlers import enregistrer_handlers
 
 
@@ -37,7 +36,7 @@ def index():
 
 
 # =========================================================
-# LANCEMENT AU BOOT (Render)
+# INITIALISATION AU BOOT
 # =========================================================
 initialiser_tables()
-charger_et_entrainer()
+print("✅ Bot prêt. Le modèle se chargera à la première demande.")
