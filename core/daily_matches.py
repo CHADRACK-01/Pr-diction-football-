@@ -1,10 +1,10 @@
-from core.fixtures import get_matchs_du_jour, formater_matchs_du_jour as format_fixtures
-
+# Fichier désactivé - les matchs du jour viendront plus tard
+# (nécessite une source de données externe validée)
 
 def matchs_du_jour(date_cible=None):
-    """
-    Récupère les matchs du jour via sports-skills.
-    Retourne un texte formaté pour Telegram.
-    """
-    matches = get_matchs_du_jour(date_cible)
-    return format_fixtures(matches)
+    return (
+        "📅 *Fonctionnalité en préparation*\n\n"
+        "La liste des matchs du jour sera bientôt disponible.\n"
+        "En attendant, tapez une affiche manuellement :\n"
+        "`Equipe A vs Equipe B`"
+    )
