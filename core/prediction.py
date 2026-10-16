@@ -80,58 +80,73 @@ def predire_match(home_input, away_input):
         [poisson.pmf(j, lambda_away) for j in range(max_goals + 1)]
     )
 
-    prob_home_win = np.sum(np.tril(score_matrix, -1))
-    prob_draw = np.sum(np.diag(score_matrix))
-    prob_away_win = np.sum(np.triu(score_matrix, 1))
+    # ✅ Convertir tous les np.sum() en float
+    prob_home_win = float(np.sum(np.tril(score_matrix, -1)))
+    prob_draw = float(np.sum(np.diag(score_matrix)))
+    prob_away_win = float(np.sum(np.triu(score_matrix, 1)))
     total_prob = prob_home_win + prob_draw + prob_away_win
 
     p_h = prob_home_win / total_prob
     p_d = prob_draw / total_prob
     p_a = prob_away_win / total_prob
 
-    under_25 = np.sum([score_matrix[i, j] for i in range(max_goals + 1) for j in range(max_goals + 1) if i + j < 2.5])
+    # ✅ Convertir en float
+    under_25 = float(np.sum([
+        score_matrix[i, j]
+        for i in range(max_goals + 1)
+        for j in range(max_goals + 1)
+        if i + j < 2.5
+    ]))
     over_25 = 1.0 - under_25
-    btts_yes = np.sum([score_matrix[i, j] for i in range(1, max_goals + 1) for j in range(1, max_goals + 1)])
+
+    btts_yes = float(np.sum([
+        score_matrix[i, j]
+        for i in range(1, max_goals + 1)
+        for j in range(1, max_goals + 1)
+    ]))
+
+    # Meilleur score
     best_i, best_j = np.unravel_index(np.argmax(score_matrix), score_matrix.shape)
+    best_i, best_j = int(best_i), int(best_j)
 
-    # Double Chance
-    dc_1x = p_h + p_d
-    dc_x2 = p_d + p_a
-    dc_12 = p_h + p_a
+    # Top 3 scores
+    indices = np.dstack(np.unravel_index(np.argsort(score_matrix.ravel())[::-1], score_matrix.shape))[0]
+    top_scores = []
+    for idx in indices[:3]:
+        i, j = int(idx[0]), int(idx[1])
+        proba = float(score_matrix[i, j])
+        top_scores.append((i, j, proba))
 
-    # Niveau de confiance
-    max_prob = max(p_h, p_d, p_a)
+    # ✅ Convertir max en float
+    max_prob = float(max(p_h, p_d, p_a))
     if max_prob >= 0.55:
         fiabilite = "🔥 CONFIANCE ÉLEVÉE"
     elif max_prob >= 0.45:
         fiabilite = "⚖️ CONFIANCE MODÉRÉE"
     else:
-        fiabilite = "⚠️ MATCH INCERTAIN"
+        fiabilite = "⚠️ MATCH INCERTAIN / RISQUÉ"
 
-    # Top 3 scores exacts
-    indices = np.dstack(np.unravel_index(np.argsort(score_matrix.ravel())[::-1], score_matrix.shape))[0]
-    top_scores = []
-    for idx in indices[:3]:
-        i, j = int(idx[0]), int(idx[1])
-        proba = score_matrix[i, j]
-        top_scores.append((i, j, proba))
+    # ✅ Convertir Double Chance en float
+    dc_1x = float(p_h + p_d)
+    dc_x2 = float(p_d + p_a)
+    dc_12 = float(p_h + p_a)
 
     return {
         "home_team": home_team,
         "away_team": away_team,
-        "p_h": p_h,
-        "p_d": p_d,
-        "p_a": p_a,
+        "p_h": float(p_h),
+        "p_d": float(p_d),
+        "p_a": float(p_a),
         "dc_1x": dc_1x,
         "dc_x2": dc_x2,
         "dc_12": dc_12,
         "over_25": over_25,
         "under_25": under_25,
         "btts_yes": btts_yes,
-        "btts_no": 1.0 - btts_yes,
-        "best_score": (int(best_i), int(best_j)),
+        "btts_no": float(1.0 - btts_yes),
+        "best_score": (best_i, best_j),
         "top_scores": top_scores,
-        "fiabilite": fiabilite
+        "fiabilite": fiabilite,
     }
 
 
