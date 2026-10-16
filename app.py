@@ -18,9 +18,6 @@ bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
 # ⚠️ ORDRE CRUCIAL :
-# 1. Admin (commandes spécifiques /admin, /stats, etc.)
-# 2. Inline (callbacks choix équipes)
-# 3. Handlers utilisateur (menu + user + prediction + payment)
 enregistrer_admin_handlers(bot)
 enregistrer_inline_handlers(bot)
 enregistrer_handlers(bot)
@@ -29,7 +26,7 @@ TZ_KINSHASA = timezone(timedelta(hours=1))
 
 
 # =========================================================
-# NOTIFICATIONS QUOTIDIENNES (8h)
+# NOTIFICATIONS QUOTIDIENNES
 # =========================================================
 def _envoyer_notifications():
     try:
@@ -114,22 +111,37 @@ def _envoyer_notifications():
 
 
 # =========================================================
-# SCHEDULER : vérifie chaque minute, envoie à 8h
+# SCHEDULER
 # =========================================================
 def _scheduler_notifications():
     print("Scheduler notifications demarre...")
     derniere_date_envoi = None
+    dernier_nettoyage = None
 
     while True:
         try:
             now = datetime.now(TZ_KINSHASA)
 
+            # Notifications à 8h
             if now.hour == 8 and now.minute < 5:
                 date_du_jour = now.strftime("%Y-%m-%d")
                 if derniere_date_envoi != date_du_jour:
                     print(f"Envoi des notifications du {date_du_jour}...")
                     _envoyer_notifications()
                     derniere_date_envoi = date_du_jour
+
+            # Nettoyage une fois par jour à 3h
+            if now.hour == 3 and now.minute < 5:
+                date_du_jour = now.strftime("%Y-%m-%d")
+                if dernier_nettoyage != date_du_jour:
+                    print(f"Nettoyage auto du {date_du_jour}...")
+                    try:
+                        from users import nettoyer_logs_anciens, nettoyer_paiements_anciens
+                        nettoyer_logs_anciens(jours=30)
+                        nettoyer_paiements_anciens(jours=90)
+                    except Exception as e:
+                        print(f"Erreur nettoyage : {e}")
+                    dernier_nettoyage = date_du_jour
 
             time.sleep(60)
         except Exception as e:
@@ -141,14 +153,13 @@ threading.Thread(target=_scheduler_notifications, daemon=True).start()
 
 
 # =========================================================
-# WEBHOOK TELEGRAM
+# WEBHOOK
 # =========================================================
 @app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
     json_str = request.get_data().decode('UTF-8')
     update = telebot.types.Update.de_json(json_str)
 
-    # Bloquer les bannis (sauf admins)
     try:
         if update.message:
             user_id = update.message.from_user.id
@@ -162,16 +173,10 @@ def webhook():
     return "OK", 200
 
 
-# =========================================================
-# ROUTE DE BASE
-# =========================================================
 @app.route('/')
 def index():
     return "Bot operationnel !", 200
 
 
-# =========================================================
-# INITIALISATION AU BOOT
-# =========================================================
 initialiser_tables()
-print("Bot pret (init differee + notifications + admin + multi-langue + parrainage).")
+print("Bot pret (init differee + notifications + admin + paiements + codes + parrainage).")
