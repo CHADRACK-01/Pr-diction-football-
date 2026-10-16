@@ -10,7 +10,6 @@ from core.ml_model import (
     charger_et_entrainer, global_model_data, tache_arriere_plan_maj
 )
 from core.prediction import predire_match, sauvegarder_historique
-from core.daily_matches import matchs_du_jour
 
 
 def enregistrer_handlers(bot):
@@ -32,7 +31,6 @@ def enregistrer_handlers(bot):
         markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
         markup.add(
             telebot.types.KeyboardButton("⚽ Faire un Pronostic"),
-            telebot.types.KeyboardButton("📅 Matchs du jour"),
             telebot.types.KeyboardButton("📜 Historique"),
             telebot.types.KeyboardButton("📊 Statistiques du Modèle"),
             telebot.types.KeyboardButton("⭐ Passer Premium"),
@@ -49,6 +47,7 @@ def enregistrer_handlers(bot):
         )
         bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown", reply_markup=markup)
 
+
     # =========================================================
     # /update
     # =========================================================
@@ -61,6 +60,7 @@ def enregistrer_handlers(bot):
             daemon=True
         ).start()
 
+
     # =========================================================
     # /myid
     # =========================================================
@@ -68,17 +68,6 @@ def enregistrer_handlers(bot):
     def cmd_myid(message):
         bot.reply_to(message, f"🆔 Ton ID : `{message.from_user.id}`", parse_mode="Markdown")
 
-    # =========================================================
-    # /test_api (ADMIN)
-    # =========================================================
-    @bot.message_handler(commands=['test_api'])
-    def cmd_test_api(message):
-        from core.fixtures import get_matchs_du_jour
-        try:
-            events = get_matchs_du_jour()
-            bot.reply_to(message, f"✅ API fonctionnelle : {len(events)} match(s) retourné(s)")
-        except Exception as e:
-            bot.reply_to(message, f"❌ Erreur API : {str(e)}")
 
     # =========================================================
     # Menu principal
@@ -97,15 +86,6 @@ def enregistrer_handlers(bot):
                 f"📊 Matchs analysés : {length}\n"
                 f"🎯 Précision : {round(prec * 100, 2)}%"
             )
-
-        # --- Matchs du jour ---
-        elif text == "📅 Matchs du jour":
-            bot.reply_to(message, "⏳ Recherche des matchs du jour...")
-            try:
-                texte = matchs_du_jour()
-                bot.send_message(message.chat.id, texte, parse_mode="Markdown")
-            except Exception as e:
-                bot.send_message(message.chat.id, f"❌ Erreur : {str(e)}")
 
         # --- Historique ---
         elif text == "📜 Historique":
