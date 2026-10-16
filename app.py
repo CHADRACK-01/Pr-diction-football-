@@ -11,13 +11,18 @@ from config import TOKEN
 from users import initialiser_tables, get_utilisateurs_notifies, est_banni
 from telegram_bot.handlers import enregistrer_handlers
 from telegram_bot.admin_handlers import enregistrer_admin_handlers
+from telegram_bot.inline_handlers import enregistrer_inline_handlers
 
 
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
-# ⚠️ IMPORTANT : admin EN PREMIER, utilisateurs EN DERNIER
+# ⚠️ ORDRE CRUCIAL :
+# 1. Admin (commandes spécifiques)
+# 2. Inline (callbacks boutons)
+# 3. Utilisateurs (fallback menu - TOUJOURS EN DERNIER)
 enregistrer_admin_handlers(bot)
+enregistrer_inline_handlers(bot)
 enregistrer_handlers(bot)
 
 TZ_KINSHASA = timezone(timedelta(hours=1))
@@ -162,4 +167,4 @@ def index():
 
 
 initialiser_tables()
-print("Bot pret (init differee + notifications + admin).")
+print("Bot pret (init differee + notifications + admin + inline + multi-langue).")
