@@ -1,36 +1,63 @@
 import threading
+import io
+import joblib
 import telebot
 
 from config import FICHIER_HISTORIQUE
 from users import (
     enregistrer_utilisateur, get_statut_label, peut_faire_pronostic,
-    get_compteur_jour, get_limite_jour, incrementer_compteur, est_premium
+    get_compteur_jour, get_limite_jour, incrementer_compteur, est_premium,
+    charger_modele_cache
 )
-from core.ml_model import (
-    charger_et_entrainer, global_model_data, tache_arriere_plan_maj
-)
+from core.ml_model import global_model_data, tache_arriere_plan_maj
 from core.prediction import predire_match, sauvegarder_historique
 
 
 def _charger_modele_si_necessaire(message, bot):
-    """Lazy loading : charge le modèle si pas encore en mémoire."""
+    """Charge le modèle depuis le cache PostgreSQL. N'entraîne JAMAIS sur Render."""
     if global_model_data.get('df') is not None and len(global_model_data.get('df', [])) > 0:
         return True
 
-    bot.reply_to(message, "⏳ Premier lancement : chargement du modèle (1-2 min)...")
+    bot.reply_to(message, "⏳ Chargement du modèle depuis le cache...")
+
     try:
-        charger_et_entrainer()
-        if global_model_data.get('df') is not None and len(global_model_data.get('df', [])) > 0:
-            return True
-        else:
+        cache = charger_modele_cache()
+        if not cache:
             bot.reply_to(
                 message,
-                "⚠️ Aucun match en base.\n\n"
-                "Envoie /update pour télécharger les données (cela prend 1-2 min)."
+                "⚠️ *Aucun modèle en cache.*\n\n"
+                "L'entraînement doit être fait depuis Colab et uploadé dans PostgreSQL.\n\n"
+                "Contacte l'administrateur.",
+                parse_mode="Markdown"
             )
             return False
+
+        modele_bytes, precision, nb_matchs = cache
+        print(f"⚡ Chargement du cache ({nb_matchs} matchs, précision={round(precision*100, 2)}%)...")
+
+        buffer = io.BytesIO(modele_bytes)
+        donnees = joblib.load(buffer)
+
+        global_model_data['df'] = donnees['df']
+        global_model_data['teams'] = donnees['teams']
+        global_model_data['team_to_code'] = donnees['team_to_code']
+        global_model_data['team_global_stats'] = donnees['team_global_stats']
+        global_model_data['precision'] = precision
+        global_model_data['model'] = donnees['model']
+        global_model_data['features'] = donnees['features']
+        global_model_data['_tables_initialisees'] = True
+
+        bot.reply_to(
+            message,
+            f"✅ *Modèle chargé !*\n"
+            f"📊 {nb_matchs} matchs | 🎯 Précision : {round(precision * 100, 2)}%",
+            parse_mode="Markdown"
+        )
+        return True
+
     except Exception as e:
-        bot.reply_to(message, f"❌ Erreur chargement : {e}")
+        print(f"❌ Erreur chargement cache : {e}")
+        bot.reply_to(message, f"❌ Erreur : {str(e)[:200]}")
         return False
 
 
@@ -150,7 +177,6 @@ def enregistrer_handlers(bot):
 
         # --- Faire un Pronostic ---
         elif text == "⚽ Faire un Pronostic":
-            # Lazy loading
             if not _charger_modele_si_necessaire(message, bot):
                 return
 
@@ -166,7 +192,6 @@ def enregistrer_handlers(bot):
 
         # --- Prédiction ---
         elif 'vs' in text.lower():
-            # Lazy loading
             if not _charger_modele_si_necessaire(message, bot):
                 return
 
