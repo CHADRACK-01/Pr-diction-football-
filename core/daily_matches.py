@@ -135,8 +135,18 @@ def get_matchs_du_jour():
     Récupère les matchs du jour depuis Football-Data.org,
     puis génère les prédictions avec ton IA.
     """
-    if not global_model_data or not global_model_data.get('teams'):
-        print("⚠️ Modèle non chargé")
+    # ✅ FIX : ne pas tester la véracité d'un array
+    if not global_model_data:
+        print("⚠️ Modèle non chargé (vide)")
+        return []
+
+    if 'teams' not in global_model_data:
+        print("⚠️ Pas de 'teams' dans global_model_data")
+        return []
+
+    teams_data = global_model_data.get('teams')
+    if teams_data is None or len(teams_data) == 0:
+        print("⚠️ Aucune équipe dans le modèle")
         return []
 
     aujourd_hui = datetime.now(TZ_KINSHASA).strftime("%Y-%m-%d")
@@ -164,10 +174,14 @@ def get_matchs_du_jour():
 
                 try:
                     prono = predire_match(home, away)
-                    if not prono or "erreur" in prono:
+                    # ✅ FIX : vérifier explicitement
+                    if not isinstance(prono, dict):
+                        continue
+                    if 'erreur' in prono:
+                        continue
+                    if 'dc_1x' not in prono:
                         continue
 
-                    # ✅ Convertir tous les numpy en float
                     dc_1x = float(prono['dc_1x'])
                     dc_x2 = float(prono['dc_x2'])
                     dc_12 = float(prono['dc_12'])
@@ -213,7 +227,8 @@ def formater_matchs_du_jour(matchs, langue="fr"):
 
     date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
 
-    if not matchs:
+    # ✅ FIX : vérifier explicitement len()
+    if matchs is None or len(matchs) == 0:
         return get_text("aucun_match_jour", langue, date=date_str)
 
     texte = get_text("titre_matchs_jour", langue, date=date_str)
