@@ -1,14 +1,22 @@
 import threading
 import io
+import time
 import joblib
 import telebot
+from datetime import datetime, timedelta
 
 from config import FICHIER_HISTORIQUE
 from users import (
     enregistrer_utilisateur, get_statut_label, peut_faire_pronostic,
     get_compteur_jour, get_limite_jour, incrementer_compteur, est_premium,
     charger_modele_cache,
-    activer_notifications, desactiver_notifications
+    activer_notifications, desactiver_notifications,
+    est_administrateur, get_stats_globales, get_liste_utilisateurs,
+    ajouter_admin, retirer_admin, get_tous_admins,
+    bannir_user, debannir_user, est_banni, get_liste_bannis,
+    log_admin, get_logs_admin,
+    get_parametre, set_parametre, get_tous_parametres,
+    get_user_info, set_premium, get_tous_utilisateurs
 )
 from core.ml_model import global_model_data, tache_arriere_plan_maj
 from core.prediction import predire_match, sauvegarder_historique
@@ -164,9 +172,18 @@ def _formater_bulletin(resultat):
 
 def enregistrer_handlers(bot):
 
+    # =========================================================
+    # /start et /help
+    # =========================================================
     @bot.message_handler(commands=['start', 'help'])
     def send_welcome(message):
         user = message.from_user
+
+        # Vérifier si banni
+        if est_banni(user.id):
+            bot.reply_to(message, "🚫 Tu es banni de ce bot.")
+            return
+
         enregistrer_utilisateur(user.id, user.username, user.first_name)
 
         statut_label = get_statut_label(user.id)
@@ -204,6 +221,9 @@ def enregistrer_handlers(bot):
         bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown", reply_markup=markup)
 
 
+    # =========================================================
+    # /update
+    # =========================================================
     @bot.message_handler(commands=['update'])
     def force_update_data(message):
         bot.reply_to(message, "⏳ Synchronisation en arrière-plan (1-2 min)...")
@@ -214,6 +234,9 @@ def enregistrer_handlers(bot):
         ).start()
 
 
+    # =========================================================
+    # /myid
+    # =========================================================
     @bot.message_handler(commands=['myid'])
     def cmd_myid(message):
         bot.reply_to(
@@ -226,6 +249,9 @@ def enregistrer_handlers(bot):
         )
 
 
+    # =========================================================
+    # /notif_on, /notif_off
+    # =========================================================
     @bot.message_handler(commands=['notif_on'])
     def cmd_notif_on(message):
         user_id = message.from_user.id
@@ -239,8 +265,6 @@ def enregistrer_handlers(bot):
                 f"_Pour désactiver : tape /notif_off_",
                 parse_mode="Markdown"
             )
-        else:
-            bot.reply_to(message, "❌ Erreur. Réessaie plus tard.")
 
 
     @bot.message_handler(commands=['notif_off'])
@@ -256,10 +280,349 @@ def enregistrer_handlers(bot):
                 f"_Pour réactiver : tape /notif_on_",
                 parse_mode="Markdown"
             )
-        else:
-            bot.reply_to(message, "❌ Erreur. Réessaie plus tard.")
 
 
+    # =========================================================
+    # /admin — Panneau admin principal
+    # =========================================================
+    @bot.message_handler(commands=['admin'])
+    def cmd_admin(message):
+        user_id = message.from_user.id
+        if not est_administrateur(user_id):
+            bot.reply_to(message, "⛔ Commande réservée à l'administrateur.")
+            return
+
+        markup = telebot.types.InlineKeyboardMarkup(row_width=2)
+        markup.add(
+            telebot.types.InlineKeyboardButton("📊 Stats", callback_data="admin|stats"),
+            telebot.types.InlineKeyboardButton("👥 Utilisateurs", callback_data="admin|users"),
+            telebot.types.InlineKeyboardButton("👑 Admins", callback_data="admin|admins"),
+            telebot.types.InlineKeyboardButton("⚙️ Paramètres", callback_data="admin|params"),
+            telebot.types.InlineKeyboardButton("📝 Logs", callback_data="admin|logs"),
+            telebot.types.InlineKeyboardButton("🚫 Bannis", callback_data="admin|bannis"),
+        )
+
+        bot.reply_to(
+            message,
+            f"╔══════════════════════════╗\n"
+            f"║   👑 *PANNEAU ADMIN*     ║\n"
+            f"╚══════════════════════════╝\n\n"
+            f"👇 *Que veux-tu faire ?*\n\n"
+            f"_Commandes :_\n"
+            f"/stats — Statistiques\n"
+            f"/users — Liste utilisateurs\n"
+            f"/broadcast <msg> — Annonce\n"
+            f"/ban <ID> — Bannir\n"
+            f"/unban <ID> — Débannir\n"
+            f"/add_premium <ID> <jours>\n"
+            f"/add_admin <ID>\n"
+            f"/set_param <cle> <valeur>",
+            parse_mode="Markdown",
+            reply_markup=markup
+        )
+
+
+    # =========================================================
+    # CALLBACKS ADMIN
+    # =========================================================
+    @bot.callback_query_handler(func=lambda call: call.data.startswith("admin|"))
+    def traiter_admin_callback(call):
+        user_id = call.from_user.id
+        if not est_administrateur(user_id):
+            bot.answer_callback_query(call.id, "⛔ Accès refusé.")
+            return
+
+        action = call.data.split("|")[1]
+        bot.answer_callback_query(call.id, "⏳")
+
+        if action == "stats":
+            stats = get_stats_globales()
+            bot.send_message(
+                call.message.chat.id,
+                f"╔══════════════════════════╗\n"
+                f"║   📊 *STATISTIQUES*      ║\n"
+                f"╚══════════════════════════╝\n\n"
+                f"👥 *Total* : *{stats.get('total', 0)}*\n"
+                f"⭐ *Premium* : *{stats.get('premium', 0)}*\n"
+                f"🆓 *Free* : *{stats.get('free', 0)}*\n\n"
+                f"📈 *Nouveaux (7j)* : *{stats.get('nouveaux_7j', 0)}*\n"
+                f"📅 *Nouveaux (24h)* : *{stats.get('nouveaux_24h', 0)}*\n\n"
+                f"🚫 *Bannis* : *{stats.get('bannis', 0)}*",
+                parse_mode="Markdown"
+            )
+
+        elif action == "users":
+            users = get_liste_utilisateurs(limite=20)
+            texte = (
+                f"╔══════════════════════════╗\n"
+                f"║   👥 *UTILISATEURS*      ║\n"
+                f"╚══════════════════════════╝\n\n"
+            )
+            for i, u in enumerate(users, 1):
+                emoji = "⭐" if u['status'] == 'premium' else "🆓"
+                texte += (
+                    f"*{i}.* {emoji} *{u['first_name'] or 'Anonyme'}*\n"
+                    f"   🆔 `{u['user_id']}`\n\n"
+                )
+            bot.send_message(call.message.chat.id, texte, parse_mode="Markdown")
+
+        elif action == "admins":
+            admins = get_tous_admins()
+            texte = (
+                f"╔══════════════════════════╗\n"
+                f"║     👑 *ADMINS*          ║\n"
+                f"╚══════════════════════════╝\n\n"
+                f"👑 *Principal* : `8653408729`\n\n"
+            )
+            for a in admins:
+                texte += f"• `{a['user_id']}` — {a['nom'] or 'Sans nom'}\n"
+            bot.send_message(call.message.chat.id, texte, parse_mode="Markdown")
+
+        elif action == "params":
+            params = get_tous_parametres()
+            if not params:
+                bot.send_message(call.message.chat.id, "Aucun paramètre défini. Utilise /set_param")
+                return
+            texte = (
+                f"╔══════════════════════════╗\n"
+                f"║   ⚙️ *PARAMÈTRES*        ║\n"
+                f"╚══════════════════════════╝\n\n"
+            )
+            for p in params:
+                texte += f"• `{p['cle']}` = *{p['valeur']}*\n"
+            bot.send_message(call.message.chat.id, texte, parse_mode="Markdown")
+
+        elif action == "logs":
+            logs = get_logs_admin(limite=15)
+            if not logs:
+                bot.send_message(call.message.chat.id, "Aucun log pour l'instant.")
+                return
+            texte = (
+                f"╔══════════════════════════╗\n"
+                f"║     📝 *LOGS ADMIN*      ║\n"
+                f"╚══════════════════════════╝\n\n"
+            )
+            for log in logs:
+                texte += (
+                    f"• `{log['action']}`\n"
+                    f"  👤 {log['admin_id']}\n"
+                    f"  📋 {log['details'][:50]}\n\n"
+                )
+            bot.send_message(call.message.chat.id, texte, parse_mode="Markdown")
+
+        elif action == "bannis":
+            bannis = get_liste_bannis()
+            if not bannis:
+                bot.send_message(call.message.chat.id, "Aucun banni.")
+                return
+            texte = (
+                f"╔══════════════════════════╗\n"
+                f"║     🚫 *BANNIS*          ║\n"
+                f"╚══════════════════════════╝\n\n"
+            )
+            for b in bannis:
+                texte += f"• `{b['user_id']}` — {b['raison'] or 'Sans raison'}\n"
+            bot.send_message(call.message.chat.id, texte, parse_mode="Markdown")
+
+
+    # =========================================================
+    # COMMANDES ADMIN RAPIDES
+    # =========================================================
+    @bot.message_handler(commands=['stats'])
+    def cmd_stats(message):
+        if not est_administrateur(message.from_user.id):
+            bot.reply_to(message, "⛔ Accès refusé.")
+            return
+        stats = get_stats_globales()
+        bot.reply_to(
+            message,
+            f"📊 *Statistiques*\n\n"
+            f"👥 Total : *{stats.get('total', 0)}*\n"
+            f"⭐ Premium : *{stats.get('premium', 0)}*\n"
+            f"🆓 Free : *{stats.get('free', 0)}*\n"
+            f"📈 Nouveaux 7j : *{stats.get('nouveaux_7j', 0)}*\n"
+            f"🚫 Bannis : *{stats.get('bannis', 0)}*",
+            parse_mode="Markdown"
+        )
+
+
+    @bot.message_handler(commands=['users'])
+    def cmd_users(message):
+        if not est_administrateur(message.from_user.id):
+            bot.reply_to(message, "⛔ Accès refusé.")
+            return
+        users = get_liste_utilisateurs(limite=30)
+        texte = f"👥 *30 derniers utilisateurs*\n\n"
+        for i, u in enumerate(users, 1):
+            emoji = "⭐" if u['status'] == 'premium' else "🆓"
+            texte += f"{i}. {emoji} {u['first_name'] or '?'} — `{u['user_id']}`\n"
+        bot.reply_to(message, texte, parse_mode="Markdown")
+
+
+    @bot.message_handler(commands=['add_admin'])
+    def cmd_add_admin(message):
+        if not est_administrateur(message.from_user.id):
+            bot.reply_to(message, "⛔ Accès refusé.")
+            return
+        parts = message.text.split()
+        if len(parts) < 2 or not parts[1].isdigit():
+            bot.reply_to(message, "📖 Usage : `/add_admin <ID>`", parse_mode="Markdown")
+            return
+        new_id = int(parts[1])
+        if ajouter_admin(new_id):
+            log_admin(message.from_user.id, "add_admin", f"ID: {new_id}")
+            bot.reply_to(message, f"✅ Admin `{new_id}` ajouté.", parse_mode="Markdown")
+
+
+    @bot.message_handler(commands=['remove_admin'])
+    def cmd_remove_admin(message):
+        if not est_administrateur(message.from_user.id):
+            bot.reply_to(message, "⛔ Accès refusé.")
+            return
+        parts = message.text.split()
+        if len(parts) < 2 or not parts[1].isdigit():
+            bot.reply_to(message, "📖 Usage : `/remove_admin <ID>`", parse_mode="Markdown")
+            return
+        target = int(parts[1])
+        if retirer_admin(target):
+            log_admin(message.from_user.id, "remove_admin", f"ID: {target}")
+            bot.reply_to(message, f"✅ Admin `{target}` retiré.", parse_mode="Markdown")
+
+
+    @bot.message_handler(commands=['ban'])
+    def cmd_ban(message):
+        if not est_administrateur(message.from_user.id):
+            bot.reply_to(message, "⛔ Accès refusé.")
+            return
+        parts = message.text.split(maxsplit=2)
+        if len(parts) < 2 or not parts[1].isdigit():
+            bot.reply_to(message, "📖 Usage : `/ban <ID> [raison]`", parse_mode="Markdown")
+            return
+        target = int(parts[1])
+        raison = parts[2] if len(parts) > 2 else ""
+        if bannir_user(target, raison):
+            log_admin(message.from_user.id, "ban", f"ID: {target}")
+            bot.reply_to(message, f"🚫 Utilisateur `{target}` banni.", parse_mode="Markdown")
+
+
+    @bot.message_handler(commands=['unban'])
+    def cmd_unban(message):
+        if not est_administrateur(message.from_user.id):
+            bot.reply_to(message, "⛔ Accès refusé.")
+            return
+        parts = message.text.split()
+        if len(parts) < 2 or not parts[1].isdigit():
+            bot.reply_to(message, "📖 Usage : `/unban <ID>`", parse_mode="Markdown")
+            return
+        target = int(parts[1])
+        if debannir_user(target):
+            log_admin(message.from_user.id, "unban", f"ID: {target}")
+            bot.reply_to(message, f"✅ Utilisateur `{target}` débanni.", parse_mode="Markdown")
+
+
+    @bot.message_handler(commands=['add_premium'])
+    def cmd_add_premium(message):
+        if not est_administrateur(message.from_user.id):
+            bot.reply_to(message, "⛔ Accès refusé.")
+            return
+        parts = message.text.split()
+        if len(parts) < 3:
+            bot.reply_to(message, "📖 Usage : `/add_premium <ID> <jours>`", parse_mode="Markdown")
+            return
+        try:
+            target = int(parts[1])
+            jours = int(parts[2])
+        except ValueError:
+            bot.reply_to(message, "❌ ID et jours doivent être des nombres.")
+            return
+        expiration = (datetime.now() + timedelta(days=jours)).strftime("%Y-%m-%d %H:%M")
+        if set_premium(target, expiration):
+            log_admin(message.from_user.id, "add_premium", f"ID: {target} - {jours}j")
+            bot.reply_to(
+                message,
+                f"⭐ Utilisateur `{target}` PREMIUM pour *{jours} jours*\n"
+                f"📅 Expire : {expiration}",
+                parse_mode="Markdown"
+            )
+            try:
+                bot.send_message(
+                    target,
+                    f"🎉 *Ton compte a été passé en PREMIUM !*\n\n"
+                    f"⭐ Durée : *{jours} jours*\n"
+                    f"📅 Expire : *{expiration}*",
+                    parse_mode="Markdown"
+                )
+            except Exception:
+                pass
+
+
+    @bot.message_handler(commands=['set_param'])
+    def cmd_set_param(message):
+        if not est_administrateur(message.from_user.id):
+            bot.reply_to(message, "⛔ Accès refusé.")
+            return
+        parts = message.text.split(maxsplit=2)
+        if len(parts) < 3:
+            bot.reply_to(message, "📖 Usage : `/set_param <cle> <valeur>`", parse_mode="Markdown")
+            return
+        cle = parts[1]
+        valeur = parts[2]
+        if set_parametre(cle, valeur):
+            log_admin(message.from_user.id, "set_param", f"{cle} = {valeur}")
+            bot.reply_to(message, f"✅ `{cle}` = *{valeur}*", parse_mode="Markdown")
+
+
+    @bot.message_handler(commands=['get_param'])
+    def cmd_get_param(message):
+        if not est_administrateur(message.from_user.id):
+            bot.reply_to(message, "⛔ Accès refusé.")
+            return
+        parts = message.text.split()
+        if len(parts) < 2:
+            bot.reply_to(message, "📖 Usage : `/get_param <cle>`", parse_mode="Markdown")
+            return
+        val = get_parametre(parts[1], "Non défini")
+        bot.reply_to(message, f"`{parts[1]}` = *{val}*", parse_mode="Markdown")
+
+
+    @bot.message_handler(commands=['broadcast'])
+    def cmd_broadcast(message):
+        if not est_administrateur(message.from_user.id):
+            bot.reply_to(message, "⛔ Accès refusé.")
+            return
+        texte = message.text.replace("/broadcast", "").strip()
+        if not texte:
+            bot.reply_to(message, "📖 Usage : `/broadcast <message>`", parse_mode="Markdown")
+            return
+
+        users = get_tous_utilisateurs()
+        succes = 0
+        echecs = 0
+        for uid in users:
+            try:
+                bot.send_message(
+                    uid,
+                    f"📢 *ANNONCE ADMIN*\n\n{texte}",
+                    parse_mode="Markdown"
+                )
+                succes += 1
+                time.sleep(0.05)
+            except Exception:
+                echecs += 1
+
+        log_admin(message.from_user.id, "broadcast", f"{succes} ok, {echecs} échecs")
+        bot.reply_to(
+            message,
+            f"✅ *Broadcast terminé*\n\n"
+            f"📤 Envoyés : *{succes}*\n"
+            f"❌ Échecs : *{echecs}*",
+            parse_mode="Markdown"
+        )
+
+
+    # =========================================================
+    # CALLBACK NOTIFS
+    # =========================================================
     @bot.callback_query_handler(func=lambda call: call.data.startswith("notif|"))
     def traiter_notif_callback(call):
         user_id = call.from_user.id
@@ -270,25 +633,31 @@ def enregistrer_handlers(bot):
                 bot.answer_callback_query(call.id, "✅ Notifications activées !")
                 bot.send_message(
                     call.message.chat.id,
-                    "🔔 *Notifications ACTIVÉES*\n\n"
-                    "Tu recevras les pronostics chaque matin à 8h.",
+                    "🔔 *Notifications ACTIVÉES*\n\nTu recevras les pronostics chaque matin à 8h.",
                     parse_mode="Markdown"
                 )
         elif action == "off":
             if desactiver_notifications(user_id):
-                bot.answer_callback_query(call.id, "🔕 Notifications désactivées")
+                bot.answer_callback_query(call.id, "🔕 Désactivées")
                 bot.send_message(
                     call.message.chat.id,
-                    "🔕 *Notifications DÉSACTIVÉES*\n\n"
-                    "Tu ne recevras plus les pronostics automatiques.",
+                    "🔕 *Notifications DÉSACTIVÉES*",
                     parse_mode="Markdown"
                 )
 
 
+    # =========================================================
+    # MENU PRINCIPAL
+    # =========================================================
     @bot.message_handler(func=lambda message: True)
     def handle_menu_clicks(message):
         text = message.text
         user_id = message.from_user.id
+
+        # Vérifier si banni
+        if est_banni(user_id):
+            bot.reply_to(message, "🚫 Tu es banni de ce bot.")
+            return
 
         if text == "📊 Statistiques du Modèle":
             prec = global_model_data.get('precision', 0.5)
@@ -298,8 +667,6 @@ def enregistrer_handlers(bot):
                 f"╔══════════════════════════╗\n"
                 f"║   📊 *STATISTIQUES IA*   ║\n"
                 f"╚══════════════════════════╝\n\n"
-                f"🧠 *Modèle entraîné*\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 f"📈 Matchs analysés : *{length}*\n"
                 f"🎯 Précision : *{round(prec * 100, 2)}%*\n"
                 f"⚙️ Algorithme : *RF + GB*\n"
@@ -317,7 +684,6 @@ def enregistrer_handlers(bot):
                     f"╔══════════════════════════╗\n"
                     f"║   📜 *HISTORIQUE*        ║\n"
                     f"╚══════════════════════════╝\n\n"
-                    f"_Tes 5 derniers pronostics_\n\n"
                 )
                 for i, (_, row) in enumerate(last_5.iterrows(), 1):
                     texte += (
@@ -342,7 +708,7 @@ def enregistrer_handlers(bot):
                 f"║   🔔 *NOTIFICATIONS*     ║\n"
                 f"╚══════════════════════════╝\n\n"
                 f"📬 Chaque matin à *8h*, tu recevras les *3 meilleurs pronostics du jour*.\n\n"
-                f"👉 Choisis une option ci-dessous :",
+                f"👉 Choisis une option :",
                 parse_mode="Markdown",
                 reply_markup=markup
             )
@@ -351,11 +717,7 @@ def enregistrer_handlers(bot):
             if est_premium(user_id):
                 bot.reply_to(
                     message,
-                    f"╔══════════════════════════╗\n"
-                    f"║   ⭐ *PREMIUM ACTIF*     ║\n"
-                    f"╚══════════════════════════╝\n\n"
-                    f"✅ Tu es déjà *Premium* !\n\n"
-                    f"🎁 Profite de tes pronostics illimités 🚀",
+                    f"✅ *Tu es déjà Premium !*\n\nProfite bien de tes pronostics illimités 🚀",
                     parse_mode="Markdown"
                 )
                 return
@@ -367,10 +729,9 @@ def enregistrer_handlers(bot):
                 f"🎁 *Avantages :*\n"
                 f"  • ♾️ Pronostics illimités\n"
                 f"  • 🎯 Score exact + Over/BTTS\n"
-                f"  • 💬 Support prioritaire\n"
-                f"  • 📊 Statistiques avancées\n\n"
+                f"  • 💬 Support prioritaire\n\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"💳 *Formules disponibles :*\n"
+                f"💳 *Formules :*\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 f"📅 Journalier : *2 000 CDF*\n"
                 f"📆 Hebdomadaire : *6 000 CDF*\n"
@@ -387,25 +748,18 @@ def enregistrer_handlers(bot):
             if not peut_faire_pronostic(user_id):
                 bot.reply_to(
                     message,
-                    f"╔══════════════════════════╗\n"
-                    f"║   ⚠️ *LIMITE ATTEINTE*   ║\n"
-                    f"╚══════════════════════════╝\n\n"
-                    f"📊 Tu as utilisé tes *{get_limite_jour(user_id)}* pronostics du jour.\n\n"
-                    f"⭐ Passe en *Premium* pour des pronostics illimités !",
+                    f"⚠️ *Limite atteinte* ({get_limite_jour(user_id)}/jour).\n\n"
+                    f"⭐ Passe en *Premium* !",
                     parse_mode="Markdown"
                 )
                 return
             bot.reply_to(
                 message,
-                f"╔══════════════════════════╗\n"
-                f"║  ✍️ *NOUVELLE AFFICHE*   ║\n"
-                f"╚══════════════════════════╝\n\n"
-                f"📝 Tape l'affiche du match :\n\n"
+                f"✍️ *Tape l'affiche du match :*\n\n"
                 f"`EquipeDom vs EquipeExt`\n\n"
-                f"💡 *Exemples :*\n"
+                f"💡 Exemples :\n"
                 f"  • `psg vs marseille`\n"
-                f"  • `barca vs real`\n"
-                f"  • `man city vs liverpool`",
+                f"  • `barca vs real`",
                 parse_mode="Markdown"
             )
 
@@ -433,8 +787,7 @@ def enregistrer_handlers(bot):
                 bot.reply_to(
                     message,
                     f"❌ *{resultat['erreur']}*\n\n"
-                    f"💡 Vérifie l'orthographe des équipes.\n"
-                    f"Essaye : `psg vs marseille`",
+                    f"💡 Essaie : `psg vs marseille`",
                     parse_mode="Markdown"
                 )
                 return
