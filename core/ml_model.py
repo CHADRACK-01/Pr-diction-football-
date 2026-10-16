@@ -81,13 +81,9 @@ def _extraire_matchs(df, nom_competition):
     return matchs
 
 
-# =========================================================
-# CHARGEMENT + ENTRAÎNEMENT (avec cache)
-# =========================================================
 def charger_et_entrainer(forcer_entrainement=False):
     global global_model_data
 
-    # Essayer de charger depuis le cache
     if not forcer_entrainement:
         cache = charger_modele_cache()
         if cache:
@@ -112,7 +108,6 @@ def charger_et_entrainer(forcer_entrainement=False):
             except Exception as e:
                 print(f"⚠️ Erreur chargement cache : {e}. Réentraînement...")
 
-    # Entraîner depuis zéro
     print("Chargement des matchs depuis PostgreSQL...")
 
     df = charger_tous_les_matchs()
@@ -313,7 +308,6 @@ def charger_et_entrainer(forcer_entrainement=False):
 
     print(f"✅ Modèle entraîné sur {len(df)} matchs. Précision : {round(precision * 100, 2)}%")
 
-    # Sauvegarder dans le cache
     try:
         donnees = {
             'df': df,
@@ -331,9 +325,6 @@ def charger_et_entrainer(forcer_entrainement=False):
         print(f"⚠️ Erreur sauvegarde cache : {e}")
 
 
-# =========================================================
-# TÉLÉCHARGEMENT → INSERTION EN POSTGRESQL
-# =========================================================
 def tache_arriere_plan_maj(chat_id, bot):
     try:
         now = datetime.now()
@@ -371,7 +362,6 @@ def tache_arriere_plan_maj(chat_id, bot):
         inseres = inserer_matchs(matchs_a_inserer)
         total = compter_matchs()
 
-        # Vider le cache AVANT de réentraîner
         vider_modele_cache()
         charger_et_entrainer(forcer_entrainement=True)
         prec = global_model_data.get('precision', 0.5)
@@ -386,3 +376,45 @@ def tache_arriere_plan_maj(chat_id, bot):
         )
     except Exception as e:
         bot.send_message(chat_id, f"❌ Erreur critique : {str(e)}")
+
+
+# =========================================================
+# TOP PRONOSTICS DU JOUR (pour notifications)
+# =========================================================
+def get_top_pronostics_du_jour(nb=3):
+    """Retourne les N meilleurs pronostics parmi les matchs les plus récents."""
+    from core.prediction import predire_match
+
+    if not global_model_data or not global_model_data.get('df'):
+        return []
+
+    df = global_model_data['df']
+    if df is None or len(df) == 0:
+        return []
+
+    df_recent = df.tail(100).copy()
+    df_recent = df_recent.sort_values('Date', ascending=False)
+
+    resultats = []
+    for _, row in df_recent.iterrows():
+        home = row['HomeTeam']
+        away = row['AwayTeam']
+        try:
+            prono = predire_match(home, away)
+            if "erreur" in prono:
+                continue
+
+            max_dc = max(prono['dc_1x'], prono['dc_x2'], prono['dc_12'])
+
+            resultats.append({
+                'home': home,
+                'away': away,
+                'prono': prono,
+                'score_confiance': max_dc
+            })
+        except Exception:
+            continue
+
+    resultats.sort(key=lambda x: x['score_confiance'], reverse=True)
+
+    return resultats[:nb]
