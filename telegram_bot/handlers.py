@@ -130,7 +130,6 @@ def _formater_bulletin(resultat, langue="fr"):
 
 
 def _envoyer_menu_principal(chat_id, user_id, bot):
-    """Envoie le menu principal dans la langue de l'utilisateur."""
     langue = get_langue(user_id)
     statut_label = get_statut_label(user_id)
     prec = global_model_data.get('precision', 0.5)
@@ -166,9 +165,6 @@ def _envoyer_menu_principal(chat_id, user_id, bot):
 
 def enregistrer_handlers(bot):
 
-    # =========================================================
-    # /start
-    # =========================================================
     @bot.message_handler(commands=['start', 'help'])
     def send_welcome(message):
         user = message.from_user
@@ -181,9 +177,6 @@ def enregistrer_handlers(bot):
         _envoyer_menu_principal(message.chat.id, user.id, bot)
 
 
-    # =========================================================
-    # /update
-    # =========================================================
     @bot.message_handler(commands=['update'])
     def force_update_data(message):
         bot.reply_to(message, "Synchronisation en arriere-plan...")
@@ -194,17 +187,11 @@ def enregistrer_handlers(bot):
         ).start()
 
 
-    # =========================================================
-    # /myid
-    # =========================================================
     @bot.message_handler(commands=['myid'])
     def cmd_myid(message):
         bot.reply_to(message, f"ID : {message.from_user.id}")
 
 
-    # =========================================================
-    # /langue (commande directe)
-    # =========================================================
     @bot.message_handler(commands=['langue', 'language'])
     def cmd_langue(message):
         user_id = message.from_user.id
@@ -224,9 +211,6 @@ def enregistrer_handlers(bot):
         )
 
 
-    # =========================================================
-    # CALLBACK LANGUE
-    # =========================================================
     @bot.callback_query_handler(func=lambda call: call.data.startswith("lang|"))
     def traiter_langue(call):
         user_id = call.from_user.id
@@ -234,22 +218,15 @@ def enregistrer_handlers(bot):
 
         if set_langue(user_id, langue):
             bot.answer_callback_query(call.id, "OK")
-
-            # Confirmer le changement
             bot.send_message(
                 call.message.chat.id,
                 get_text("langue_changee", langue)
             )
-
-            # ⚠️ CRUCIAL : renvoyer le menu avec les NOUVEAUX boutons
             _envoyer_menu_principal(call.message.chat.id, user_id, bot)
         else:
             bot.answer_callback_query(call.id, "Erreur")
 
 
-    # =========================================================
-    # /notif_on, /notif_off
-    # =========================================================
     @bot.message_handler(commands=['notif_on'])
     def cmd_notif_on(message):
         user_id = message.from_user.id
@@ -266,9 +243,6 @@ def enregistrer_handlers(bot):
             bot.reply_to(message, get_text("notifs_desactivees", langue))
 
 
-    # =========================================================
-    # CALLBACK NOTIFS
-    # =========================================================
     @bot.callback_query_handler(func=lambda call: call.data.startswith("notif|"))
     def traiter_notif_callback(call):
         user_id = call.from_user.id
@@ -285,9 +259,6 @@ def enregistrer_handlers(bot):
                 bot.send_message(call.message.chat.id, get_text("notifs_desactivees", langue))
 
 
-    # =========================================================
-    # MENU PRINCIPAL (fallback)
-    # =========================================================
     @bot.message_handler(func=lambda message: True)
     def handle_menu_clicks(message):
         text = message.text
@@ -376,9 +347,22 @@ def enregistrer_handlers(bot):
                     get_text("limite_atteinte", langue, limite=get_limite_jour(user_id))
                 )
                 return
-            bot.reply_to(message, get_text("demande_affiche", langue))
 
-        # Prédiction
+            # Proposer les 2 modes
+            markup = telebot.types.InlineKeyboardMarkup(row_width=1)
+            markup.add(
+                telebot.types.InlineKeyboardButton(
+                    "Choisir avec des boutons",
+                    callback_data="start_inline_prono"
+                )
+            )
+            bot.reply_to(
+                message,
+                get_text("demande_affiche", langue),
+                reply_markup=markup
+            )
+
+        # Prédiction par texte
         elif 'vs' in text.lower():
             if not _charger_modele_si_necessaire(message, bot):
                 return
