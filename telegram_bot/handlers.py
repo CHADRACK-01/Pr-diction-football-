@@ -356,7 +356,7 @@ def enregistrer_handlers(bot):
             bot.reply_to(message, get_text("banni", langue))
             return
 
-        # Matchs du jour
+        # Matchs du jour (avec DEBUG)
         if text == get_text("btn_matchs_jour", langue):
             if not _charger_modele_si_necessaire(message, bot):
                 return
@@ -364,13 +364,23 @@ def enregistrer_handlers(bot):
             bot.reply_to(message, "Recherche des matchs du jour...")
 
             try:
+                print("=== DEBUG MATCHS DU JOUR ===")
                 matchs = get_matchs_du_jour()
+                print(f"Matchs trouves : {len(matchs)}")
+
                 texte = formater_matchs_du_jour(matchs, langue)
+                print(f"Texte formate : {len(texte)} caracteres")
+
                 bot.send_message(message.chat.id, texte)
+                print("Message envoye avec succes")
             except Exception as e:
+                import traceback
+                tb = traceback.format_exc()
+                print(f"ERREUR MATCHS DU JOUR :\n{tb}")
+                # Envoyer seulement les 800 derniers caractères
                 bot.send_message(
                     message.chat.id,
-                    f"Erreur : {str(e)[:200]}"
+                    f"Erreur : {str(e)[:200]}\n\nTraceback (fin) :\n{tb[-800:]}"
                 )
 
         # Statistiques
