@@ -179,7 +179,6 @@ def enregistrer_handlers(bot):
     def send_welcome(message):
         user = message.from_user
 
-        # Vérifier si banni
         if est_banni(user.id):
             bot.reply_to(message, "🚫 Tu es banni de ce bot.")
             return
@@ -258,11 +257,9 @@ def enregistrer_handlers(bot):
         if activer_notifications(user_id):
             bot.reply_to(
                 message,
-                f"╔══════════════════════════╗\n"
-                f"║  🔔 *NOTIFICATIONS ON*   ║\n"
-                f"╚══════════════════════════╝\n\n"
-                f"✅ Tu recevras chaque matin à *8h* les meilleurs pronostics du jour.\n\n"
-                f"_Pour désactiver : tape /notif_off_",
+                f"🔔 *Notifications ACTIVÉES*\n\n"
+                f"Tu recevras chaque matin à *8h* les meilleurs pronostics du jour.\n\n"
+                f"_Pour désactiver : /notif_off_",
                 parse_mode="Markdown"
             )
 
@@ -273,11 +270,9 @@ def enregistrer_handlers(bot):
         if desactiver_notifications(user_id):
             bot.reply_to(
                 message,
-                f"╔══════════════════════════╗\n"
-                f"║  🔕 *NOTIFICATIONS OFF*  ║\n"
-                f"╚══════════════════════════╝\n\n"
-                f"❌ Tu ne recevras plus les notifications.\n\n"
-                f"_Pour réactiver : tape /notif_on_",
+                f"🔕 *Notifications DÉSACTIVÉES*\n\n"
+                f"Tu ne recevras plus les notifications.\n\n"
+                f"_Pour réactiver : /notif_on_",
                 parse_mode="Markdown"
             )
 
@@ -308,15 +303,15 @@ def enregistrer_handlers(bot):
             f"║   👑 *PANNEAU ADMIN*     ║\n"
             f"╚══════════════════════════╝\n\n"
             f"👇 *Que veux-tu faire ?*\n\n"
-            f"_Commandes :_\n"
+            f"*Commandes disponibles :*\n"
             f"/stats — Statistiques\n"
             f"/users — Liste utilisateurs\n"
-            f"/broadcast <msg> — Annonce\n"
-            f"/ban <ID> — Bannir\n"
-            f"/unban <ID> — Débannir\n"
-            f"/add_premium <ID> <jours>\n"
-            f"/add_admin <ID>\n"
-            f"/set_param <cle> <valeur>",
+            f"/broadcast msg — Annonce\n"
+            f"/ban ID — Bannir\n"
+            f"/unban ID — Débannir\n"
+            f"/add_premium ID jours\n"
+            f"/add_admin ID\n"
+            f"/set_param cle valeur",
             parse_mode="Markdown",
             reply_markup=markup
         )
@@ -466,7 +461,7 @@ def enregistrer_handlers(bot):
             return
         parts = message.text.split()
         if len(parts) < 2 or not parts[1].isdigit():
-            bot.reply_to(message, "📖 Usage : `/add_admin <ID>`", parse_mode="Markdown")
+            bot.reply_to(message, "📖 Usage : `/add_admin ID`", parse_mode="Markdown")
             return
         new_id = int(parts[1])
         if ajouter_admin(new_id):
@@ -481,7 +476,7 @@ def enregistrer_handlers(bot):
             return
         parts = message.text.split()
         if len(parts) < 2 or not parts[1].isdigit():
-            bot.reply_to(message, "📖 Usage : `/remove_admin <ID>`", parse_mode="Markdown")
+            bot.reply_to(message, "📖 Usage : `/remove_admin ID`", parse_mode="Markdown")
             return
         target = int(parts[1])
         if retirer_admin(target):
@@ -496,7 +491,7 @@ def enregistrer_handlers(bot):
             return
         parts = message.text.split(maxsplit=2)
         if len(parts) < 2 or not parts[1].isdigit():
-            bot.reply_to(message, "📖 Usage : `/ban <ID> [raison]`", parse_mode="Markdown")
+            bot.reply_to(message, "📖 Usage : `/ban ID raison`", parse_mode="Markdown")
             return
         target = int(parts[1])
         raison = parts[2] if len(parts) > 2 else ""
@@ -512,7 +507,7 @@ def enregistrer_handlers(bot):
             return
         parts = message.text.split()
         if len(parts) < 2 or not parts[1].isdigit():
-            bot.reply_to(message, "📖 Usage : `/unban <ID>`", parse_mode="Markdown")
+            bot.reply_to(message, "📖 Usage : `/unban ID`", parse_mode="Markdown")
             return
         target = int(parts[1])
         if debannir_user(target):
@@ -527,7 +522,7 @@ def enregistrer_handlers(bot):
             return
         parts = message.text.split()
         if len(parts) < 3:
-            bot.reply_to(message, "📖 Usage : `/add_premium <ID> <jours>`", parse_mode="Markdown")
+            bot.reply_to(message, "📖 Usage : `/add_premium ID jours`", parse_mode="Markdown")
             return
         try:
             target = int(parts[1])
@@ -563,7 +558,7 @@ def enregistrer_handlers(bot):
             return
         parts = message.text.split(maxsplit=2)
         if len(parts) < 3:
-            bot.reply_to(message, "📖 Usage : `/set_param <cle> <valeur>`", parse_mode="Markdown")
+            bot.reply_to(message, "📖 Usage : `/set_param cle valeur`", parse_mode="Markdown")
             return
         cle = parts[1]
         valeur = parts[2]
@@ -579,7 +574,7 @@ def enregistrer_handlers(bot):
             return
         parts = message.text.split()
         if len(parts) < 2:
-            bot.reply_to(message, "📖 Usage : `/get_param <cle>`", parse_mode="Markdown")
+            bot.reply_to(message, "📖 Usage : `/get_param cle`", parse_mode="Markdown")
             return
         val = get_parametre(parts[1], "Non défini")
         bot.reply_to(message, f"`{parts[1]}` = *{val}*", parse_mode="Markdown")
@@ -592,7 +587,7 @@ def enregistrer_handlers(bot):
             return
         texte = message.text.replace("/broadcast", "").strip()
         if not texte:
-            bot.reply_to(message, "📖 Usage : `/broadcast <message>`", parse_mode="Markdown")
+            bot.reply_to(message, "📖 Usage : `/broadcast ton message`", parse_mode="Markdown")
             return
 
         users = get_tous_utilisateurs()
@@ -654,7 +649,6 @@ def enregistrer_handlers(bot):
         text = message.text
         user_id = message.from_user.id
 
-        # Vérifier si banni
         if est_banni(user_id):
             bot.reply_to(message, "🚫 Tu es banni de ce bot.")
             return
@@ -664,14 +658,11 @@ def enregistrer_handlers(bot):
             length = len(global_model_data.get('df', []))
             bot.reply_to(
                 message,
-                f"╔══════════════════════════╗\n"
-                f"║   📊 *STATISTIQUES IA*   ║\n"
-                f"╚══════════════════════════╝\n\n"
+                f"📊 *Statistiques IA*\n\n"
                 f"📈 Matchs analysés : *{length}*\n"
                 f"🎯 Précision : *{round(prec * 100, 2)}%*\n"
                 f"⚙️ Algorithme : *RF + GB*\n"
-                f"📊 Features : *30 variables*\n\n"
-                f"_Modèle entraîné sur 5 ans de données_",
+                f"📊 Features : *30 variables*",
                 parse_mode="Markdown"
             )
 
@@ -680,11 +671,7 @@ def enregistrer_handlers(bot):
                 import pandas as pd
                 hist = pd.read_csv(FICHIER_HISTORIQUE)
                 last_5 = hist.tail(5)
-                texte = (
-                    f"╔══════════════════════════╗\n"
-                    f"║   📜 *HISTORIQUE*        ║\n"
-                    f"╚══════════════════════════╝\n\n"
-                )
+                texte = "📜 *Tes 5 derniers pronostics*\n\n"
                 for i, (_, row) in enumerate(last_5.iterrows(), 1):
                     texte += (
                         f"*{i}.* ⚽ {row['Match']}\n"
@@ -704,9 +691,7 @@ def enregistrer_handlers(bot):
             )
             bot.reply_to(
                 message,
-                f"╔══════════════════════════╗\n"
-                f"║   🔔 *NOTIFICATIONS*     ║\n"
-                f"╚══════════════════════════╝\n\n"
+                f"🔔 *Notifications*\n\n"
                 f"📬 Chaque matin à *8h*, tu recevras les *3 meilleurs pronostics du jour*.\n\n"
                 f"👉 Choisis une option :",
                 parse_mode="Markdown",
@@ -723,16 +708,12 @@ def enregistrer_handlers(bot):
                 return
             bot.reply_to(
                 message,
-                f"╔══════════════════════════╗\n"
-                f"║  ⭐ *ABONNEMENT PREMIUM* ║\n"
-                f"╚══════════════════════════╝\n\n"
+                f"⭐ *Abonnement Premium*\n\n"
                 f"🎁 *Avantages :*\n"
                 f"  • ♾️ Pronostics illimités\n"
                 f"  • 🎯 Score exact + Over/BTTS\n"
                 f"  • 💬 Support prioritaire\n\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 f"💳 *Formules :*\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 f"📅 Journalier : *2 000 CDF*\n"
                 f"📆 Hebdomadaire : *6 000 CDF*\n"
                 f"🗓️ Mensuel : *10 000 CDF*\n\n"
