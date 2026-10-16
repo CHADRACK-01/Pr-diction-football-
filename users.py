@@ -31,7 +31,8 @@ def initialiser_tables():
                 first_name TEXT,
                 status TEXT DEFAULT 'free',
                 date_inscription TIMESTAMP DEFAULT NOW(),
-                date_expiration TIMESTAMP
+                date_expiration TIMESTAMP,
+                notifications_actives BOOLEAN DEFAULT TRUE
             )
         """)
 
@@ -94,7 +95,7 @@ def initialiser_tables():
         conn.commit()
         cur.close()
         conn.close()
-        print("✅ Tables PostgreSQL prêtes (avec cache modèle).")
+        print("✅ Tables PostgreSQL prêtes (avec cache modèle + notifications).")
     except Exception as e:
         print(f"❌ Erreur init tables : {e}")
 
@@ -103,7 +104,6 @@ def initialiser_tables():
 # MATCHS
 # =========================================================
 def inserer_matchs(liste_matchs):
-    """Insère une liste de matchs enrichis dans PostgreSQL (par lots)."""
     if not liste_matchs:
         return 0
 
@@ -401,3 +401,62 @@ def get_limite_jour(user_id):
 
 def peut_faire_pronostic(user_id):
     return get_compteur_jour(user_id) < get_limite_jour(user_id)
+
+
+# =========================================================
+# NOTIFICATIONS
+# =========================================================
+def activer_notifications(user_id):
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE utilisateurs
+            SET notifications_actives = TRUE
+            WHERE user_id = %s
+        """, (user_id,))
+        conn.commit()
+        rows = cur.rowcount
+        cur.close()
+        conn.close()
+        return rows > 0
+    except Exception as e:
+        print(f"⚠️ Erreur activer_notifications : {e}")
+        return False
+
+
+def desactiver_notifications(user_id):
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE utilisateurs
+            SET notifications_actives = FALSE
+            WHERE user_id = %s
+        """, (user_id,))
+        conn.commit()
+        rows = cur.rowcount
+        cur.close()
+        conn.close()
+        return rows > 0
+    except Exception as e:
+        print(f"⚠️ Erreur desactiver_notifications : {e}")
+        return False
+
+
+def get_utilisateurs_notifies():
+    """Retourne la liste des user_id ayant les notifications activées."""
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT user_id FROM utilisateurs
+            WHERE notifications_actives = TRUE
+        """)
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return [r[0] for r in rows]
+    except Exception as e:
+        print(f"⚠️ Erreur get_utilisateurs_notifies : {e}")
+        return []
