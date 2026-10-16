@@ -4,7 +4,8 @@ from datetime import datetime, timedelta
 from users import (
     get_langue, set_premium, ajouter_jours_premium,
     creer_demande_paiement, utiliser_code,
-    est_administrateur, get_user_info
+    est_administrateur, get_user_info, get_tous_admins,
+    valider_demande, get_demande, refuser_demande
 )
 from core.payments import ABONNEMENTS, envoyer_facture
 from core.translations import get_text
@@ -16,31 +17,6 @@ COORDONNEES_MOBILE = {
     "Orange Money": "+243 8XX XXX XXX",
     "M-Pesa": "+243 8XX XXX XXX",
 }
-
-
-def _envoyer_choix_paiement(bot, chat_id, user_id, langue):
-    """Affiche les 3 moyens de paiement."""
-    markup = telebot.types.InlineKeyboardMarkup(row_width=1)
-    markup.add(
-        telebot.types.InlineKeyboardButton(
-            get_text("btn_pay_stars", langue),
-            callback_data="pay|stars"
-        ),
-        telebot.types.InlineKeyboardButton(
-            get_text("btn_pay_mobile", langue),
-            callback_data="pay|mobile"
-        ),
-        telebot.types.InlineKeyboardButton(
-            get_text("btn_pay_code", langue),
-            callback_data="pay|code"
-        ),
-    )
-
-    bot.send_message(
-        chat_id,
-        get_text("premium_choix_titre", langue),
-        reply_markup=markup
-    )
 
 
 def enregistrer_payment_handlers(bot):
@@ -116,7 +92,7 @@ def enregistrer_payment_handlers(bot):
             return
 
         abo = ABONNEMENTS[abo_key]
-        montant_cdf = int(abo['prix_stars']) * 40  # Conversion approx
+        montant_cdf = int(abo['prix_stars']) * 40
 
         bot.answer_callback_query(call.id, "OK")
 
@@ -125,7 +101,6 @@ def enregistrer_payment_handlers(bot):
             montant=montant_cdf,
             abo=abo['nom']
         )
-        # Ajouter les coordonnées
         texte += "\n\n"
         for nom, numero in COORDONNEES_MOBILE.items():
             texte += f"📱 {nom} : {numero}\n"
@@ -170,31 +145,24 @@ def enregistrer_payment_handlers(bot):
         user_id = message.from_user.id
         langue = get_langue(user_id)
 
-        # Récupérer le file_id de la photo (la plus grande résolution)
         file_id = message.photo[-1].file_id
 
-        # Récupérer le dernier abonnement demandé (par défaut journalier)
         abo_key = "journalier"
         abo = ABONNEMENTS[abo_key]
         montant = int(abo['prix_stars']) * 40
 
-        # Créer la demande
         demande_id = creer_demande_paiement(user_id, abo_key, montant, file_id)
 
         if not demande_id:
             bot.reply_to(message, "Erreur lors de l'enregistrement.")
             return
 
-        # Confirmer à l'utilisateur
         bot.reply_to(
             message,
             get_text("pay_attente_titre", langue)
         )
 
-        # Notifier les admins
-        from users import get_tous_admins
         admins = get_tous_admins()
-
         user_info = get_user_info(user_id)
         nom_user = user_info['first_name'] if user_info else "Utilisateur"
 
@@ -204,43 +172,36 @@ def enregistrer_payment_handlers(bot):
             telebot.types.InlineKeyboardButton("❌ Refuser", callback_data=f"rpay|{demande_id}")
         )
 
-        for a in admins:
-            try:
-                bot.send_message(
-                    a['user_id'],
-                    f"💳 NOUVELLE DEMANDE #{demande_id}\n\n"
-                    f"User : {nom_user}\n"
-                    f"ID : {user_id}\n"
-                    f"Abo : {abo['nom']}\n"
-                    f"Montant : {montant} CDF\n\n"
-                    f"Verifie la capture et valide :"
-                )
-                bot.send_photo(a['user_id'], file_id, reply_markup=markup)
-            except Exception as e:
-                print(f"⚠️ Erreur notification admin : {e}")
+        caption = (
+            f"NOUVELLE DEMANDE #{demande_id}\n\n"
+            f"User : {nom_user}\nID : {user_id}\n"
+            f"Abo : {abo['nom']}\nMontant : {montant} CDF"
+        )
 
-        # Notifier aussi l'admin principal
+        # Notifier admin principal
         try:
-            bot.send_message(
-                8653408729,
-                f"💳 NOUVELLE DEMANDE #{demande_id}\n\n"
-                f"User : {nom_user}\nID : {user_id}\nAbo : {abo['nom']}\nMontant : {montant} CDF"
-            )
-            bot.send_photo(8653408729, file_id, reply_markup=markup)
+            bot.send_photo(8653408729, file_id, caption=caption, reply_markup=markup)
         except Exception as e:
-            print(f"⚠️ Erreur notification admin principal : {e}")
+            print(f"⚠️ Erreur notif admin principal : {e}")
+
+        # Notifier les autres admins
+        for a in admins:
+            if a['user_id'] == 8653408729:
+                continue
+            try:
+                bot.send_photo(a['user_id'], file_id, caption=caption, reply_markup=markup)
+            except Exception as e:
+                print(f"⚠️ Erreur notif admin {a['user_id']} : {e}")
 
 
     # =========================================================
-    # CALLBACK : Valider / Refuser paiement
+    # CALLBACK : Valider paiement
     # =========================================================
     @bot.callback_query_handler(func=lambda call: call.data.startswith("vpay|"))
     def valider_paiement(call):
         if not est_administrateur(call.from_user.id):
             bot.answer_callback_query(call.id, "Acces refuse")
             return
-
-        from users import valider_demande, get_demande
 
         demande_id = int(call.data.split("|")[1])
         demande = get_demande(demande_id)
@@ -250,8 +211,7 @@ def enregistrer_payment_handlers(bot):
             return
 
         if valider_demande(demande_id, call.from_user.id):
-            # Activer Premium
-            jours = 30  # Par defaut
+            jours = 30
             if demande['abonnement'] == 'journalier':
                 jours = 1
             elif demande['abonnement'] == 'hebdomadaire':
@@ -267,7 +227,6 @@ def enregistrer_payment_handlers(bot):
                 f"✅ Paiement #{demande_id} valide. +{jours}j pour user {demande['user_id']}"
             )
 
-            # Notifier l'utilisateur
             try:
                 langue = get_langue(demande['user_id'])
                 bot.send_message(
@@ -278,13 +237,14 @@ def enregistrer_payment_handlers(bot):
                 pass
 
 
+    # =========================================================
+    # CALLBACK : Refuser paiement
+    # =========================================================
     @bot.callback_query_handler(func=lambda call: call.data.startswith("rpay|"))
     def refuser_paiement(call):
         if not est_administrateur(call.from_user.id):
             bot.answer_callback_query(call.id, "Acces refuse")
             return
-
-        from users import refuser_demande, get_demande
 
         demande_id = int(call.data.split("|")[1])
         demande = get_demande(demande_id)
@@ -311,7 +271,7 @@ def enregistrer_payment_handlers(bot):
 
 
     # =========================================================
-    # PAIEMENT TELEGRAM STARS (existant)
+    # PAIEMENT TELEGRAM STARS
     # =========================================================
     @bot.callback_query_handler(func=lambda call: call.data.startswith("buy|"))
     def traiter_achat(call):
@@ -354,8 +314,6 @@ def enregistrer_payment_handlers(bot):
 
             expiration = (datetime.now() + timedelta(days=duree)).strftime("%Y-%m-%d %H:%M")
             set_premium(user_id, expiration)
-
-            langue = get_langue(user_id)
 
             bot.send_message(
                 user_id,
