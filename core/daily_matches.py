@@ -3,7 +3,7 @@ from core.fixtures import get_matchs_du_jour, formater_matchs_du_jour as format_
 
 def matchs_du_jour(date_cible=None):
     """
-    Récupère les matchs du jour via Football-Data.org.
+    Récupère les matchs du jour via sports-skills.
     Retourne un texte formaté pour Telegram.
     """
     matches = get_matchs_du_jour(date_cible)
