@@ -36,14 +36,14 @@ def trouver_nom_exact(nom_partiel, teams):
         if t.lower().startswith(recherche):
             return t
 
-    # 5. Fallback difflib (seuil strict)
+    # 5. Fallback difflib
     lower_teams = {t.lower(): t for t in teams}
     matches = difflib.get_close_matches(recherche, lower_teams.keys(), n=1, cutoff=0.6)
     return lower_teams[matches[0]] if matches else nom_partiel
 
 
 def predire_match(home_input, away_input):
-    """Retourne un dict avec toutes les probas."""
+    """Retourne un dict avec toutes les probabilités."""
     if not global_model_data:
         return {"erreur": "Modèle non chargé."}
 
@@ -94,13 +94,27 @@ def predire_match(home_input, away_input):
     btts_yes = np.sum([score_matrix[i, j] for i in range(1, max_goals + 1) for j in range(1, max_goals + 1)])
     best_i, best_j = np.unravel_index(np.argmax(score_matrix), score_matrix.shape)
 
+    # Double Chance
+    dc_1x = p_h + p_d
+    dc_x2 = p_d + p_a
+    dc_12 = p_h + p_a
+
+    # Niveau de confiance
     max_prob = max(p_h, p_d, p_a)
-    if max_prob >= 0.50:
+    if max_prob >= 0.55:
         fiabilite = "🔥 CONFIANCE ÉLEVÉE"
-    elif max_prob < 0.40:
-        fiabilite = "⚠️ MATCH INCERTAIN / RISQUÉ"
-    else:
+    elif max_prob >= 0.45:
         fiabilite = "⚖️ CONFIANCE MODÉRÉE"
+    else:
+        fiabilite = "⚠️ MATCH INCERTAIN"
+
+    # Top 3 scores exacts
+    indices = np.dstack(np.unravel_index(np.argsort(score_matrix.ravel())[::-1], score_matrix.shape))[0]
+    top_scores = []
+    for idx in indices[:3]:
+        i, j = int(idx[0]), int(idx[1])
+        proba = score_matrix[i, j]
+        top_scores.append((i, j, proba))
 
     return {
         "home_team": home_team,
@@ -108,9 +122,15 @@ def predire_match(home_input, away_input):
         "p_h": p_h,
         "p_d": p_d,
         "p_a": p_a,
+        "dc_1x": dc_1x,
+        "dc_x2": dc_x2,
+        "dc_12": dc_12,
         "over_25": over_25,
+        "under_25": under_25,
         "btts_yes": btts_yes,
+        "btts_no": 1.0 - btts_yes,
         "best_score": (int(best_i), int(best_j)),
+        "top_scores": top_scores,
         "fiabilite": fiabilite
     }
 
