@@ -13,23 +13,33 @@ from core.ml_model import global_model_data, tache_arriere_plan_maj
 from core.prediction import predire_match, sauvegarder_historique
 
 
+# Verrou global pour éviter les chargements simultanés
+_chargement_en_cours = False
+
+
 def _charger_modele_si_necessaire(message, bot):
-    """Charge le modèle depuis le cache PostgreSQL. N'entraîne JAMAIS sur Render."""
+    """Charge le modèle depuis le cache PostgreSQL. Anti-spam inclus."""
+    global _chargement_en_cours
+
+    # Modèle déjà chargé
     if global_model_data.get('df') is not None and len(global_model_data.get('df', [])) > 0:
         return True
 
-    bot.reply_to(message, "⏳ Chargement du modèle depuis le cache...")
+    # Éviter les appels simultanés
+    if _chargement_en_cours:
+        bot.reply_to(message, "⏳ Chargement déjà en cours, patiente...")
+        return False
+
+    _chargement_en_cours = True
 
     try:
         cache = charger_modele_cache()
         if not cache:
             bot.reply_to(
                 message,
-                "⚠️ *Aucun modèle en cache.*\n\n"
-                "L'entraînement doit être fait depuis Colab et uploadé dans PostgreSQL.\n\n"
-                "Contacte l'administrateur.",
-                parse_mode="Markdown"
+                "⚠️ Aucun modèle en cache. Contacte l'administrateur."
             )
+            _chargement_en_cours = False
             return False
 
         modele_bytes, precision, nb_matchs = cache
@@ -53,11 +63,12 @@ def _charger_modele_si_necessaire(message, bot):
             f"📊 {nb_matchs} matchs | 🎯 Précision : {round(precision * 100, 2)}%",
             parse_mode="Markdown"
         )
+        _chargement_en_cours = False
         return True
 
     except Exception as e:
         print(f"❌ Erreur chargement cache : {e}")
-        bot.reply_to(message, f"❌ Erreur : {str(e)[:200]}")
+        _chargement_en_cours = False
         return False
 
 
