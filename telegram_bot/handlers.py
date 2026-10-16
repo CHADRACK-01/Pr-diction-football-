@@ -7,7 +7,8 @@ from config import FICHIER_HISTORIQUE
 from users import (
     enregistrer_utilisateur, get_statut_label, peut_faire_pronostic,
     get_compteur_jour, get_limite_jour, incrementer_compteur, est_premium,
-    charger_modele_cache
+    charger_modele_cache,
+    activer_notifications, desactiver_notifications
 )
 from core.ml_model import global_model_data, tache_arriere_plan_maj
 from core.prediction import predire_match, sauvegarder_historique
@@ -66,7 +67,6 @@ def _charger_modele_si_necessaire(message, bot):
 
 
 def _barre_progression(pct):
-    """Crée une barre de progression visuelle."""
     rempli = int(round(pct / 10))
     if rempli > 10:
         rempli = 10
@@ -76,14 +76,12 @@ def _barre_progression(pct):
 
 
 def _formater_bulletin(resultat):
-    """Construit un bulletin propre et esthétique."""
     h = resultat['home_team']
     a = resultat['away_team']
     p_h = resultat['p_h']
     p_d = resultat['p_d']
     p_a = resultat['p_a']
 
-    # Double Chance
     dc_1x = resultat['dc_1x']
     dc_x2 = resultat['dc_x2']
     dc_12 = resultat['dc_12']
@@ -95,7 +93,6 @@ def _formater_bulletin(resultat):
         key=lambda x: x[1]
     )
 
-    # Confiance globale
     max_p = max(p_h, p_d, p_a)
     if max_p >= 0.55:
         conf_emoji = "🟢"
@@ -107,7 +104,6 @@ def _formater_bulletin(resultat):
         conf_emoji = "🔴"
         conf_txt = "FAIBLE"
 
-    # Top scores exacts
     top_scores = resultat.get('top_scores', [])
     scores_txt = ""
     medailles = ["🥇", "🥈", "🥉"]
@@ -168,9 +164,6 @@ def _formater_bulletin(resultat):
 
 def enregistrer_handlers(bot):
 
-    # =========================================================
-    # /start et /help
-    # =========================================================
     @bot.message_handler(commands=['start', 'help'])
     def send_welcome(message):
         user = message.from_user
@@ -187,6 +180,7 @@ def enregistrer_handlers(bot):
             telebot.types.KeyboardButton("⚽ Faire un Pronostic"),
             telebot.types.KeyboardButton("📜 Historique"),
             telebot.types.KeyboardButton("📊 Statistiques du Modèle"),
+            telebot.types.KeyboardButton("🔔 Notifications"),
             telebot.types.KeyboardButton("⭐ Passer Premium"),
         )
 
@@ -210,9 +204,6 @@ def enregistrer_handlers(bot):
         bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown", reply_markup=markup)
 
 
-    # =========================================================
-    # /update
-    # =========================================================
     @bot.message_handler(commands=['update'])
     def force_update_data(message):
         bot.reply_to(message, "⏳ Synchronisation en arrière-plan (1-2 min)...")
@@ -223,9 +214,6 @@ def enregistrer_handlers(bot):
         ).start()
 
 
-    # =========================================================
-    # /myid
-    # =========================================================
     @bot.message_handler(commands=['myid'])
     def cmd_myid(message):
         bot.reply_to(
@@ -238,15 +226,70 @@ def enregistrer_handlers(bot):
         )
 
 
-    # =========================================================
-    # Menu principal
-    # =========================================================
+    @bot.message_handler(commands=['notif_on'])
+    def cmd_notif_on(message):
+        user_id = message.from_user.id
+        if activer_notifications(user_id):
+            bot.reply_to(
+                message,
+                f"╔══════════════════════════╗\n"
+                f"║  🔔 *NOTIFICATIONS ON*   ║\n"
+                f"╚══════════════════════════╝\n\n"
+                f"✅ Tu recevras chaque matin à *8h* les meilleurs pronostics du jour.\n\n"
+                f"_Pour désactiver : tape /notif_off_",
+                parse_mode="Markdown"
+            )
+        else:
+            bot.reply_to(message, "❌ Erreur. Réessaie plus tard.")
+
+
+    @bot.message_handler(commands=['notif_off'])
+    def cmd_notif_off(message):
+        user_id = message.from_user.id
+        if desactiver_notifications(user_id):
+            bot.reply_to(
+                message,
+                f"╔══════════════════════════╗\n"
+                f"║  🔕 *NOTIFICATIONS OFF*  ║\n"
+                f"╚══════════════════════════╝\n\n"
+                f"❌ Tu ne recevras plus les notifications.\n\n"
+                f"_Pour réactiver : tape /notif_on_",
+                parse_mode="Markdown"
+            )
+        else:
+            bot.reply_to(message, "❌ Erreur. Réessaie plus tard.")
+
+
+    @bot.callback_query_handler(func=lambda call: call.data.startswith("notif|"))
+    def traiter_notif_callback(call):
+        user_id = call.from_user.id
+        action = call.data.split("|")[1]
+
+        if action == "on":
+            if activer_notifications(user_id):
+                bot.answer_callback_query(call.id, "✅ Notifications activées !")
+                bot.send_message(
+                    call.message.chat.id,
+                    "🔔 *Notifications ACTIVÉES*\n\n"
+                    "Tu recevras les pronostics chaque matin à 8h.",
+                    parse_mode="Markdown"
+                )
+        elif action == "off":
+            if desactiver_notifications(user_id):
+                bot.answer_callback_query(call.id, "🔕 Notifications désactivées")
+                bot.send_message(
+                    call.message.chat.id,
+                    "🔕 *Notifications DÉSACTIVÉES*\n\n"
+                    "Tu ne recevras plus les pronostics automatiques.",
+                    parse_mode="Markdown"
+                )
+
+
     @bot.message_handler(func=lambda message: True)
     def handle_menu_clicks(message):
         text = message.text
         user_id = message.from_user.id
 
-        # --- Statistiques du Modèle ---
         if text == "📊 Statistiques du Modèle":
             prec = global_model_data.get('precision', 0.5)
             length = len(global_model_data.get('df', []))
@@ -265,7 +308,6 @@ def enregistrer_handlers(bot):
                 parse_mode="Markdown"
             )
 
-        # --- Historique ---
         elif text == "📜 Historique":
             try:
                 import pandas as pd
@@ -288,7 +330,23 @@ def enregistrer_handlers(bot):
             except FileNotFoundError:
                 bot.reply_to(message, "⚠️ Aucun historique pour l'instant.")
 
-        # --- Passer Premium ---
+        elif text == "🔔 Notifications":
+            markup = telebot.types.InlineKeyboardMarkup(row_width=1)
+            markup.add(
+                telebot.types.InlineKeyboardButton("🔔 Activer", callback_data="notif|on"),
+                telebot.types.InlineKeyboardButton("🔕 Désactiver", callback_data="notif|off"),
+            )
+            bot.reply_to(
+                message,
+                f"╔══════════════════════════╗\n"
+                f"║   🔔 *NOTIFICATIONS*     ║\n"
+                f"╚══════════════════════════╝\n\n"
+                f"📬 Chaque matin à *8h*, tu recevras les *3 meilleurs pronostics du jour*.\n\n"
+                f"👉 Choisis une option ci-dessous :",
+                parse_mode="Markdown",
+                reply_markup=markup
+            )
+
         elif text == "⭐ Passer Premium":
             if est_premium(user_id):
                 bot.reply_to(
@@ -322,7 +380,6 @@ def enregistrer_handlers(bot):
                 parse_mode="Markdown"
             )
 
-        # --- Faire un Pronostic ---
         elif text == "⚽ Faire un Pronostic":
             if not _charger_modele_si_necessaire(message, bot):
                 return
@@ -352,7 +409,6 @@ def enregistrer_handlers(bot):
                 parse_mode="Markdown"
             )
 
-        # --- Prédiction ---
         elif 'vs' in text.lower():
             if not _charger_modele_si_necessaire(message, bot):
                 return
@@ -394,7 +450,6 @@ def enregistrer_handlers(bot):
 
             incrementer_compteur(user_id)
 
-        # --- Fallback ---
         else:
             bot.reply_to(
                 message,
