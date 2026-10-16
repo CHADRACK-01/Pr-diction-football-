@@ -1,6 +1,6 @@
 import requests
-from datetime import datetime, timezone, timedelta
 import difflib
+from datetime import datetime, timezone, timedelta
 
 from core.ml_model import global_model_data
 from core.prediction import predire_match
@@ -22,7 +22,7 @@ COMPETITIONS = {
     "serie_a": "SA",
 }
 
-# Traduction des noms d'équipes entre Football-Data.org et ton modèle
+
 def _normaliser(nom):
     """Convertit un nom Football-Data.org vers le nom utilisé dans ton modèle."""
     special = {
@@ -130,29 +130,16 @@ def _normaliser(nom):
     return nom
 
 
-def _convertir_nom_pour_modele(nom_fd, teams):
-    """Trouve le nom exact dans le modèle."""
-    nom_norm = _normaliser(nom_fd)
-    for t in teams:
-        if t.lower() == nom_norm.lower():
-            return t
-    # Recherche floue
-    lower_teams = {t.lower(): t for t in teams}
-    matches = difflib.get_close_matches(nom_norm.lower(), lower_teams.keys(), n=1, cutoff=0.5)
-    return lower_teams[matches[0]] if matches else None
-
-
 def get_matchs_du_jour():
     """
     Récupère les matchs du jour depuis Football-Data.org,
     puis génère les prédictions avec ton IA.
     """
     if not global_model_data or not global_model_data.get('teams'):
+        print("⚠️ Modèle non chargé")
         return []
 
-    # Date d'aujourd'hui à Kinshasa
     aujourd_hui = datetime.now(TZ_KINSHASA).strftime("%Y-%m-%d")
-
     headers = {"X-Auth-Token": FOOTBALL_DATA_KEY}
     matchs_du_jour = []
 
@@ -163,6 +150,7 @@ def get_matchs_du_jour():
             res = requests.get(url, headers=headers, params=params, timeout=15)
 
             if res.status_code != 200:
+                print(f"⚠️ {nom_comp} : HTTP {res.status_code}")
                 continue
 
             data = res.json()
@@ -174,37 +162,39 @@ def get_matchs_du_jour():
                 away = _normaliser(m["awayTeam"]["name"])
                 heure_utc = m["utcDate"]
 
-                # Calculer la prédiction
                 try:
                     prono = predire_match(home, away)
-                    if "erreur" in prono:
+                    if not prono or "erreur" in prono:
                         continue
 
-                    # Score de confiance : max des doubles chances
-                    max_dc = max(prono['dc_1x'], prono['dc_x2'], prono['dc_12'])
+                    # ✅ Convertir tous les numpy en float
+                    dc_1x = float(prono['dc_1x'])
+                    dc_x2 = float(prono['dc_x2'])
+                    dc_12 = float(prono['dc_12'])
 
-                    # Meilleure double chance
                     options = [
-                        ("1X", prono['dc_1x']),
-                        ("X2", prono['dc_x2']),
-                        ("12", prono['dc_12']),
+                        ("1X", dc_1x),
+                        ("X2", dc_x2),
+                        ("12", dc_12),
                     ]
                     meilleure = max(options, key=lambda x: x[1])
+                    max_dc = meilleure[1]
 
                     matchs_du_jour.append({
                         "competition": nom_comp,
                         "heure": heure_utc,
                         "home": home,
                         "away": away,
-                        "p_h": prono['p_h'],
-                        "p_d": prono['p_d'],
-                        "p_a": prono['p_a'],
+                        "p_h": float(prono['p_h']),
+                        "p_d": float(prono['p_d']),
+                        "p_a": float(prono['p_a']),
                         "score": prono['best_score'],
                         "dc_label": meilleure[0],
-                        "dc_pct": meilleure[1],
-                        "confiance": max_dc,
+                        "dc_pct": float(meilleure[1]),
+                        "confiance": float(max_dc),
                     })
-                except Exception:
+                except Exception as e:
+                    print(f"⚠️ Erreur prediction {home} vs {away} : {e}")
                     continue
 
         except Exception as e:
@@ -213,6 +203,7 @@ def get_matchs_du_jour():
 
     # Trier par confiance décroissante
     matchs_du_jour.sort(key=lambda x: x['confiance'], reverse=True)
+    print(f"✅ {len(matchs_du_jour)} matchs du jour trouvés")
     return matchs_du_jour
 
 
@@ -220,19 +211,21 @@ def formater_matchs_du_jour(matchs, langue="fr"):
     """Formate la liste des matchs du jour."""
     from core.translations import get_text
 
-    if not matchs:
-        date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
-        return get_text("aucun_match_jour", langue, date=date_str)
-
     date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
+
+    if not matchs:
+        return get_text("aucun_match_jour", langue, date=date_str)
 
     texte = get_text("titre_matchs_jour", langue, date=date_str)
     texte += f"\n({len(matchs)} matchs)\n\n"
 
     for i, m in enumerate(matchs[:8], 1):
-        heure_local = datetime.fromisoformat(
-            m['heure'].replace("Z", "+00:00")
-        ).astimezone(TZ_KINSHASA).strftime("%H:%M")
+        try:
+            heure_local = datetime.fromisoformat(
+                m['heure'].replace("Z", "+00:00")
+            ).astimezone(TZ_KINSHASA).strftime("%H:%M")
+        except Exception:
+            heure_local = "?"
 
         texte += (
             f"{i}. {m['home']} vs {m['away']}\n"
