@@ -2,6 +2,7 @@ import threading
 import io
 import joblib
 import telebot
+from datetime import datetime, timedelta
 
 from config import FICHIER_HISTORIQUE
 from users import (
@@ -11,7 +12,8 @@ from users import (
     activer_notifications, desactiver_notifications,
     est_banni,
     get_langue, set_langue,
-    get_user_info
+    get_user_info,
+    set_premium
 )
 from core.translations import get_text, LANGUES_DISPONIBLES
 from core.payments import ABONNEMENTS, envoyer_facture
@@ -166,6 +168,9 @@ def _envoyer_menu_principal(chat_id, user_id, bot):
 
 def enregistrer_handlers(bot):
 
+    # =========================================================
+    # /start et /help
+    # =========================================================
     @bot.message_handler(commands=['start', 'help'])
     def send_welcome(message):
         user = message.from_user
@@ -178,6 +183,9 @@ def enregistrer_handlers(bot):
         _envoyer_menu_principal(message.chat.id, user.id, bot)
 
 
+    # =========================================================
+    # /update
+    # =========================================================
     @bot.message_handler(commands=['update'])
     def force_update_data(message):
         bot.reply_to(message, "Synchronisation en arriere-plan...")
@@ -188,11 +196,17 @@ def enregistrer_handlers(bot):
         ).start()
 
 
+    # =========================================================
+    # /myid
+    # =========================================================
     @bot.message_handler(commands=['myid'])
     def cmd_myid(message):
         bot.reply_to(message, f"ID : {message.from_user.id}")
 
 
+    # =========================================================
+    # /langue
+    # =========================================================
     @bot.message_handler(commands=['langue', 'language'])
     def cmd_langue(message):
         user_id = message.from_user.id
@@ -212,6 +226,9 @@ def enregistrer_handlers(bot):
         )
 
 
+    # =========================================================
+    # CALLBACK LANGUE
+    # =========================================================
     @bot.callback_query_handler(func=lambda call: call.data.startswith("lang|"))
     def traiter_langue(call):
         user_id = call.from_user.id
@@ -228,6 +245,9 @@ def enregistrer_handlers(bot):
             bot.answer_callback_query(call.id, "Erreur")
 
 
+    # =========================================================
+    # /notif_on, /notif_off
+    # =========================================================
     @bot.message_handler(commands=['notif_on'])
     def cmd_notif_on(message):
         user_id = message.from_user.id
@@ -244,6 +264,9 @@ def enregistrer_handlers(bot):
             bot.reply_to(message, get_text("notifs_desactivees", langue))
 
 
+    # =========================================================
+    # CALLBACK NOTIFS
+    # =========================================================
     @bot.callback_query_handler(func=lambda call: call.data.startswith("notif|"))
     def traiter_notif_callback(call):
         user_id = call.from_user.id
@@ -260,6 +283,96 @@ def enregistrer_handlers(bot):
                 bot.send_message(call.message.chat.id, get_text("notifs_desactivees", langue))
 
 
+    # =========================================================
+    # PAIEMENT : Callback choix formule
+    # =========================================================
+    @bot.callback_query_handler(func=lambda call: call.data.startswith("buy|"))
+    def traiter_achat(call):
+        user_id = call.from_user.id
+        abo_key = call.data.split("|")[1]
+
+        if abo_key not in ABONNEMENTS:
+            bot.answer_callback_query(call.id, "Formule inconnue.")
+            return
+
+        abo = ABONNEMENTS[abo_key]
+        bot.answer_callback_query(call.id, f"{abo['nom']}")
+
+        envoyer_facture(bot, call.message.chat.id, abo_key, user_id)
+
+
+    # =========================================================
+    # PAIEMENT : Pre-checkout (obligatoire)
+    # =========================================================
+    @bot.pre_checkout_query_handler(func=lambda query: True)
+    def process_pre_checkout(pre_checkout_query):
+        try:
+            bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
+        except Exception as e:
+            print(f"Erreur pre_checkout : {e}")
+
+
+    # =========================================================
+    # PAIEMENT : Succès
+    # =========================================================
+    @bot.message_handler(content_types=['successful_payment'])
+    def process_successful_payment(message):
+        try:
+            payment = message.successful_payment
+            user_id = message.from_user.id
+            payload = payment.invoice_payload
+
+            parts = payload.split("_")
+            abo_key = parts[1] if len(parts) >= 2 else "mensuel"
+
+            if abo_key not in ABONNEMENTS:
+                abo_key = "mensuel"
+
+            abo = ABONNEMENTS[abo_key]
+            duree = abo["duree_jours"]
+            nom_abo = abo["nom"]
+
+            expiration = (datetime.now() + timedelta(days=duree)).strftime("%Y-%m-%d %H:%M")
+            set_premium(user_id, expiration)
+
+            langue = get_langue(user_id)
+
+            if langue == "en":
+                texte = (
+                    f"PAYMENT CONFIRMED\n\n"
+                    f"Plan: {nom_abo}\n"
+                    f"Duration: {duree} day(s)\n"
+                    f"Expires: {expiration}\n\n"
+                    f"Enjoy your unlimited predictions!"
+                )
+            elif langue == "ln":
+                texte = (
+                    f"MBONGO EZALI\n\n"
+                    f"Formule: {nom_abo}\n"
+                    f"Duree: {duree} mokolo\n"
+                    f"Ekosila: {expiration}\n\n"
+                    f"Kende na bokano!"
+                )
+            else:
+                texte = (
+                    f"PAIEMENT CONFIRME\n\n"
+                    f"Formule : {nom_abo}\n"
+                    f"Duree : {duree} jour(s)\n"
+                    f"Expire : {expiration}\n\n"
+                    f"Profite de tes pronostics illimites !"
+                )
+
+            bot.send_message(user_id, texte)
+            print(f"Paiement Stars valide : user {user_id} - {nom_abo} - {payment.total_amount} Stars")
+
+        except Exception as e:
+            print(f"Erreur traitement paiement : {e}")
+            bot.send_message(message.chat.id, f"Erreur : {str(e)}")
+
+
+    # =========================================================
+    # MENU PRINCIPAL
+    # =========================================================
     @bot.message_handler(func=lambda message: True)
     def handle_menu_clicks(message):
         text = message.text
@@ -335,7 +448,28 @@ def enregistrer_handlers(bot):
             if est_premium(user_id):
                 bot.reply_to(message, get_text("premium_actif", langue))
                 return
-            bot.reply_to(message, get_text("premium_titre", langue))
+
+            markup = telebot.types.InlineKeyboardMarkup(row_width=1)
+            markup.add(
+                telebot.types.InlineKeyboardButton(
+                    f"Journalier - {ABONNEMENTS['journalier']['prix_stars']} Stars",
+                    callback_data="buy|journalier"
+                ),
+                telebot.types.InlineKeyboardButton(
+                    f"Hebdomadaire - {ABONNEMENTS['hebdomadaire']['prix_stars']} Stars",
+                    callback_data="buy|hebdomadaire"
+                ),
+                telebot.types.InlineKeyboardButton(
+                    f"Mensuel - {ABONNEMENTS['mensuel']['prix_stars']} Stars",
+                    callback_data="buy|mensuel"
+                ),
+            )
+
+            bot.reply_to(
+                message,
+                get_text("premium_titre", langue),
+                reply_markup=markup
+            )
 
         # Faire un Pronostic
         elif text == get_text("btn_pronostic", langue):
@@ -349,7 +483,6 @@ def enregistrer_handlers(bot):
                 )
                 return
 
-            # Proposer les 2 modes
             markup = telebot.types.InlineKeyboardMarkup(row_width=1)
             markup.add(
                 telebot.types.InlineKeyboardButton(
