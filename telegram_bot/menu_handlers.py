@@ -11,7 +11,8 @@ from users import (
     est_administrateur,
     set_parrain,
     compter_filleuls,
-    ajouter_jours_premium
+    ajouter_jours_premium,
+    get_palier_atteint
 )
 from core.translations import get_text, LANGUES_DISPONIBLES
 from core.ml_model import global_model_data
@@ -108,7 +109,7 @@ def enregistrer_menu_handlers(bot):
 
         enregistrer_utilisateur(user.id, user.username, user.first_name)
 
-        # Détection du parrain
+        # Détection du parrain (avec paliers)
         if not existe_avant:
             parts = message.text.split()
             if len(parts) >= 2 and parts[1].startswith("REF"):
@@ -120,41 +121,41 @@ def enregistrer_menu_handlers(bot):
                             ajouter_jours_premium(parrain_id, 1)
 
                             langue = get_langue(user.id)
+
                             try:
                                 bot.send_message(user.id, get_text("parrainage_bienvenue", langue))
                             except Exception:
                                 pass
 
+                            nb_filleuls = compter_filleuls(parrain_id)
+
+                            # Vérifier palier
+                            palier = get_palier_atteint(nb_filleuls)
+                            bonus_palier = ""
+                            if palier and nb_filleuls in [5, 10, 20, 50]:
+                                ajouter_jours_premium(parrain_id, palier['bonus'])
+                                bonus_palier = f"\n\n🏆 *Palier {palier['nom']}* atteint ! +{palier['bonus']} jours bonus"
+
                             try:
                                 bot.send_message(
                                     parrain_id,
-                                    f"🎉 Nouveau filleul : {user.first_name}\n\n+1 jour Premium offert !"
+                                    f"🎉 *Nouveau filleul : {user.first_name}*\n\n"
+                                    f"+1 jour Premium offert !\n"
+                                    f"📊 Total : *{nb_filleuls} filleul(s)*{bonus_palier}",
+                                    parse_mode="Markdown"
                                 )
                             except Exception:
                                 pass
 
-                            nb_filleuls = compter_filleuls(parrain_id)
-                            if nb_filleuls == 5:
-                                ajouter_jours_premium(parrain_id, 7)
-                                try:
-                                    bot.send_message(
-                                        parrain_id,
-                                        get_text("parrainage_bonus_5", get_langue(parrain_id))
-                                    )
-                                except Exception:
-                                    pass
                 except Exception as e:
                     print(f"⚠️ Erreur parrainage : {e}")
 
         envoyer_menu_principal(message.chat.id, user.id, bot)
 
 
-    # Fallback : tout message qui n'est pas capté ailleurs
+    # Fallback
     @bot.message_handler(func=lambda message: True)
     def handle_menu_fallback(message):
-        from users import get_langue, est_banni
-        from core.translations import get_text
-
         user_id = message.from_user.id
         langue = get_langue(user_id)
 
@@ -162,6 +163,4 @@ def enregistrer_menu_handlers(bot):
             bot.reply_to(message, get_text("banni", langue))
             return
 
-        # Cette fonction ne sera appelée que si aucun autre handler n'a capté le message
-        # Les boutons du menu sont gérés dans user_handlers.py
         pass
