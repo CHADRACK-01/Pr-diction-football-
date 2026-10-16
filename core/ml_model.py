@@ -13,6 +13,9 @@ import requests
 from config import (
     DOSSIER_PASSE, DOSSIER_ACTUEL, CHAMPIONNATS
 )
+from core.storage import (
+    download_folder_from_upstash, upload_folder_to_upstash
+)
 
 # =========================================================
 # VARIABLE GLOBALE PARTAGÉE
@@ -33,6 +36,10 @@ def obtenir_code_saison_actuelle():
 def charger_et_entrainer():
     global global_model_data
     print("Recherche et fusion des données (Passé + Actuel)...")
+
+    # Récupérer les fichiers depuis Upstash AVANT de charger
+    download_folder_from_upstash("archives_passe", DOSSIER_PASSE)
+    download_folder_from_upstash("saison_actuelle", DOSSIER_ACTUEL)
 
     fichiers_passe = glob.glob(os.path.join(DOSSIER_PASSE, "matchs_*.csv"))
     fichiers_actuel = glob.glob(os.path.join(DOSSIER_ACTUEL, "matchs_*.csv"))
@@ -313,6 +320,10 @@ def tache_arriere_plan_maj(chat_id, bot):
                     os.remove(f_path)
             except Exception:
                 continue
+
+        # Upload vers Upstash AVANT le réentraînement
+        upload_folder_to_upstash(DOSSIER_PASSE, "archives_passe")
+        upload_folder_to_upstash(DOSSIER_ACTUEL, "saison_actuelle")
 
         charger_et_entrainer()
         prec = global_model_data.get('precision', 0.5)
