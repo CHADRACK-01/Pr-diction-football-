@@ -52,7 +52,13 @@ DB_USER = os.environ.get("DB_USER", "").strip()
 DB_PASSWORD = os.environ.get("DB_PASSWORD", "").strip()
 DB_NAME = os.environ.get("DB_NAME", "").strip()
 
-# Debug : afficher ce qui est chargé
+# =========================================================
+# UPSTASH BLOB (stockage CSV)
+# =========================================================
+UPSTASH_BLOB_TOKEN = os.environ.get("UPSTASH_BLOB_TOKEN", "").strip()
+UPSTASH_BUCKET_NAME = "PredictionFootball-csv"
+
+# Debug
 print("=" * 60)
 print("🔧 VÉRIFICATION DES VARIABLES D'ENVIRONNEMENT")
 print(f"🔧 DB_HOST     = '{DB_HOST}'")
@@ -60,6 +66,7 @@ print(f"🔧 DB_PORT     = '{DB_PORT}'")
 print(f"🔧 DB_USER     = '{DB_USER}'")
 print(f"🔧 DB_NAME     = '{DB_NAME}'")
 print(f"🔧 DB_PASSWORD chargé : {'OUI' if DB_PASSWORD else 'NON'} (longueur={len(DB_PASSWORD)})")
+print(f"🔧 UPSTASH_BLOB_TOKEN chargé : {'OUI' if UPSTASH_BLOB_TOKEN else 'NON'} (longueur={len(UPSTASH_BLOB_TOKEN)})")
 print("=" * 60)
 
 # =========================================================
