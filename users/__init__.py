@@ -34,9 +34,12 @@ from users.accounts import (
     get_utilisateurs_notifies,
     get_tous_utilisateurs,
     get_langue,
-    set_langue
+    set_langue,
+    get_parrain,
+    set_parrain,
+    compter_filleuls,
+    ajouter_jours_premium
 )
-
 from users.admin import (
     get_parametre,
     set_parametre,
