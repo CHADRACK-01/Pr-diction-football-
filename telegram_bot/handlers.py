@@ -18,6 +18,7 @@ from users import (
 )
 from core.translations import get_text, LANGUES_DISPONIBLES
 from core.payments import ABONNEMENTS, envoyer_facture
+from core.daily_matches import get_matchs_du_jour, formater_matchs_du_jour
 from core.ml_model import global_model_data, tache_arriere_plan_maj
 from core.prediction import predire_match, sauvegarder_historique
 
@@ -147,6 +148,7 @@ def _envoyer_menu_principal(chat_id, user_id, bot):
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(
         telebot.types.KeyboardButton(get_text("btn_pronostic", langue)),
+        telebot.types.KeyboardButton(get_text("btn_matchs_jour", langue)),
         telebot.types.KeyboardButton(get_text("btn_historique", langue)),
         telebot.types.KeyboardButton(get_text("btn_stats", langue)),
         telebot.types.KeyboardButton(get_text("btn_notifs", langue)),
@@ -154,7 +156,6 @@ def _envoyer_menu_principal(chat_id, user_id, bot):
         telebot.types.KeyboardButton(get_text("btn_langue", langue)),
     )
 
-    # Bouton Admin (uniquement pour les admins)
     if est_administrateur(user_id):
         markup.add(telebot.types.KeyboardButton("Panneau Admin"))
 
@@ -173,9 +174,6 @@ def _envoyer_menu_principal(chat_id, user_id, bot):
 
 def enregistrer_handlers(bot):
 
-    # =========================================================
-    # /start et /help
-    # =========================================================
     @bot.message_handler(commands=['start', 'help'])
     def send_welcome(message):
         user = message.from_user
@@ -188,9 +186,6 @@ def enregistrer_handlers(bot):
         _envoyer_menu_principal(message.chat.id, user.id, bot)
 
 
-    # =========================================================
-    # /update
-    # =========================================================
     @bot.message_handler(commands=['update'])
     def force_update_data(message):
         bot.reply_to(message, "Synchronisation en arriere-plan...")
@@ -201,17 +196,11 @@ def enregistrer_handlers(bot):
         ).start()
 
 
-    # =========================================================
-    # /myid
-    # =========================================================
     @bot.message_handler(commands=['myid'])
     def cmd_myid(message):
         bot.reply_to(message, f"ID : {message.from_user.id}")
 
 
-    # =========================================================
-    # /langue
-    # =========================================================
     @bot.message_handler(commands=['langue', 'language'])
     def cmd_langue(message):
         user_id = message.from_user.id
@@ -231,9 +220,6 @@ def enregistrer_handlers(bot):
         )
 
 
-    # =========================================================
-    # CALLBACK LANGUE
-    # =========================================================
     @bot.callback_query_handler(func=lambda call: call.data.startswith("lang|"))
     def traiter_langue(call):
         user_id = call.from_user.id
@@ -250,9 +236,6 @@ def enregistrer_handlers(bot):
             bot.answer_callback_query(call.id, "Erreur")
 
 
-    # =========================================================
-    # /notif_on, /notif_off
-    # =========================================================
     @bot.message_handler(commands=['notif_on'])
     def cmd_notif_on(message):
         user_id = message.from_user.id
@@ -269,9 +252,6 @@ def enregistrer_handlers(bot):
             bot.reply_to(message, get_text("notifs_desactivees", langue))
 
 
-    # =========================================================
-    # CALLBACK NOTIFS
-    # =========================================================
     @bot.callback_query_handler(func=lambda call: call.data.startswith("notif|"))
     def traiter_notif_callback(call):
         user_id = call.from_user.id
@@ -288,9 +268,6 @@ def enregistrer_handlers(bot):
                 bot.send_message(call.message.chat.id, get_text("notifs_desactivees", langue))
 
 
-    # =========================================================
-    # PAIEMENT : Callback choix formule
-    # =========================================================
     @bot.callback_query_handler(func=lambda call: call.data.startswith("buy|"))
     def traiter_achat(call):
         user_id = call.from_user.id
@@ -306,9 +283,6 @@ def enregistrer_handlers(bot):
         envoyer_facture(bot, call.message.chat.id, abo_key, user_id)
 
 
-    # =========================================================
-    # PAIEMENT : Pre-checkout (obligatoire)
-    # =========================================================
     @bot.pre_checkout_query_handler(func=lambda query: True)
     def process_pre_checkout(pre_checkout_query):
         try:
@@ -317,9 +291,6 @@ def enregistrer_handlers(bot):
             print(f"Erreur pre_checkout : {e}")
 
 
-    # =========================================================
-    # PAIEMENT : Succès
-    # =========================================================
     @bot.message_handler(content_types=['successful_payment'])
     def process_successful_payment(message):
         try:
@@ -375,9 +346,6 @@ def enregistrer_handlers(bot):
             bot.send_message(message.chat.id, f"Erreur : {str(e)}")
 
 
-    # =========================================================
-    # MENU PRINCIPAL
-    # =========================================================
     @bot.message_handler(func=lambda message: True)
     def handle_menu_clicks(message):
         text = message.text
@@ -388,8 +356,25 @@ def enregistrer_handlers(bot):
             bot.reply_to(message, get_text("banni", langue))
             return
 
+        # Matchs du jour
+        if text == get_text("btn_matchs_jour", langue):
+            if not _charger_modele_si_necessaire(message, bot):
+                return
+
+            bot.reply_to(message, "Recherche des matchs du jour...")
+
+            try:
+                matchs = get_matchs_du_jour()
+                texte = formater_matchs_du_jour(matchs, langue)
+                bot.send_message(message.chat.id, texte)
+            except Exception as e:
+                bot.send_message(
+                    message.chat.id,
+                    f"Erreur : {str(e)[:200]}"
+                )
+
         # Statistiques
-        if text == get_text("btn_stats", langue):
+        elif text == get_text("btn_stats", langue):
             prec = global_model_data.get('precision', 0.5)
             length = len(global_model_data.get('df', []))
             bot.reply_to(
