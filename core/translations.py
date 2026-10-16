@@ -45,6 +45,12 @@ TEXTES = {
         "parrainage_titre": "PARRAINAGE\n\nInvite tes amis et gagne des jours Premium gratuits !\n\nGains :\n- 1 ami inscrit = 1 jour Premium pour toi ET ton ami\n- 5 amis inscrits = 7 jours Premium bonus\n\nTon lien :\n{lien}\n\nTes stats :\n- Filleuls : {nb_filleuls}\n- Ton code : {code}",
         "parrainage_bienvenue": "Bienvenue ! Tu as ete parraine par un ami.\n\n+1 jour Premium pour toi et ton parrain !",
         "parrainage_bonus_5": "Felicitations ! Tu as atteint 5 filleuls.\n\n+7 jours Premium bonus !",
+        "parrainage_classement_titre": "CLASSEMENT DES PARRAINS",
+        "parrainage_mes_filleuls": "MES FILLEULS",
+        "parrainage_aucun_filleul": "Tu n'as pas encore de filleul.",
+        "parrainage_palier_actuel": "Palier atteint : {nom} (bonus +{bonus}j)",
+        "parrainage_prochain_palier": "Prochain palier : {nom} dans {restant} filleul(s) (+{bonus}j bonus)",
+        "parrainage_bonus_palier": "Felicitations ! Tu as atteint le palier {nom}.\n\n+{bonus} jours Premium bonus !",
     },
     "en": {
         "welcome": "PRO ASSISTANT\n\nWelcome {nom}!\n\nStatus: {statut}\nPredictions: {compteur}/{limite}\n\nMatches analyzed: {nb_matchs}\nAccuracy: {precision}%\n\nChoose an option:",
@@ -82,6 +88,12 @@ TEXTES = {
         "parrainage_titre": "REFERRAL\n\nInvite your friends and earn free Premium days!\n\nRewards:\n- 1 friend = 1 Premium day for you AND your friend\n- 5 friends = 7 bonus Premium days\n\nYour link:\n{lien}\n\nYour stats:\n- Referrals: {nb_filleuls}\n- Your code: {code}",
         "parrainage_bienvenue": "Welcome! You were referred by a friend.\n\n+1 Premium day for you and your referrer!",
         "parrainage_bonus_5": "Congratulations! You reached 5 referrals.\n\n+7 bonus Premium days!",
+        "parrainage_classement_titre": "TOP REFERRERS",
+        "parrainage_mes_filleuls": "MY REFERRALS",
+        "parrainage_aucun_filleul": "You don't have any referral yet.",
+        "parrainage_palier_actuel": "Reached tier: {nom} (bonus +{bonus}d)",
+        "parrainage_prochain_palier": "Next tier: {nom} in {restant} referral(s) (+{bonus}d bonus)",
+        "parrainage_bonus_palier": "Congratulations! You reached the {nom} tier.\n\n+{bonus} bonus Premium days!",
     },
     "ln": {
         "welcome": "MOSALISI PRO\n\nMbote {nom}!\n\nStatut: {statut}\nBakano: {compteur}/{limite}\n\nMasano: {nb_matchs}\nBosembo: {precision}%\n\nPona eloko:",
@@ -119,6 +131,12 @@ TEXTES = {
         "parrainage_titre": "BOSANGISI\n\nBenga baninga na yo mpo na kozwa mikolo ya Premium ofele!\n\nBolamu :\n- 1 moninga = 1 mokolo Premium mpo na yo mpe moninga\n- 5 baninga = 7 mikolo Premium bonus\n\nLien na yo :\n{lien}\n\nStatistiques :\n- Ba filleuls : {nb_filleuls}\n- Code na yo : {code}",
         "parrainage_bienvenue": "Boyeyi malamu! Moninga moko abengaki yo.\n\n+1 mokolo Premium mpo na yo mpe mobengi!",
         "parrainage_bonus_5": "Matondo! Ozwi baninga 5.\n\n+7 mikolo Premium bonus!",
+        "parrainage_classement_titre": "CLASSEMENT YA BA PARRAINS",
+        "parrainage_mes_filleuls": "BA FILLEULS NA NGAI",
+        "parrainage_aucun_filleul": "Ozali na filleul moko te.",
+        "parrainage_palier_actuel": "Palier : {nom} (bonus +{bonus}m)",
+        "parrainage_prochain_palier": "Palier ya sima : {nom} na {restant} filleul(s) (+{bonus}m)",
+        "parrainage_bonus_palier": "Matondo! Ozwi palier {nom}.\n\n+{bonus} mikolo Premium!",
     },
 }
 
