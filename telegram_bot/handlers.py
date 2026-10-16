@@ -13,7 +13,8 @@ from users import (
     est_banni,
     get_langue, set_langue,
     get_user_info,
-    set_premium
+    set_premium,
+    est_administrateur
 )
 from core.translations import get_text, LANGUES_DISPONIBLES
 from core.payments import ABONNEMENTS, envoyer_facture
@@ -152,6 +153,10 @@ def _envoyer_menu_principal(chat_id, user_id, bot):
         telebot.types.KeyboardButton(get_text("btn_premium", langue)),
         telebot.types.KeyboardButton(get_text("btn_langue", langue)),
     )
+
+    # Bouton Admin (uniquement pour les admins)
+    if est_administrateur(user_id):
+        markup.add(telebot.types.KeyboardButton("Panneau Admin"))
 
     welcome_text = get_text(
         "welcome", langue,
