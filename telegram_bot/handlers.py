@@ -14,6 +14,7 @@ from users import (
     get_user_info
 )
 from core.translations import get_text, LANGUES_DISPONIBLES
+from core.payments import ABONNEMENTS, envoyer_facture
 from core.ml_model import global_model_data, tache_arriere_plan_maj
 from core.prediction import predire_match, sauvegarder_historique
 
