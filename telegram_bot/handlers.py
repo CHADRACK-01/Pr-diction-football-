@@ -49,7 +49,6 @@ def enregistrer_handlers(bot):
         )
         bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown", reply_markup=markup)
 
-
     # =========================================================
     # /update
     # =========================================================
@@ -62,7 +61,6 @@ def enregistrer_handlers(bot):
             daemon=True
         ).start()
 
-
     # =========================================================
     # /myid
     # =========================================================
@@ -70,6 +68,17 @@ def enregistrer_handlers(bot):
     def cmd_myid(message):
         bot.reply_to(message, f"🆔 Ton ID : `{message.from_user.id}`", parse_mode="Markdown")
 
+    # =========================================================
+    # /test_api (ADMIN)
+    # =========================================================
+    @bot.message_handler(commands=['test_api'])
+    def cmd_test_api(message):
+        from core.fixtures import get_matchs_du_jour
+        try:
+            events = get_matchs_du_jour()
+            bot.reply_to(message, f"✅ API fonctionnelle : {len(events)} match(s) retourné(s)")
+        except Exception as e:
+            bot.reply_to(message, f"❌ Erreur API : {str(e)}")
 
     # =========================================================
     # Menu principal
