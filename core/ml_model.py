@@ -1,27 +1,20 @@
 import os
 os.environ['LOKY_MAX_CPU_COUNT'] = '1'
 
-import glob
 import time
-from datetime import datetime
+import requests
 import pandas as pd
 import numpy as np
+from datetime import datetime
+from io import BytesIO
 from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier, VotingClassifier
 from sklearn.metrics import accuracy_score
-import requests
 
-from config import (
-    DOSSIER_PASSE, DOSSIER_ACTUEL, CHAMPIONNATS
-)
-from core.storage import (
-    download_folder_from_upstash, upload_folder_to_upstash
-)
+from config import CHAMPIONNATS
+from users import inserer_matchs, charger_tous_les_matchs, compter_matchs
 
-# =========================================================
-# VARIABLE GLOBALE PARTAGÉE
-# =========================================================
+
 global_model_data = {}
-
 HOME_ADVANTAGE = 100
 ELO_K = 32
 
@@ -33,68 +26,87 @@ def obtenir_code_saison_actuelle():
     return f"{str(annee_d)[-2:]}{str(annee_f)[-2:]}"
 
 
+def _extraire_matchs(df, nom_competition):
+    """Extrait les matchs d'un DataFrame CSV avec toutes les colonnes disponibles."""
+    matchs = []
+
+    if not all(c in df.columns for c in ['Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'FTR']):
+        return matchs
+
+    df = df.copy()
+    df['Date'] = pd.to_datetime(df['Date'], dayfirst=True, errors='coerce')
+    df = df.dropna(subset=['Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'FTR'])
+
+    for _, r in df.iterrows():
+        def g(col):
+            if col in r.index and pd.notna(r[col]):
+                try:
+                    return r[col]
+                except Exception:
+                    return None
+            return None
+
+        m = {
+            'date': r['Date'].date(),
+            'home_team': str(r['HomeTeam']),
+            'away_team': str(r['AwayTeam']),
+            'fthg': int(r['FTHG']),
+            'ftag': int(r['FTAG']),
+            'ftr': str(r['FTR']),
+            'competition': nom_competition,
+            'hthg': int(g('HTHG')) if g('HTHG') is not None else None,
+            'htag': int(g('HTAG')) if g('HTAG') is not None else None,
+            'htr': str(g('HTR')) if g('HTR') is not None else None,
+            'hs': int(g('HS')) if g('HS') is not None else None,
+            'as_shots': int(g('AS')) if g('AS') is not None else None,
+            'hst': int(g('HST')) if g('HST') is not None else None,
+            'ast': int(g('AST')) if g('AST') is not None else None,
+            'hc': int(g('HC')) if g('HC') is not None else None,
+            'ac': int(g('AC')) if g('AC') is not None else None,
+            'hf': int(g('HF')) if g('HF') is not None else None,
+            'af': int(g('AF')) if g('AF') is not None else None,
+            'hy': int(g('HY')) if g('HY') is not None else None,
+            'ay': int(g('AY')) if g('AY') is not None else None,
+            'hr': int(g('HR')) if g('HR') is not None else None,
+            'ar': int(g('AR')) if g('AR') is not None else None,
+            'b365h': float(g('B365H')) if g('B365H') is not None else None,
+            'b365d': float(g('B365D')) if g('B365D') is not None else None,
+            'b365a': float(g('B365A')) if g('B365A') is not None else None,
+        }
+        matchs.append(m)
+
+    return matchs
+
+
+# =========================================================
+# CHARGEMENT DEPUIS POSTGRESQL + ENTRAÎNEMENT
+# =========================================================
 def charger_et_entrainer():
     global global_model_data
-    print("Recherche et fusion des données (Passé + Actuel)...")
+    print("Chargement des matchs depuis PostgreSQL...")
 
-    # Récupérer les fichiers depuis Upstash AVANT de charger
-    download_folder_from_upstash("archives_passe", DOSSIER_PASSE)
-    download_folder_from_upstash("saison_actuelle", DOSSIER_ACTUEL)
+    df = charger_tous_les_matchs()
 
-    fichiers_passe = glob.glob(os.path.join(DOSSIER_PASSE, "matchs_*.csv"))
-    fichiers_actuel = glob.glob(os.path.join(DOSSIER_ACTUEL, "matchs_*.csv"))
-    fichiers_csv = fichiers_passe + fichiers_actuel
-
-    if not fichiers_csv:
-        print("⚠️ Aucun fichier CSV trouvé dans les dossiers !")
+    if df is None or len(df) == 0:
+        print("⚠️ Aucun match en base. Envoie /update pour télécharger.")
         return
 
-    dfs = []
-    for fichier in fichiers_csv:
-        try:
-            temp_df = pd.read_csv(fichier, encoding='latin1', low_memory=False)
-            cols_requises = ['Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'FTR']
-
-            if not all(c in temp_df.columns for c in cols_requises):
-                continue
-
-            nom_base = os.path.basename(fichier)
-            nom_comp = nom_base.replace("matchs_", "").rsplit('_', 1)[0].replace("_", " ").title()
-
-            temp_df = temp_df[cols_requises].copy()
-            temp_df['Competition'] = nom_comp
-
-            temp_df['Date'] = pd.to_datetime(temp_df['Date'], dayfirst=True, errors='coerce')
-            if temp_df['Date'].isna().sum() > len(temp_df) * 0.5:
-                temp_df['Date'] = pd.to_datetime(temp_df['Date'], dayfirst=False, errors='coerce')
-
-            temp_df = temp_df.dropna(subset=cols_requises)
-
-            if len(temp_df) > 0:
-                dfs.append(temp_df)
-        except Exception as e:
-            print(f"⚠️ Erreur {fichier}: {e}")
-
-    if not dfs:
-        return
-
-    df = pd.concat(dfs, ignore_index=True)
+    df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+    df = df.dropna(subset=['Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'FTR'])
     df = df.drop_duplicates(subset=['Date', 'HomeTeam', 'AwayTeam', 'Competition'])
     df = df.sort_values('Date').reset_index(drop=True)
 
     date_limite = pd.Timestamp.now() - pd.DateOffset(years=5)
     df_filtre = df[df['Date'] >= date_limite].reset_index(drop=True)
-
     df = df_filtre if len(df_filtre) >= len(df) * 0.3 else df
 
-    print(f"📊 Total : {len(df)} matchs")
+    print(f"📊 Total : {len(df)} matchs (5 ans)")
 
     teams = pd.unique(df[['HomeTeam', 'AwayTeam']].values.ravel())
     team_to_code = {team: i for i, team in enumerate(teams)}
     competitions = df['Competition'].unique()
 
     elo_ratings = {team: 1500.0 for team in teams}
-
     tables = {comp: {} for comp in competitions}
     for comp in competitions:
         comp_teams = pd.unique(df[df['Competition'] == comp][['HomeTeam', 'AwayTeam']].values.ravel())
@@ -112,6 +124,11 @@ def charger_et_entrainer():
     h_spec_sc, h_spec_co, a_spec_sc, a_spec_co = [], [], [], []
     h2h_form_list = []
     home_pts_list, away_pts_list, home_gd_list, away_gd_list = [], [], [], []
+    h_shots_list, a_shots_list = [], []
+    h_shots_target_list, a_shots_target_list = [], []
+    h_corners_list, a_corners_list = [], []
+    h_yellow_list, a_yellow_list = [], []
+    h_red_list, a_red_list = [], []
 
     for index, row in df.iterrows():
         h_team, a_team, match_date, comp = row['HomeTeam'], row['AwayTeam'], row['Date'], row['Competition']
@@ -161,6 +178,20 @@ def charger_et_entrainer():
         a_spec_sc.append(sum(a_s_hist) / len(a_s_hist) if a_s_hist else 1.0)
         a_spec_co.append(sum(a_s_cond) / len(a_s_cond) if a_s_cond else 1.4)
 
+        def nz(v):
+            return int(v) if pd.notna(v) else 0
+
+        h_shots_list.append(nz(row.get('HS')))
+        a_shots_list.append(nz(row.get('AS')))
+        h_shots_target_list.append(nz(row.get('HST')))
+        a_shots_target_list.append(nz(row.get('AST')))
+        h_corners_list.append(nz(row.get('HC')))
+        a_corners_list.append(nz(row.get('AC')))
+        h_yellow_list.append(nz(row.get('HY')))
+        a_yellow_list.append(nz(row.get('AY')))
+        h_red_list.append(nz(row.get('HR')))
+        a_red_list.append(nz(row.get('AR')))
+
         fthg, ftag, ftr = int(row['FTHG']), int(row['FTAG']), str(row['FTR'])
         if ftr == 'H':
             tables[comp][h_team]['points'] += 3
@@ -192,29 +223,24 @@ def charger_et_entrainer():
 
         team_home_stats[h_team]['scored'].append(fthg)
         team_home_stats[h_team]['conceded'].append(ftag)
-
         team_away_stats[a_team]['scored'].append(ftag)
         team_away_stats[a_team]['conceded'].append(fthg)
 
     new_cols = pd.DataFrame({
-        'Home_Elo': home_elo_list,
-        'Away_Elo': away_elo_list,
-        'Elo_Diff': elo_diff_list,
+        'Home_Elo': home_elo_list, 'Away_Elo': away_elo_list, 'Elo_Diff': elo_diff_list,
         'H2H_Score': h2h_form_list,
-        'Home_Points': home_pts_list,
-        'Away_Points': away_pts_list,
-        'Home_GD': home_gd_list,
-        'Away_GD': away_gd_list,
-        'Home_Rest': home_rest_list,
-        'Away_Rest': away_rest_list,
-        'H_Glob_Sc': h_glob_sc,
-        'H_Glob_Co': h_glob_co,
-        'A_Glob_Sc': a_glob_sc,
-        'A_Glob_Co': a_glob_co,
-        'H_Spec_Sc': h_spec_sc,
-        'H_Spec_Co': h_spec_co,
-        'A_Spec_Sc': a_spec_sc,
-        'A_Spec_Co': a_spec_co,
+        'Home_Points': home_pts_list, 'Away_Points': away_pts_list,
+        'Home_GD': home_gd_list, 'Away_GD': away_gd_list,
+        'Home_Rest': home_rest_list, 'Away_Rest': away_rest_list,
+        'H_Glob_Sc': h_glob_sc, 'H_Glob_Co': h_glob_co,
+        'A_Glob_Sc': a_glob_sc, 'A_Glob_Co': a_glob_co,
+        'H_Spec_Sc': h_spec_sc, 'H_Spec_Co': h_spec_co,
+        'A_Spec_Sc': a_spec_sc, 'A_Spec_Co': a_spec_co,
+        'H_Shots': h_shots_list, 'A_Shots': a_shots_list,
+        'H_Shots_Target': h_shots_target_list, 'A_Shots_Target': a_shots_target_list,
+        'H_Corners': h_corners_list, 'A_Corners': a_corners_list,
+        'H_Yellow': h_yellow_list, 'A_Yellow': a_yellow_list,
+        'H_Red': h_red_list, 'A_Red': a_red_list,
         'HomeTeam_Encoded': df['HomeTeam'].map(team_to_code),
         'AwayTeam_Encoded': df['AwayTeam'].map(team_to_code)
     }, index=df.index)
@@ -227,7 +253,10 @@ def charger_et_entrainer():
         'Home_Points', 'Away_Points', 'Home_GD', 'Away_GD',
         'Home_Rest', 'Away_Rest',
         'H_Glob_Sc', 'H_Glob_Co', 'A_Glob_Sc', 'A_Glob_Co',
-        'H_Spec_Sc', 'H_Spec_Co', 'A_Spec_Sc', 'A_Spec_Co'
+        'H_Spec_Sc', 'H_Spec_Co', 'A_Spec_Sc', 'A_Spec_Co',
+        'H_Shots', 'A_Shots', 'H_Shots_Target', 'A_Shots_Target',
+        'H_Corners', 'A_Corners', 'H_Yellow', 'A_Yellow',
+        'H_Red', 'A_Red'
     ]
 
     split_idx = int(len(df) * 0.8)
@@ -254,8 +283,10 @@ def charger_et_entrainer():
     print(f"✅ Modèle entraîné sur {len(df)} matchs. Précision : {round(precision * 100, 2)}%")
 
 
+# =========================================================
+# TÉLÉCHARGEMENT → INSERTION EN POSTGRESQL
+# =========================================================
 def tache_arriere_plan_maj(chat_id, bot):
-    """Télécharge les CSV. Prend le bot en paramètre pour éviter import circulaire."""
     try:
         now = datetime.now()
         annee_courante_debut = now.year if now.month >= 7 else now.year - 1
@@ -266,75 +297,40 @@ def tache_arriere_plan_maj(chat_id, bot):
                           '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
 
-        fichiers_actuels_existants = glob.glob(os.path.join(DOSSIER_ACTUEL, "*.csv"))
-        for f_path in fichiers_actuels_existants:
-            nom_f = os.path.basename(f_path)
-            if saison_actuelle_code not in nom_f:
-                dest_path = os.path.join(DOSSIER_PASSE, nom_f)
-                if os.path.exists(dest_path):
-                    os.remove(dest_path)
-                os.rename(f_path, dest_path)
+        matchs_a_inserer = []
+
+        def _traiter_saison(code_saison):
+            for nom_propre, code in CHAMPIONNATS.items():
+                url = f"https://www.football-data.co.uk/mmz4281/{code_saison}/{code}.csv"
+                try:
+                    res = requests.get(url, headers=headers, timeout=10)
+                    if res.status_code == 200 and b',' in res.content and b'<!DOCTYPE html>' not in res.content:
+                        temp_df = pd.read_csv(BytesIO(res.content), encoding='latin1', low_memory=False)
+                        matchs = _extraire_matchs(temp_df, nom_propre.replace("_", " ").title())
+                        matchs_a_inserer.extend(matchs)
+                    time.sleep(0.1)
+                except Exception:
+                    continue
 
         for i in range(1, 5):
-            annee_d = annee_courante_debut - i
+            annee_d = anne_courante_debut - i if False else annee_courante_debut - i
             annee_f = annee_d + 1
             code_saison = f"{str(annee_d)[-2:]}{str(annee_f)[-2:]}"
+            _traiter_saison(code_saison)
 
-            for nom_propre, code in CHAMPIONNATS.items():
-                nom_fichier = f"matchs_{nom_propre}_{code_saison}.csv"
-                chemin_archive = os.path.join(DOSSIER_PASSE, nom_fichier)
+        _traiter_saison(saison_actuelle_code)
 
-                if not os.path.exists(chemin_archive):
-                    url = f"https://www.football-data.co.uk/mmz4281/{code_saison}/{code}.csv"
-                    try:
-                        res = requests.get(url, headers=headers, timeout=10)
-                        if res.status_code == 200 and b',' in res.content and b'<!DOCTYPE html>' not in res.content:
-                            with open(chemin_archive, 'wb') as f:
-                                f.write(res.content)
-                        time.sleep(0.1)
-                    except Exception:
-                        continue
-
-        telecharges_actuel = 0
-        for nom_propre, code in CHAMPIONNATS.items():
-            url = f"https://www.football-data.co.uk/mmz4281/{saison_actuelle_code}/{code}.csv"
-            nom_fichier = f"matchs_{nom_propre}_{saison_actuelle_code}.csv"
-            chemin_actuel = os.path.join(DOSSIER_ACTUEL, nom_fichier)
-            try:
-                res = requests.get(url, headers=headers, timeout=10)
-                if res.status_code == 200 and b',' in res.content and b'<!DOCTYPE html>' not in res.content:
-                    with open(chemin_actuel, 'wb') as f:
-                        f.write(res.content)
-                    telecharges_actuel += 1
-                time.sleep(0.1)
-            except Exception:
-                continue
-
-        annee_limite_archive = annee_courante_debut - 5
-        for f_path in glob.glob(os.path.join(DOSSIER_PASSE, "*.csv")):
-            nom_f = os.path.basename(f_path)
-            try:
-                saison_str = nom_f.split('_')[-1].replace('.csv', '')
-                annee_fichier = int("20" + saison_str[:2])
-                if annee_fichier < annee_limite_archive:
-                    os.remove(f_path)
-            except Exception:
-                continue
-
-        # Upload vers Upstash AVANT le réentraînement
-        upload_folder_to_upstash(DOSSIER_PASSE, "archives_passe")
-        upload_folder_to_upstash(DOSSIER_ACTUEL, "saison_actuelle")
+        inseres = inserer_matchs(matchs_a_inserer)
+        total = compter_matchs()
 
         charger_et_entrainer()
         prec = global_model_data.get('precision', 0.5)
-        nb_matchs = len(global_model_data.get('df', []))
 
         bot.send_message(
             chat_id,
             f"✅ *Synchronisation réussie !*\n\n"
-            f"📂 Saisons passées chargées.\n"
-            f"🔄 Saison actuelle ({saison_actuelle_code}) : {telecharges_actuel} fichiers.\n"
-            f"📊 Total : *{nb_matchs} matchs*.\n"
+            f"📥 {inseres} nouveau(x) match(s) téléchargé(s).\n"
+            f"💾 Total en base : *{total} matchs*.\n"
             f"🎯 Précision IA : *{round(prec * 100, 2)}%*",
             parse_mode="Markdown"
         )
