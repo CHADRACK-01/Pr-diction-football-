@@ -1,3 +1,4 @@
+sports-skills
 pyTelegramBotAPI
 pandas
 numpy
