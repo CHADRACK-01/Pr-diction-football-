@@ -9,8 +9,10 @@ from users import (
     get_compteur_jour, get_limite_jour, incrementer_compteur, est_premium,
     charger_modele_cache,
     activer_notifications, desactiver_notifications,
-    est_banni
+    est_banni,
+    get_langue, set_langue
 )
+from core.translations import get_text, LANGUES_DISPONIBLES
 from core.ml_model import global_model_data, tache_arriere_plan_maj
 from core.prediction import predire_match, sauvegarder_historique
 
@@ -25,7 +27,7 @@ def _charger_modele_si_necessaire(message, bot):
         return True
 
     if _chargement_en_cours:
-        bot.reply_to(message, "Chargement en cours, patiente...")
+        bot.reply_to(message, "Chargement en cours...")
         return False
 
     _chargement_en_cours = True
@@ -33,13 +35,11 @@ def _charger_modele_si_necessaire(message, bot):
     try:
         cache = charger_modele_cache()
         if not cache:
-            bot.reply_to(message, "Aucun modele en cache. Contacte l'administrateur.")
+            bot.reply_to(message, "Aucun modele en cache.")
             _chargement_en_cours = False
             return False
 
         modele_bytes, precision, nb_matchs = cache
-        print(f"Chargement du cache ({nb_matchs} matchs, precision={round(precision*100, 2)}%)...")
-
         buffer = io.BytesIO(modele_bytes)
         donnees = joblib.load(buffer)
 
@@ -52,11 +52,6 @@ def _charger_modele_si_necessaire(message, bot):
         global_model_data['features'] = donnees['features']
         global_model_data['_tables_initialisees'] = True
 
-        bot.reply_to(
-            message,
-            f"Modele charge !\n"
-            f"{nb_matchs} matchs | Precision : {round(precision * 100, 2)}%"
-        )
         _chargement_en_cours = False
         return True
 
@@ -66,83 +61,89 @@ def _charger_modele_si_necessaire(message, bot):
         return False
 
 
-def _formater_bulletin(resultat):
+def _formater_bulletin(resultat, langue="fr"):
     h = resultat['home_team']
     a = resultat['away_team']
     p_h = resultat['p_h']
     p_d = resultat['p_d']
     p_a = resultat['p_a']
-
     dc_1x = resultat['dc_1x']
     dc_x2 = resultat['dc_x2']
     dc_12 = resultat['dc_12']
 
     meilleure_dc = max(
-        [("1X", dc_1x, "Domicile ou Nul"),
-         ("X2", dc_x2, "Nul ou Exterieur"),
-         ("12", dc_12, "Pas de match nul")],
+        [("1X", dc_1x), ("X2", dc_x2), ("12", dc_12)],
         key=lambda x: x[1]
     )
 
-    max_p = max(p_h, p_d, p_a)
-    if max_p >= 0.55:
-        conf_txt = "ELEVEE"
-    elif max_p >= 0.45:
-        conf_txt = "MODEREE"
-    else:
-        conf_txt = "FAIBLE"
+    titres = {
+        "fr": {"bulletin": "PRONOSTIC FOOTBALL", "res": "RESULTAT 1N2", "nul": "Match nul",
+               "dc": "DOUBLE CHANCE", "reco": "Recommandation", "buts": "TENDANCES BUTS",
+               "plus": "Plus de 2.5 buts", "moins": "Moins de 2.5 buts",
+               "btts_oui": "Les 2 marquent", "btts_non": "Pas les 2",
+               "scores": "SCORES PROBABLES", "resp": "Jouez de maniere responsable."},
+        "en": {"bulletin": "FOOTBALL PREDICTION", "res": "1X2 RESULT", "nul": "Draw",
+               "dc": "DOUBLE CHANCE", "reco": "Recommended", "buts": "GOALS TRENDS",
+               "plus": "Over 2.5 goals", "moins": "Under 2.5 goals",
+               "btts_oui": "Both teams score", "btts_non": "Not both",
+               "scores": "PROBABLE SCORES", "resp": "Play responsibly."},
+        "ln": {"bulletin": "BOKANO YA MASANO", "res": "RESULTAT 1N2", "nul": "Ekoki",
+               "dc": "DOUBLE CHANCE", "reco": "Malako", "buts": "BIKOKISI",
+               "plus": "Eleki 2.5", "moins": "Ekiti 2.5",
+               "btts_oui": "Bapayi nyonso", "btts_non": "Bapayi nyonso te",
+               "scores": "BIKOKISI", "resp": "Sala yango malamu."},
+    }
 
-    top_scores = resultat.get('top_scores', [])
+    t = titres.get(langue, titres["fr"])
+
     scores_txt = ""
-    for i, (sh, sa, proba) in enumerate(top_scores[:3], 1):
+    for i, (sh, sa, proba) in enumerate(resultat.get('top_scores', [])[:3], 1):
         scores_txt += f"{i}. {sh} - {sa} : {round(proba*100, 1)}%\n"
 
-    bulletin = (
-        f"PRONOSTIC FOOTBALL\n"
+    return (
+        f"{t['bulletin']}\n"
         f"========================\n\n"
         f"{h} vs {a}\n\n"
-        f"RESULTAT 1N2\n"
+        f"{t['res']}\n"
         f"------------------------\n"
-        f"{h} : {round(p_h*100,1)}% (cote {round(1/p_h, 2)})\n"
-        f"Match nul : {round(p_d*100,1)}% (cote {round(1/p_d, 2)})\n"
-        f"{a} : {round(p_a*100,1)}% (cote {round(1/p_a, 2)})\n\n"
-        f"DOUBLE CHANCE\n"
+        f"{h} : {round(p_h*100,1)}% ({round(1/p_h, 2)})\n"
+        f"{t['nul']} : {round(p_d*100,1)}% ({round(1/p_d, 2)})\n"
+        f"{a} : {round(p_a*100,1)}% ({round(1/p_a, 2)})\n\n"
+        f"{t['dc']}\n"
         f"------------------------\n"
-        f"1X ({h} ou Nul) : {round(dc_1x*100,1)}%\n"
-        f"X2 (Nul ou {a}) : {round(dc_x2*100,1)}%\n"
-        f"12 (Pas de nul) : {round(dc_12*100,1)}%\n\n"
-        f"Recommandation : {meilleure_dc[0]} ({meilleure_dc[2]}) a {round(meilleure_dc[1]*100, 1)}%\n\n"
-        f"TENDANCES BUTS\n"
+        f"1X : {round(dc_1x*100,1)}%\n"
+        f"X2 : {round(dc_x2*100,1)}%\n"
+        f"12 : {round(dc_12*100,1)}%\n\n"
+        f"{t['reco']} : {meilleure_dc[0]} a {round(meilleure_dc[1]*100, 1)}%\n\n"
+        f"{t['buts']}\n"
         f"------------------------\n"
-        f"Plus de 2.5 buts : {round(resultat['over_25']*100,1)}%\n"
-        f"Moins de 2.5 buts : {round(resultat['under_25']*100,1)}%\n"
-        f"Les 2 marquent : {round(resultat['btts_yes']*100,1)}%\n"
-        f"Pas les 2 : {round(resultat['btts_no']*100,1)}%\n\n"
-        f"SCORES PROBABLES\n"
+        f"{t['plus']} : {round(resultat['over_25']*100,1)}%\n"
+        f"{t['moins']} : {round(resultat['under_25']*100,1)}%\n"
+        f"{t['btts_oui']} : {round(resultat['btts_yes']*100,1)}%\n"
+        f"{t['btts_non']} : {round(resultat['btts_no']*100,1)}%\n\n"
+        f"{t['scores']}\n"
         f"------------------------\n"
         f"{scores_txt}\n"
-        f"Confiance globale : {conf_txt}\n\n"
-        f"Jouez de maniere responsable."
+        f"{t['resp']}"
     )
-
-    return bulletin
 
 
 def enregistrer_handlers(bot):
 
     # =========================================================
-    # /start et /help
+    # /start
     # =========================================================
     @bot.message_handler(commands=['start', 'help'])
     def send_welcome(message):
         user = message.from_user
 
         if est_banni(user.id):
-            bot.reply_to(message, "Tu es banni de ce bot.")
+            bot.reply_to(message, get_text("banni", get_langue(user.id)))
             return
 
         enregistrer_utilisateur(user.id, user.username, user.first_name)
 
+        langue = get_langue(user.id)
         statut_label = get_statut_label(user.id)
         prec = global_model_data.get('precision', 0.5)
         nb_matchs = len(global_model_data.get('df', []))
@@ -151,21 +152,22 @@ def enregistrer_handlers(bot):
 
         markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
         markup.add(
-            telebot.types.KeyboardButton("Faire un Pronostic"),
-            telebot.types.KeyboardButton("Historique"),
-            telebot.types.KeyboardButton("Statistiques"),
-            telebot.types.KeyboardButton("Notifications"),
-            telebot.types.KeyboardButton("Passer Premium"),
+            telebot.types.KeyboardButton(get_text("btn_pronostic", langue)),
+            telebot.types.KeyboardButton(get_text("btn_historique", langue)),
+            telebot.types.KeyboardButton(get_text("btn_stats", langue)),
+            telebot.types.KeyboardButton(get_text("btn_notifs", langue)),
+            telebot.types.KeyboardButton(get_text("btn_premium", langue)),
+            telebot.types.KeyboardButton(get_text("btn_langue", langue)),
         )
 
-        welcome_text = (
-            f"ASSISTANT PRO\n\n"
-            f"Bienvenue {user.first_name} !\n\n"
-            f"Statut : {statut_label}\n"
-            f"Pronostics : {compteur}/{limite}\n\n"
-            f"Matchs analyses : {nb_matchs}\n"
-            f"Precision : {round(prec * 100, 2)}%\n\n"
-            f"Choisis une option :"
+        welcome_text = get_text(
+            "welcome", langue,
+            nom=user.first_name,
+            statut=statut_label,
+            compteur=compteur,
+            limite=limite,
+            nb_matchs=nb_matchs,
+            precision=round(prec * 100, 2)
         )
         bot.send_message(message.chat.id, welcome_text, reply_markup=markup)
 
@@ -175,7 +177,7 @@ def enregistrer_handlers(bot):
     # =========================================================
     @bot.message_handler(commands=['update'])
     def force_update_data(message):
-        bot.reply_to(message, "Synchronisation en arriere-plan (1-2 min)...")
+        bot.reply_to(message, "Synchronisation en arriere-plan...")
         threading.Thread(
             target=tache_arriere_plan_maj,
             args=(message.chat.id, bot),
@@ -188,7 +190,47 @@ def enregistrer_handlers(bot):
     # =========================================================
     @bot.message_handler(commands=['myid'])
     def cmd_myid(message):
-        bot.reply_to(message, f"Ton ID : {message.from_user.id}")
+        bot.reply_to(message, f"ID : {message.from_user.id}")
+
+
+    # =========================================================
+    # /langue (commande directe)
+    # =========================================================
+    @bot.message_handler(commands=['langue', 'language'])
+    def cmd_langue(message):
+        user_id = message.from_user.id
+        langue = get_langue(user_id)
+
+        markup = telebot.types.InlineKeyboardMarkup(row_width=1)
+        for code, nom in LANGUES_DISPONIBLES.items():
+            markup.add(telebot.types.InlineKeyboardButton(
+                nom,
+                callback_data=f"lang|{code}"
+            ))
+
+        bot.reply_to(
+            message,
+            get_text("choix_langue", langue),
+            reply_markup=markup
+        )
+
+
+    # =========================================================
+    # CALLBACK LANGUE
+    # =========================================================
+    @bot.callback_query_handler(func=lambda call: call.data.startswith("lang|"))
+    def traiter_langue(call):
+        user_id = call.from_user.id
+        langue = call.data.split("|")[1]
+
+        if set_langue(user_id, langue):
+            bot.answer_callback_query(call.id, "OK")
+            bot.send_message(
+                call.message.chat.id,
+                get_text("langue_changee", langue)
+            )
+        else:
+            bot.answer_callback_query(call.id, "Erreur")
 
 
     # =========================================================
@@ -196,20 +238,18 @@ def enregistrer_handlers(bot):
     # =========================================================
     @bot.message_handler(commands=['notif_on'])
     def cmd_notif_on(message):
-        if activer_notifications(message.from_user.id):
-            bot.reply_to(
-                message,
-                "Notifications ACTIVEES\n\nTu recevras chaque matin a 8h les meilleurs pronostics."
-            )
+        user_id = message.from_user.id
+        langue = get_langue(user_id)
+        if activer_notifications(user_id):
+            bot.reply_to(message, get_text("notifs_activees", langue))
 
 
     @bot.message_handler(commands=['notif_off'])
     def cmd_notif_off(message):
-        if desactiver_notifications(message.from_user.id):
-            bot.reply_to(
-                message,
-                "Notifications DESACTIVEES\n\nTu ne recevras plus les notifications."
-            )
+        user_id = message.from_user.id
+        langue = get_langue(user_id)
+        if desactiver_notifications(user_id):
+            bot.reply_to(message, get_text("notifs_desactivees", langue))
 
 
     # =========================================================
@@ -218,16 +258,17 @@ def enregistrer_handlers(bot):
     @bot.callback_query_handler(func=lambda call: call.data.startswith("notif|"))
     def traiter_notif_callback(call):
         user_id = call.from_user.id
+        langue = get_langue(user_id)
         action = call.data.split("|")[1]
 
         if action == "on":
             if activer_notifications(user_id):
-                bot.answer_callback_query(call.id, "Notifications activees")
-                bot.send_message(call.message.chat.id, "Notifications ACTIVEES")
+                bot.answer_callback_query(call.id, "OK")
+                bot.send_message(call.message.chat.id, get_text("notifs_activees", langue))
         elif action == "off":
             if desactiver_notifications(user_id):
-                bot.answer_callback_query(call.id, "Notifications desactivees")
-                bot.send_message(call.message.chat.id, "Notifications DESACTIVEES")
+                bot.answer_callback_query(call.id, "OK")
+                bot.send_message(call.message.chat.id, get_text("notifs_desactivees", langue))
 
 
     # =========================================================
@@ -237,29 +278,28 @@ def enregistrer_handlers(bot):
     def handle_menu_clicks(message):
         text = message.text
         user_id = message.from_user.id
+        langue = get_langue(user_id)
 
         if est_banni(user_id):
-            bot.reply_to(message, "Tu es banni de ce bot.")
+            bot.reply_to(message, get_text("banni", langue))
             return
 
         # Statistiques
-        if text == "Statistiques":
+        if text == get_text("btn_stats", langue):
             prec = global_model_data.get('precision', 0.5)
             length = len(global_model_data.get('df', []))
             bot.reply_to(
                 message,
-                f"Statistiques IA\n\n"
-                f"Matchs analyses : {length}\n"
-                f"Precision : {round(prec * 100, 2)}%"
+                get_text("stats_ia", langue, nb_matchs=length, precision=round(prec * 100, 2))
             )
 
         # Historique
-        elif text == "Historique":
+        elif text == get_text("btn_historique", langue):
             try:
                 import pandas as pd
                 hist = pd.read_csv(FICHIER_HISTORIQUE)
                 last_5 = hist.tail(5)
-                texte = "Tes 5 derniers pronostics\n\n"
+                texte = get_text("historique_titre", langue)
                 for i, (_, row) in enumerate(last_5.iterrows(), 1):
                     texte += (
                         f"{i}. {row['Match']}\n"
@@ -269,62 +309,60 @@ def enregistrer_handlers(bot):
                     )
                 bot.reply_to(message, texte)
             except FileNotFoundError:
-                bot.reply_to(message, "Aucun historique pour l'instant.")
+                bot.reply_to(message, get_text("historique_vide", langue))
 
         # Notifications
-        elif text == "Notifications":
+        elif text == get_text("btn_notifs", langue):
             markup = telebot.types.InlineKeyboardMarkup(row_width=1)
             markup.add(
-                telebot.types.InlineKeyboardButton("Activer", callback_data="notif|on"),
-                telebot.types.InlineKeyboardButton("Desactiver", callback_data="notif|off"),
+                telebot.types.InlineKeyboardButton(
+                    get_text("bouton_activer", langue),
+                    callback_data="notif|on"
+                ),
+                telebot.types.InlineKeyboardButton(
+                    get_text("bouton_desactiver", langue),
+                    callback_data="notif|off"
+                ),
             )
             bot.reply_to(
                 message,
-                "Notifications\n\n"
-                "Chaque matin a 8h, tu recevras les 3 meilleurs pronostics.\n\n"
-                "Choisis une option :",
+                get_text("notifs_titre", langue),
                 reply_markup=markup
             )
 
-        # Passer Premium
-        elif text == "Passer Premium":
-            if est_premium(user_id):
-                bot.reply_to(message, "Tu es deja Premium !")
-                return
+        # Langue
+        elif text == get_text("btn_langue", langue):
+            markup = telebot.types.InlineKeyboardMarkup(row_width=1)
+            for code, nom in LANGUES_DISPONIBLES.items():
+                markup.add(telebot.types.InlineKeyboardButton(
+                    nom,
+                    callback_data=f"lang|{code}"
+                ))
             bot.reply_to(
                 message,
-                "Abonnement Premium\n\n"
-                "Avantages :\n"
-                "- Pronostics illimites\n"
-                "- Score exact + Over/BTTS\n"
-                "- Support prioritaire\n\n"
-                "Formules :\n"
-                "Journalier : 2 000 CDF\n"
-                "Hebdomadaire : 6 000 CDF\n"
-                "Mensuel : 10 000 CDF\n\n"
-                "Paiement : Mobile Money (bientot disponible)"
+                get_text("choix_langue", langue),
+                reply_markup=markup
             )
 
+        # Premium
+        elif text == get_text("btn_premium", langue):
+            if est_premium(user_id):
+                bot.reply_to(message, get_text("premium_actif", langue))
+                return
+            bot.reply_to(message, get_text("premium_titre", langue))
+
         # Faire un Pronostic
-        elif text == "Faire un Pronostic":
+        elif text == get_text("btn_pronostic", langue):
             if not _charger_modele_si_necessaire(message, bot):
                 return
 
             if not peut_faire_pronostic(user_id):
                 bot.reply_to(
                     message,
-                    f"Limite atteinte ({get_limite_jour(user_id)}/jour).\n\n"
-                    f"Passe en Premium pour des pronostics illimites !"
+                    get_text("limite_atteinte", langue, limite=get_limite_jour(user_id))
                 )
                 return
-            bot.reply_to(
-                message,
-                "Tape l'affiche du match :\n\n"
-                "EquipeDom vs EquipeExt\n\n"
-                "Exemples :\n"
-                "psg vs marseille\n"
-                "barca vs real"
-            )
+            bot.reply_to(message, get_text("demande_affiche", langue))
 
         # Prédiction
         elif 'vs' in text.lower():
@@ -334,27 +372,22 @@ def enregistrer_handlers(bot):
             if not peut_faire_pronostic(user_id):
                 bot.reply_to(
                     message,
-                    f"Limite atteinte ({get_limite_jour(user_id)}/jour).\n\n"
-                    "Passe en Premium !"
+                    get_text("limite_atteinte", langue, limite=get_limite_jour(user_id))
                 )
                 return
 
             parts = text.split('vs' if 'vs' in text else 'VS')
             if len(parts) < 2:
-                bot.reply_to(message, "Format : Equipe A vs Equipe B")
+                bot.reply_to(message, get_text("demande_affiche", langue))
                 return
 
             resultat = predire_match(parts[0].strip(), parts[1].strip())
 
             if "erreur" in resultat:
-                bot.reply_to(
-                    message,
-                    f"Erreur : {resultat['erreur']}\n\n"
-                    f"Essaie : psg vs marseille"
-                )
+                bot.reply_to(message, get_text("erreur_equipe", langue, erreur=resultat['erreur']))
                 return
 
-            bulletin = _formater_bulletin(resultat)
+            bulletin = _formater_bulletin(resultat, langue)
             bot.reply_to(message, bulletin)
 
             sauvegarder_historique(
@@ -366,8 +399,4 @@ def enregistrer_handlers(bot):
             incrementer_compteur(user_id)
 
         else:
-            bot.reply_to(
-                message,
-                "Utilise les boutons du menu.\n\n"
-                "Ou tape : Equipe A vs Equipe B"
-            )
+            bot.reply_to(message, get_text("fallback", langue))
