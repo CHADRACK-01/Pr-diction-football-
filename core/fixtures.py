@@ -1,82 +1,62 @@
-import requests
 from datetime import datetime, timezone, timedelta
-
-# =========================================================
-# CONFIGURATION
-# =========================================================
-# Récupère la clé depuis les variables d'environnement de Render
-import os
-FOOTBALL_DATA_KEY = os.environ.get("FOOTBALL_DATA_KEY", "")
-
-# URL de l'API
-BASE_URL = "https://api.football-data.org/v4"
-HEADERS = {"X-Auth-Token": FOOTBALL_DATA_KEY}
+from sports_skills import football
 
 # Fuseau horaire de Kinshasa (UTC+1)
 TZ_KINSHASA = timezone(timedelta(hours=1))
 
 
-# =========================================================
-# RÉCUPÉRATION DES MATCHS DU JOUR
-# =========================================================
 def get_matchs_du_jour(date_cible=None):
     """
-    Récupère les matchs du jour via Football-Data.org.
+    Récupère les matchs du jour via sports-skills (ESPN).
     """
     if date_cible is None:
         date_cible = datetime.now(TZ_KINSHASA).date()
 
     date_str = date_cible.strftime("%Y-%m-%d")
-    url = f"{BASE_URL}/matches"
-    params = {"date": date_str}
 
     try:
-        response = requests.get(url, headers=HEADERS, params=params, timeout=20)
-        response.raise_for_status()
-        data = response.json()
+        # Appel à sports-skills
+        result = football.get_daily_schedule(date=date_str)
+        
+        # Extraction des matchs
+        events = result.get("data", {}).get("events", [])
+        print(f"📅 sports-skills : {len(events)} match(s) trouvé(s) pour {date_str}")
+        return events
+
     except Exception as e:
-        print(f"⚠️ Erreur Football-Data.org : {e}")
+        print(f"⚠️ Erreur sports-skills : {e}")
         return []
 
-    matches = data.get("matches", [])
-    print(f"📅 Football-Data.org : {len(matches)} match(s) trouvé(s) pour {date_str}")
-    return matches
 
-
-# =========================================================
-# FORMATAGE POUR TELEGRAM
-# =========================================================
-def formater_matchs_du_jour(matches, limite=15):
+def formater_matchs_du_jour(events, limite=15):
     """Formate la liste des matchs pour Telegram."""
     date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
 
-    if not matches:
-        return f"📅 *Aucun match aujourd'hui ({date_str})* dans vos championnats."
+    if not events:
+        return f"📅 *Aucun match aujourd'hui ({date_str})* dans vos championnats suivis."
 
     texte = f"📅 *Matchs du jour — {date_str}*\n"
-    texte += f"_{len(matches)} match(s) dans vos championnats_\n\n"
+    texte += f"_{len(events)} match(s) trouvé(s)_\n\n"
 
-    for i, match in enumerate(matches[:limite], 1):
-        home = match.get("homeTeam", {}).get("name", "?")
-        away = match.get("awayTeam", {}).get("name", "?")
-        competition = match.get("competition", {}).get("name", "")
-        # L'heure est au format UTC (ex: 2026-10-16T20:00:00Z)
-        time_utc = match.get("utcDate", "")
-        
-        # Convertir l'heure UTC en heure locale de Kinshasa pour l'affichage
+    for i, ev in enumerate(events[:limite], 1):
+        # Adapter selon la structure retournée par sports-skills
+        home = ev.get("homeTeam", {}).get("name", ev.get("home", "?"))
+        away = ev.get("awayTeam", {}).get("name", ev.get("away", "?"))
+        league = ev.get("competition", {}).get("name", ev.get("league", ""))
+        time_utc = ev.get("date", "")
+
+        heure_locale = ""
         if time_utc:
             try:
                 dt_utc = datetime.fromisoformat(time_utc.replace("Z", "+00:00"))
                 dt_local = dt_utc.astimezone(TZ_KINSHASA)
                 heure_locale = dt_local.strftime("%H:%M")
             except Exception:
-                heure_locale = time_utc.split("T")[1][:5] if "T" in time_utc else ""
-        else:
-            heure_locale = ""
+                pass
 
         texte += (
             f"*{i}. {home} vs {away}*\n"
-            f"🏆 _{competition}_\n"
+            f"🏆 _{league}_\n"
         )
         if heure_locale:
             texte += f"⏰ {heure_locale} (Kinshasa)\n"
