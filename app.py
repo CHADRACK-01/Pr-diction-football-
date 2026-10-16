@@ -16,9 +16,9 @@ from telegram_bot.admin_handlers import enregistrer_admin_handlers
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
-# Enregistrer TOUS les handlers
-enregistrer_handlers(bot)
+# ⚠️ IMPORTANT : admin EN PREMIER, utilisateurs EN DERNIER
 enregistrer_admin_handlers(bot)
+enregistrer_handlers(bot)
 
 TZ_KINSHASA = timezone(timedelta(hours=1))
 
@@ -109,7 +109,7 @@ def _envoyer_notifications():
 
 
 # =========================================================
-# SCHEDULER : vérifie chaque minute, envoie à 8h
+# SCHEDULER
 # =========================================================
 def _scheduler_notifications():
     print("Scheduler notifications demarre...")
@@ -136,14 +136,13 @@ threading.Thread(target=_scheduler_notifications, daemon=True).start()
 
 
 # =========================================================
-# WEBHOOK TELEGRAM
+# WEBHOOK
 # =========================================================
 @app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
     json_str = request.get_data().decode('UTF-8')
     update = telebot.types.Update.de_json(json_str)
 
-    # Bloquer les bannis (sauf admins)
     try:
         if update.message:
             user_id = update.message.from_user.id
@@ -157,16 +156,10 @@ def webhook():
     return "OK", 200
 
 
-# =========================================================
-# ROUTE DE BASE
-# =========================================================
 @app.route('/')
 def index():
     return "Bot operationnel !", 200
 
 
-# =========================================================
-# INITIALISATION AU BOOT
-# =========================================================
 initialiser_tables()
 print("Bot pret (init differee + notifications + admin).")
