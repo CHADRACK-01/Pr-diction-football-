@@ -18,6 +18,7 @@ TEXTES = {
         "btn_premium": "Passer Premium",
         "btn_langue": "Langue",
         "btn_matchs_jour": "Matchs du jour",
+        "btn_parrainage": "Parrainage",
         "choix_langue": "Choisis ta langue :",
         "langue_changee": "Langue changee en Français",
         "demande_affiche": "Tape l'affiche du match :\n\nEquipeDom vs EquipeExt\n\nExemples :\npsg vs marseille\nbarca vs real",
@@ -41,6 +42,9 @@ TEXTES = {
         "titre_matchs_jour": "MATCHS DU JOUR - {date}",
         "aucun_match_jour": "Aucun match aujourd'hui ({date}).",
         "tip_matchs_jour": "Choisis 'Faire un Pronostic' pour plus de details.",
+        "parrainage_titre": "PARRAINAGE\n\nInvite tes amis et gagne des jours Premium gratuits !\n\nGains :\n- 1 ami inscrit = 1 jour Premium pour toi ET ton ami\n- 5 amis inscrits = 7 jours Premium bonus\n\nTon lien :\n{lien}\n\nTes stats :\n- Filleuls : {nb_filleuls}\n- Ton code : {code}",
+        "parrainage_bienvenue": "Bienvenue ! Tu as ete parraine par un ami.\n\n+1 jour Premium pour toi et ton parrain !",
+        "parrainage_bonus_5": "Felicitations ! Tu as atteint 5 filleuls.\n\n+7 jours Premium bonus !",
     },
     "en": {
         "welcome": "PRO ASSISTANT\n\nWelcome {nom}!\n\nStatus: {statut}\nPredictions: {compteur}/{limite}\n\nMatches analyzed: {nb_matchs}\nAccuracy: {precision}%\n\nChoose an option:",
@@ -51,6 +55,7 @@ TEXTES = {
         "btn_premium": "Go Premium",
         "btn_langue": "Language",
         "btn_matchs_jour": "Today's matches",
+        "btn_parrainage": "Referral",
         "choix_langue": "Choose your language:",
         "langue_changee": "Language changed to English",
         "demande_affiche": "Type the match:\n\nHomeTeam vs AwayTeam\n\nExamples:\npsg vs marseille\nbarca vs real",
@@ -74,6 +79,9 @@ TEXTES = {
         "titre_matchs_jour": "TODAY'S MATCHES - {date}",
         "aucun_match_jour": "No match today ({date}).",
         "tip_matchs_jour": "Choose 'Make a Prediction' for details.",
+        "parrainage_titre": "REFERRAL\n\nInvite your friends and earn free Premium days!\n\nRewards:\n- 1 friend = 1 Premium day for you AND your friend\n- 5 friends = 7 bonus Premium days\n\nYour link:\n{lien}\n\nYour stats:\n- Referrals: {nb_filleuls}\n- Your code: {code}",
+        "parrainage_bienvenue": "Welcome! You were referred by a friend.\n\n+1 Premium day for you and your referrer!",
+        "parrainage_bonus_5": "Congratulations! You reached 5 referrals.\n\n+7 bonus Premium days!",
     },
     "ln": {
         "welcome": "MOSALISI PRO\n\nMbote {nom}!\n\nStatut: {statut}\nBakano: {compteur}/{limite}\n\nMasano: {nb_matchs}\nBosembo: {precision}%\n\nPona eloko:",
@@ -84,6 +92,7 @@ TEXTES = {
         "btn_premium": "Kende Premium",
         "btn_langue": "Monoko",
         "btn_matchs_jour": "Masano ya lelo",
+        "btn_parrainage": "Bosangisi",
         "choix_langue": "Pona monoko na yo:",
         "langue_changee": "Monoko ebongwani na Lingala",
         "demande_affiche": "Koma lisano:\n\nHomeTeam vs AwayTeam\n\nNdakisa:\npsg vs marseille",
@@ -107,6 +116,9 @@ TEXTES = {
         "titre_matchs_jour": "MASANO YA LELO - {date}",
         "aucun_match_jour": "Masano ezali te lelo ({date}).",
         "tip_matchs_jour": "Pona 'Sala Bokano' mpo na makambo mosusu.",
+        "parrainage_titre": "BOSANGISI\n\nBenga baninga na yo mpo na kozwa mikolo ya Premium ofele!\n\nBolamu :\n- 1 moninga = 1 mokolo Premium mpo na yo mpe moninga\n- 5 baninga = 7 mikolo Premium bonus\n\nLien na yo :\n{lien}\n\nStatistiques :\n- Ba filleuls : {nb_filleuls}\n- Code na yo : {code}",
+        "parrainage_bienvenue": "Boyeyi malamu! Moninga moko abengaki yo.\n\n+1 mokolo Premium mpo na yo mpe mobengi!",
+        "parrainage_bonus_5": "Matondo! Ozwi baninga 5.\n\n+7 mikolo Premium bonus!",
     },
 }
 
