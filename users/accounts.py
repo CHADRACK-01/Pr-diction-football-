@@ -1,5 +1,5 @@
 import psycopg2.extras
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from config import LIMITE_FREE_JOUR, LIMITE_PREMIUM_JOUR
 from users.db import get_connection
@@ -260,6 +260,8 @@ def set_langue(user_id, langue):
     except Exception as e:
         print(f"⚠️ Erreur set_langue : {e}")
         return False
+
+
 # =========================================================
 # PARRAINAGE
 # =========================================================
@@ -315,11 +317,9 @@ def compter_filleuls(user_id):
 
 def ajouter_jours_premium(user_id, jours):
     """Ajoute X jours de Premium à un utilisateur (cumulable)."""
-    from datetime import datetime, timedelta
     try:
         conn = get_connection()
         cur = conn.cursor()
-        # Récupérer la date d'expiration actuelle
         cur.execute("SELECT date_expiration, status FROM utilisateurs WHERE user_id = %s", (user_id,))
         row = cur.fetchone()
         if not row:
@@ -329,7 +329,6 @@ def ajouter_jours_premium(user_id, jours):
 
         expiration_actuelle, status = row
 
-        # Si déjà premium et non expiré, on ajoute à la date actuelle
         if status == 'premium' and expiration_actuelle and expiration_actuelle > datetime.now():
             nouvelle_date = expiration_actuelle + timedelta(days=jours)
         else:
@@ -348,3 +347,80 @@ def ajouter_jours_premium(user_id, jours):
     except Exception as e:
         print(f"⚠️ Erreur ajouter_jours_premium : {e}")
         return False
+
+
+# =========================================================
+# PARRAINAGE AVANCÉ
+# =========================================================
+def get_top_parrains(limite=10):
+    """Retourne le classement des top parrains."""
+    try:
+        conn = get_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT 
+                p.user_id,
+                p.first_name,
+                COUNT(f.user_id) as nb_filleuls
+            FROM utilisateurs p
+            INNER JOIN utilisateurs f ON f.parrain_id = p.user_id
+            GROUP BY p.user_id, p.first_name
+            ORDER BY nb_filleuls DESC
+            LIMIT %s
+        """, (limite,))
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return [dict(r) for r in rows]
+    except Exception as e:
+        print(f"⚠️ Erreur get_top_parrains : {e}")
+        return []
+
+
+def get_filleuls(user_id, limite=20):
+    """Retourne la liste des filleuls d'un utilisateur."""
+    try:
+        conn = get_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT user_id, first_name, date_inscription
+            FROM utilisateurs
+            WHERE parrain_id = %s
+            ORDER BY date_inscription DESC
+            LIMIT %s
+        """, (user_id, limite))
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return [dict(r) for r in rows]
+    except Exception as e:
+        print(f"⚠️ Erreur get_filleuls : {e}")
+        return []
+
+
+def get_palier_atteint(nb_filleuls):
+    """Retourne le palier de récompenses atteint."""
+    paliers = [
+        (50, 30, "Legende"),
+        (20, 15, "Or"),
+        (10, 10, "Argent"),
+        (5, 7, "Bronze"),
+    ]
+    for seuil, bonus, nom in paliers:
+        if nb_filleuls >= seuil:
+            return {"seuil": seuil, "bonus": bonus, "nom": nom}
+    return None
+
+
+def get_prochain_palier(nb_filleuls):
+    """Retourne le prochain palier à atteindre."""
+    paliers = [
+        (5, 7, "Bronze"),
+        (10, 10, "Argent"),
+        (20, 15, "Or"),
+        (50, 30, "Legende"),
+    ]
+    for seuil, bonus, nom in paliers:
+        if nb_filleuls < seuil:
+            return {"seuil": seuil, "bonus": bonus, "nom": nom, "restant": seuil - nb_filleuls}
+    return None
