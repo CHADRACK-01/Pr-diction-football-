@@ -2,6 +2,8 @@ import os
 os.environ['LOKY_MAX_CPU_COUNT'] = '1'
 
 import time
+import io
+import joblib
 import requests
 import pandas as pd
 import numpy as np
@@ -11,7 +13,10 @@ from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassif
 from sklearn.metrics import accuracy_score
 
 from config import CHAMPIONNATS
-from users import inserer_matchs, charger_tous_les_matchs, compter_matchs
+from users import (
+    inserer_matchs, charger_tous_les_matchs, compter_matchs,
+    sauvegarder_modele_cache, charger_modele_cache, vider_modele_cache
+)
 
 
 global_model_data = {}
@@ -27,9 +32,7 @@ def obtenir_code_saison_actuelle():
 
 
 def _extraire_matchs(df, nom_competition):
-    """Extrait les matchs d'un DataFrame CSV avec toutes les colonnes disponibles."""
     matchs = []
-
     if not all(c in df.columns for c in ['Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'FTR']):
         return matchs
 
@@ -79,10 +82,37 @@ def _extraire_matchs(df, nom_competition):
 
 
 # =========================================================
-# CHARGEMENT DEPUIS POSTGRESQL + ENTRAÎNEMENT
+# CHARGEMENT + ENTRAÎNEMENT (avec cache)
 # =========================================================
-def charger_et_entrainer():
+def charger_et_entrainer(forcer_entrainement=False):
     global global_model_data
+
+    # Essayer de charger depuis le cache
+    if not forcer_entrainement:
+        cache = charger_modele_cache()
+        if cache:
+            try:
+                modele_bytes, precision, nb_matchs = cache
+                print(f"⚡ Chargement du modèle depuis le cache ({nb_matchs} matchs, précision={round(precision*100, 2)}%)...")
+
+                buffer = io.BytesIO(modele_bytes)
+                donnees = joblib.load(buffer)
+
+                global_model_data['df'] = donnees['df']
+                global_model_data['teams'] = donnees['teams']
+                global_model_data['team_to_code'] = donnees['team_to_code']
+                global_model_data['team_global_stats'] = donnees['team_global_stats']
+                global_model_data['precision'] = precision
+                global_model_data['model'] = donnees['model']
+                global_model_data['features'] = donnees['features']
+                global_model_data['_tables_initialisees'] = True
+
+                print("✅ Modèle chargé depuis le cache en 2 sec !")
+                return
+            except Exception as e:
+                print(f"⚠️ Erreur chargement cache : {e}. Réentraînement...")
+
+    # Entraîner depuis zéro
     print("Chargement des matchs depuis PostgreSQL...")
 
     df = charger_tous_les_matchs()
@@ -279,8 +309,26 @@ def charger_et_entrainer():
     global_model_data['precision'] = precision
     global_model_data['model'] = ensemble_model
     global_model_data['features'] = features
+    global_model_data['_tables_initialisees'] = True
 
     print(f"✅ Modèle entraîné sur {len(df)} matchs. Précision : {round(precision * 100, 2)}%")
+
+    # Sauvegarder dans le cache
+    try:
+        donnees = {
+            'df': df,
+            'teams': teams,
+            'team_to_code': team_to_code,
+            'team_global_stats': team_global_stats,
+            'model': ensemble_model,
+            'features': features
+        }
+        buffer = io.BytesIO()
+        joblib.dump(donnees, buffer, compress=3)
+        modele_bytes = buffer.getvalue()
+        sauvegarder_modele_cache(modele_bytes, precision, len(df))
+    except Exception as e:
+        print(f"⚠️ Erreur sauvegarde cache : {e}")
 
 
 # =========================================================
@@ -323,7 +371,9 @@ def tache_arriere_plan_maj(chat_id, bot):
         inseres = inserer_matchs(matchs_a_inserer)
         total = compter_matchs()
 
-        charger_et_entrainer()
+        # Vider le cache AVANT de réentraîner
+        vider_modele_cache()
+        charger_et_entrainer(forcer_entrainement=True)
         prec = global_model_data.get('precision', 0.5)
 
         bot.send_message(
