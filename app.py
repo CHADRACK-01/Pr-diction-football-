@@ -8,7 +8,7 @@ from datetime import datetime, timezone, timedelta
 from flask import Flask, request
 
 from config import TOKEN
-from users import initialiser_tables, get_utilisateurs_notifies
+from users import initialiser_tables, get_utilisateurs_notifies, est_banni
 from telegram_bot.handlers import enregistrer_handlers
 
 
@@ -20,6 +20,9 @@ enregistrer_handlers(bot)
 TZ_KINSHASA = timezone(timedelta(hours=1))
 
 
+# =========================================================
+# ENVOI DES NOTIFICATIONS QUOTIDIENNES
+# =========================================================
 def _envoyer_notifications():
     try:
         from core.ml_model import global_model_data, get_top_pronostics_du_jour
@@ -104,6 +107,9 @@ def _envoyer_notifications():
         print(f"⚠️ Erreur envoi notifications : {e}")
 
 
+# =========================================================
+# SCHEDULER : vérifie chaque minute, envoie à 8h
+# =========================================================
 def _scheduler_notifications():
     print("📅 Scheduler notifications démarré...")
     derniere_date_envoi = None
@@ -112,6 +118,7 @@ def _scheduler_notifications():
         try:
             now = datetime.now(TZ_KINSHASA)
 
+            # Envoi à 8h00-8h04 (heure Kinshasa)
             if now.hour == 8 and now.minute < 5:
                 date_du_jour = now.strftime("%Y-%m-%d")
                 if derniere_date_envoi != date_du_jour:
@@ -128,18 +135,42 @@ def _scheduler_notifications():
 threading.Thread(target=_scheduler_notifications, daemon=True).start()
 
 
+# =========================================================
+# WEBHOOK TELEGRAM
+# =========================================================
 @app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
     json_str = request.get_data().decode('UTF-8')
     update = telebot.types.Update.de_json(json_str)
+
+    # Vérifier si l'utilisateur est banni (sauf pour les commandes admin)
+    try:
+        if update.message:
+            user_id = update.message.from_user.id
+            text = update.message.text or ""
+
+            # Les admins peuvent toujours parler
+            from users import est_administrateur
+            if est_banni(user_id) and not est_administrateur(user_id):
+                # Ignorer complètement les bannis
+                return "OK", 200
+    except Exception:
+        pass
+
     bot.process_new_updates([update])
     return "OK", 200
 
 
+# =========================================================
+# ROUTE DE BASE
+# =========================================================
 @app.route('/')
 def index():
     return "Bot opérationnel !", 200
 
 
+# =========================================================
+# INITIALISATION AU BOOT
+# =========================================================
 initialiser_tables()
-print("🚀 Bot prêt (init différée + notifications actives).")
+print("🚀 Bot prêt (init différée + notifications + admin).")
