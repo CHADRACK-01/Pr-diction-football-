@@ -66,15 +66,6 @@ def _charger_modele_si_necessaire(message, bot):
         return False
 
 
-def _barre_progression(pct):
-    rempli = int(round(pct / 10))
-    if rempli > 10:
-        rempli = 10
-    if rempli < 0:
-        rempli = 0
-    return "#" * rempli + "." * (10 - rempli)
-
-
 def _formater_bulletin(resultat):
     h = resultat['home_team']
     a = resultat['away_team']
@@ -240,7 +231,7 @@ def enregistrer_handlers(bot):
 
 
     # =========================================================
-    # MENU PRINCIPAL
+    # MENU PRINCIPAL (fallback - TOUJOURS EN DERNIER)
     # =========================================================
     @bot.message_handler(func=lambda message: True)
     def handle_menu_clicks(message):
