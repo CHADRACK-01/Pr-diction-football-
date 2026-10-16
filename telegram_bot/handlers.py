@@ -10,7 +10,8 @@ from users import (
     charger_modele_cache,
     activer_notifications, desactiver_notifications,
     est_banni,
-    get_langue, set_langue
+    get_langue, set_langue,
+    get_user_info
 )
 from core.translations import get_text, LANGUES_DISPONIBLES
 from core.ml_model import global_model_data, tache_arriere_plan_maj
@@ -128,6 +129,41 @@ def _formater_bulletin(resultat, langue="fr"):
     )
 
 
+def _envoyer_menu_principal(chat_id, user_id, bot):
+    """Envoie le menu principal dans la langue de l'utilisateur."""
+    langue = get_langue(user_id)
+    statut_label = get_statut_label(user_id)
+    prec = global_model_data.get('precision', 0.5)
+    nb_matchs = len(global_model_data.get('df', []))
+    compteur = get_compteur_jour(user_id)
+    limite = get_limite_jour(user_id)
+
+    user_info = get_user_info(user_id)
+    nom = user_info['first_name'] if user_info else "Utilisateur"
+
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    markup.add(
+        telebot.types.KeyboardButton(get_text("btn_pronostic", langue)),
+        telebot.types.KeyboardButton(get_text("btn_historique", langue)),
+        telebot.types.KeyboardButton(get_text("btn_stats", langue)),
+        telebot.types.KeyboardButton(get_text("btn_notifs", langue)),
+        telebot.types.KeyboardButton(get_text("btn_premium", langue)),
+        telebot.types.KeyboardButton(get_text("btn_langue", langue)),
+    )
+
+    welcome_text = get_text(
+        "welcome", langue,
+        nom=nom,
+        statut=statut_label,
+        compteur=compteur,
+        limite=limite,
+        nb_matchs=nb_matchs,
+        precision=round(prec * 100, 2)
+    )
+
+    bot.send_message(chat_id, welcome_text, reply_markup=markup)
+
+
 def enregistrer_handlers(bot):
 
     # =========================================================
@@ -142,34 +178,7 @@ def enregistrer_handlers(bot):
             return
 
         enregistrer_utilisateur(user.id, user.username, user.first_name)
-
-        langue = get_langue(user.id)
-        statut_label = get_statut_label(user.id)
-        prec = global_model_data.get('precision', 0.5)
-        nb_matchs = len(global_model_data.get('df', []))
-        compteur = get_compteur_jour(user.id)
-        limite = get_limite_jour(user.id)
-
-        markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-        markup.add(
-            telebot.types.KeyboardButton(get_text("btn_pronostic", langue)),
-            telebot.types.KeyboardButton(get_text("btn_historique", langue)),
-            telebot.types.KeyboardButton(get_text("btn_stats", langue)),
-            telebot.types.KeyboardButton(get_text("btn_notifs", langue)),
-            telebot.types.KeyboardButton(get_text("btn_premium", langue)),
-            telebot.types.KeyboardButton(get_text("btn_langue", langue)),
-        )
-
-        welcome_text = get_text(
-            "welcome", langue,
-            nom=user.first_name,
-            statut=statut_label,
-            compteur=compteur,
-            limite=limite,
-            nb_matchs=nb_matchs,
-            precision=round(prec * 100, 2)
-        )
-        bot.send_message(message.chat.id, welcome_text, reply_markup=markup)
+        _envoyer_menu_principal(message.chat.id, user.id, bot)
 
 
     # =========================================================
@@ -225,10 +234,15 @@ def enregistrer_handlers(bot):
 
         if set_langue(user_id, langue):
             bot.answer_callback_query(call.id, "OK")
+
+            # Confirmer le changement
             bot.send_message(
                 call.message.chat.id,
                 get_text("langue_changee", langue)
             )
+
+            # ⚠️ CRUCIAL : renvoyer le menu avec les NOUVEAUX boutons
+            _envoyer_menu_principal(call.message.chat.id, user_id, bot)
         else:
             bot.answer_callback_query(call.id, "Erreur")
 
@@ -272,7 +286,7 @@ def enregistrer_handlers(bot):
 
 
     # =========================================================
-    # MENU PRINCIPAL (fallback - TOUJOURS EN DERNIER)
+    # MENU PRINCIPAL (fallback)
     # =========================================================
     @bot.message_handler(func=lambda message: True)
     def handle_menu_clicks(message):
