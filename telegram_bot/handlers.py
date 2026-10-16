@@ -12,6 +12,28 @@ from core.ml_model import (
 from core.prediction import predire_match, sauvegarder_historique
 
 
+def _charger_modele_si_necessaire(message, bot):
+    """Lazy loading : charge le modèle si pas encore en mémoire."""
+    if global_model_data.get('df') is not None and len(global_model_data.get('df', [])) > 0:
+        return True
+
+    bot.reply_to(message, "⏳ Premier lancement : chargement du modèle (1-2 min)...")
+    try:
+        charger_et_entrainer()
+        if global_model_data.get('df') is not None and len(global_model_data.get('df', [])) > 0:
+            return True
+        else:
+            bot.reply_to(
+                message,
+                "⚠️ Aucun match en base.\n\n"
+                "Envoie /update pour télécharger les données (cela prend 1-2 min)."
+            )
+            return False
+    except Exception as e:
+        bot.reply_to(message, f"❌ Erreur chargement : {e}")
+        return False
+
+
 def enregistrer_handlers(bot):
 
     # =========================================================
@@ -53,7 +75,7 @@ def enregistrer_handlers(bot):
     # =========================================================
     @bot.message_handler(commands=['update'])
     def force_update_data(message):
-        bot.reply_to(message, "⏳ Synchronisation en arrière-plan...")
+        bot.reply_to(message, "⏳ Synchronisation en arrière-plan (1-2 min)...")
         threading.Thread(
             target=tache_arriere_plan_maj,
             args=(message.chat.id, bot),
@@ -128,6 +150,10 @@ def enregistrer_handlers(bot):
 
         # --- Faire un Pronostic ---
         elif text == "⚽ Faire un Pronostic":
+            # Lazy loading
+            if not _charger_modele_si_necessaire(message, bot):
+                return
+
             if not peut_faire_pronostic(user_id):
                 bot.reply_to(
                     message,
@@ -140,6 +166,10 @@ def enregistrer_handlers(bot):
 
         # --- Prédiction ---
         elif 'vs' in text.lower():
+            # Lazy loading
+            if not _charger_modele_si_necessaire(message, bot):
+                return
+
             if not peut_faire_pronostic(user_id):
                 bot.reply_to(
                     message,
