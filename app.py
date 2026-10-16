@@ -10,18 +10,21 @@ from flask import Flask, request
 from config import TOKEN
 from users import initialiser_tables, get_utilisateurs_notifies, est_banni
 from telegram_bot.handlers import enregistrer_handlers
+from telegram_bot.admin_handlers import enregistrer_admin_handlers
 
 
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
+# Enregistrer TOUS les handlers
 enregistrer_handlers(bot)
+enregistrer_admin_handlers(bot)
 
 TZ_KINSHASA = timezone(timedelta(hours=1))
 
 
 # =========================================================
-# ENVOI DES NOTIFICATIONS QUOTIDIENNES
+# NOTIFICATIONS QUOTIDIENNES
 # =========================================================
 def _envoyer_notifications():
     try:
@@ -34,7 +37,7 @@ def _envoyer_notifications():
 
             cache = charger_modele_cache()
             if not cache:
-                print("⚠️ Notifications : pas de cache modèle")
+                print("Notifications : pas de cache modele")
                 return
 
             modele_bytes, precision, nb_matchs = cache
@@ -52,16 +55,14 @@ def _envoyer_notifications():
         top = get_top_pronostics_du_jour(nb=3)
 
         if not top:
-            print("⚠️ Notifications : aucun pronostic disponible")
+            print("Notifications : aucun pronostic disponible")
             return
 
         date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
 
         texte = (
-            f"╔══════════════════════════╗\n"
-            f"║  🌅 *PRONOSTICS DU JOUR* ║\n"
-            f"╚══════════════════════════╝\n\n"
-            f"📅 _{date_str}_\n\n"
+            f"PRONOSTICS DU JOUR\n"
+            f"Date : {date_str}\n\n"
         )
 
         for i, item in enumerate(top, 1):
@@ -76,17 +77,17 @@ def _envoyer_notifications():
             )
 
             texte += (
-                f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"🏆 *{i}. {item['home']} vs {item['away']}*\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"🎯 Recommandé : *{meilleure[0]}* ({meilleure[1]}%)\n"
-                f"⚽ Score probable : *{prono['best_score'][0]} - {prono['best_score'][1]}*\n\n"
+                f"------------------------\n"
+                f"{i}. {item['home']} vs {item['away']}\n"
+                f"------------------------\n"
+                f"Recommande : {meilleure[0]} ({meilleure[1]}%)\n"
+                f"Score probable : {prono['best_score'][0]} - {prono['best_score'][1]}\n\n"
             )
 
         texte += (
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"💡 _Tape une affiche pour plus de détails_\n"
-            f"🔕 _Pour désactiver : /notif_off_"
+            f"------------------------\n"
+            f"Tape une affiche pour plus de details\n"
+            f"Pour desactiver : /notif_off"
         )
 
         users = get_utilisateurs_notifies()
@@ -95,40 +96,39 @@ def _envoyer_notifications():
 
         for uid in users:
             try:
-                bot.send_message(uid, texte, parse_mode="Markdown")
+                bot.send_message(uid, texte)
                 succes += 1
                 time.sleep(0.1)
             except Exception:
                 echecs += 1
 
-        print(f"📬 Notifications envoyées : {succes} succès, {echecs} échecs")
+        print(f"Notifications envoyees : {succes} succes, {echecs} echecs")
 
     except Exception as e:
-        print(f"⚠️ Erreur envoi notifications : {e}")
+        print(f"Erreur envoi notifications : {e}")
 
 
 # =========================================================
 # SCHEDULER : vérifie chaque minute, envoie à 8h
 # =========================================================
 def _scheduler_notifications():
-    print("📅 Scheduler notifications démarré...")
+    print("Scheduler notifications demarre...")
     derniere_date_envoi = None
 
     while True:
         try:
             now = datetime.now(TZ_KINSHASA)
 
-            # Envoi à 8h00-8h04 (heure Kinshasa)
             if now.hour == 8 and now.minute < 5:
                 date_du_jour = now.strftime("%Y-%m-%d")
                 if derniere_date_envoi != date_du_jour:
-                    print(f"📬 Envoi des notifications du {date_du_jour}...")
+                    print(f"Envoi des notifications du {date_du_jour}...")
                     _envoyer_notifications()
                     derniere_date_envoi = date_du_jour
 
             time.sleep(60)
         except Exception as e:
-            print(f"⚠️ Erreur scheduler : {e}")
+            print(f"Erreur scheduler : {e}")
             time.sleep(60)
 
 
@@ -143,16 +143,12 @@ def webhook():
     json_str = request.get_data().decode('UTF-8')
     update = telebot.types.Update.de_json(json_str)
 
-    # Vérifier si l'utilisateur est banni (sauf pour les commandes admin)
+    # Bloquer les bannis (sauf admins)
     try:
         if update.message:
             user_id = update.message.from_user.id
-            text = update.message.text or ""
-
-            # Les admins peuvent toujours parler
             from users import est_administrateur
             if est_banni(user_id) and not est_administrateur(user_id):
-                # Ignorer complètement les bannis
                 return "OK", 200
     except Exception:
         pass
@@ -166,11 +162,11 @@ def webhook():
 # =========================================================
 @app.route('/')
 def index():
-    return "Bot opérationnel !", 200
+    return "Bot operationnel !", 200
 
 
 # =========================================================
 # INITIALISATION AU BOOT
 # =========================================================
 initialiser_tables()
-print("🚀 Bot prêt (init différée + notifications + admin).")
+print("Bot pret (init differee + notifications + admin).")
