@@ -260,3 +260,91 @@ def set_langue(user_id, langue):
     except Exception as e:
         print(f"⚠️ Erreur set_langue : {e}")
         return False
+# =========================================================
+# PARRAINAGE
+# =========================================================
+def get_parrain(user_id):
+    """Retourne l'ID du parrain de l'utilisateur, ou None."""
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT parrain_id FROM utilisateurs WHERE user_id = %s", (user_id,))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        return row[0] if row and row[0] else None
+    except Exception as e:
+        print(f"⚠️ Erreur get_parrain : {e}")
+        return None
+
+
+def set_parrain(user_id, parrain_id):
+    """Enregistre le parrain d'un utilisateur."""
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE utilisateurs
+            SET parrain_id = %s
+            WHERE user_id = %s AND parrain_id IS NULL
+        """, (parrain_id, user_id))
+        conn.commit()
+        rows = cur.rowcount
+        cur.close()
+        conn.close()
+        return rows > 0
+    except Exception as e:
+        print(f"⚠️ Erreur set_parrain : {e}")
+        return False
+
+
+def compter_filleuls(user_id):
+    """Compte le nombre de filleuls d'un utilisateur."""
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM utilisateurs WHERE parrain_id = %s", (user_id,))
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        return result[0] if result else 0
+    except Exception as e:
+        print(f"⚠️ Erreur compter_filleuls : {e}")
+        return 0
+
+
+def ajouter_jours_premium(user_id, jours):
+    """Ajoute X jours de Premium à un utilisateur (cumulable)."""
+    from datetime import datetime, timedelta
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        # Récupérer la date d'expiration actuelle
+        cur.execute("SELECT date_expiration, status FROM utilisateurs WHERE user_id = %s", (user_id,))
+        row = cur.fetchone()
+        if not row:
+            cur.close()
+            conn.close()
+            return False
+
+        expiration_actuelle, status = row
+
+        # Si déjà premium et non expiré, on ajoute à la date actuelle
+        if status == 'premium' and expiration_actuelle and expiration_actuelle > datetime.now():
+            nouvelle_date = expiration_actuelle + timedelta(days=jours)
+        else:
+            nouvelle_date = datetime.now() + timedelta(days=jours)
+
+        cur.execute("""
+            UPDATE utilisateurs
+            SET status = 'premium', date_expiration = %s
+            WHERE user_id = %s
+        """, (nouvelle_date, user_id))
+        conn.commit()
+        cur.close()
+        conn.close()
+        print(f"⭐ +{jours}j Premium pour {user_id} (expire {nouvelle_date})")
+        return True
+    except Exception as e:
+        print(f"⚠️ Erreur ajouter_jours_premium : {e}")
+        return False
