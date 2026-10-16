@@ -313,7 +313,7 @@ def tache_arriere_plan_maj(chat_id, bot):
                     continue
 
         for i in range(1, 5):
-            annee_d = anne_courante_debut - i if False else annee_courante_debut - i
+            annee_d = annee_courante_debut - i
             annee_f = annee_d + 1
             code_saison = f"{str(annee_d)[-2:]}{str(annee_f)[-2:]}"
             _traiter_saison(code_saison)
