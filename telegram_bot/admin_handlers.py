@@ -50,7 +50,7 @@ def enregistrer_admin_handlers(bot):
 
 
     # =========================================================
-    # CALLBACKS
+    # CALLBACKS ADMIN
     # =========================================================
     @bot.callback_query_handler(func=lambda call: call.data.startswith("admin|"))
     def traiter_admin_callback(call):
