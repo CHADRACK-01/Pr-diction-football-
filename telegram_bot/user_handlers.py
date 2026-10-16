@@ -122,20 +122,19 @@ def enregistrer_user_handlers(bot):
             bot.answer_callback_query(call.id, "Aucun parrain")
             bot.send_message(
                 call.message.chat.id,
-                f"🏆 *{get_text('parrainage_classement_titre', langue)}*\n\nAucun parrain pour l'instant. Sois le premier !",
-                parse_mode="Markdown"
+                "CLASSEMENT DES PARRAINS\n\nAucun parrain pour l'instant. Sois le premier !"
             )
             return
 
         bot.answer_callback_query(call.id, "OK")
 
-        texte = f"🏆 *{get_text('parrainage_classement_titre', langue)}*\n\n"
-        medailles = ["🥇", "🥈", "🥉"]
+        texte = "CLASSEMENT DES PARRAINS\n\n"
+        medailles = ["1.", "2.", "3."]
         for i, p in enumerate(top, 1):
             medaille = medailles[i-1] if i <= 3 else f"{i}."
-            texte += f"{medaille} *{p['first_name'] or 'Anonyme'}* — {p['nb_filleuls']} filleul(s)\n"
+            texte += f"{medaille} {p['first_name'] or 'Anonyme'} - {p['nb_filleuls']} filleul(s)\n"
 
-        bot.send_message(call.message.chat.id, texte, parse_mode="Markdown")
+        bot.send_message(call.message.chat.id, texte)
 
 
     # =========================================================
@@ -152,19 +151,18 @@ def enregistrer_user_handlers(bot):
             bot.answer_callback_query(call.id, "Aucun filleul")
             bot.send_message(
                 call.message.chat.id,
-                f"👥 *{get_text('parrainage_mes_filleuls', langue)}*\n\n{get_text('parrainage_aucun_filleul', langue)}",
-                parse_mode="Markdown"
+                "MES FILLEULS\n\nTu n'as pas encore de filleul."
             )
             return
 
         bot.answer_callback_query(call.id, "OK")
 
-        texte = f"👥 *{get_text('parrainage_mes_filleuls', langue)}* ({len(filleuls)})\n\n"
+        texte = f"MES FILLEULS ({len(filleuls)})\n\n"
         for i, f in enumerate(filleuls, 1):
             date = f['date_inscription'].strftime('%d/%m/%Y') if f['date_inscription'] else '?'
-            texte += f"{i}. *{f['first_name'] or 'Anonyme'}* — {date}\n"
+            texte += f"{i}. {f['first_name'] or 'Anonyme'} - {date}\n"
 
-        bot.send_message(call.message.chat.id, texte, parse_mode="Markdown")
+        bot.send_message(call.message.chat.id, texte)
 
 
     # =========================================================
@@ -224,11 +222,12 @@ def enregistrer_user_handlers(bot):
             markup.add(
                 telebot.types.InlineKeyboardButton(
                     "📤 Partager",
-                    url=f"https://t.me/share/url?url={lien}&text=Rejoins%20ce%20bot%20de%20pronostics%20!"
+                    url=f"https://t.me/share/url?url={lien}&text=Rejoins ce bot de pronostics !"
                 )
             )
 
-            bot.reply_to(message, texte, parse_mode="Markdown", reply_markup=markup)
+            # ⚠️ PAS de parse_mode pour éviter l'erreur Markdown avec les URLs
+            bot.reply_to(message, texte, reply_markup=markup)
 
         # --- Matchs du jour ---
         elif text == get_text("btn_matchs_jour", langue):
