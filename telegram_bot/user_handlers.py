@@ -129,10 +129,8 @@ def enregistrer_user_handlers(bot):
         bot.answer_callback_query(call.id, "OK")
 
         texte = "CLASSEMENT DES PARRAINS\n\n"
-        medailles = ["1.", "2.", "3."]
         for i, p in enumerate(top, 1):
-            medaille = medailles[i-1] if i <= 3 else f"{i}."
-            texte += f"{medaille} {p['first_name'] or 'Anonyme'} - {p['nb_filleuls']} filleul(s)\n"
+            texte += f"{i}. {p['first_name'] or 'Anonyme'} - {p['nb_filleuls']} filleul(s)\n"
 
         bot.send_message(call.message.chat.id, texte)
 
@@ -226,7 +224,6 @@ def enregistrer_user_handlers(bot):
                 )
             )
 
-            # ⚠️ PAS de parse_mode pour éviter l'erreur Markdown avec les URLs
             bot.reply_to(message, texte, reply_markup=markup)
 
         # --- Matchs du jour ---
@@ -305,31 +302,32 @@ def enregistrer_user_handlers(bot):
                 reply_markup=markup
             )
 
-        # --- Premium ---
+        # --- Premium (NOUVEAU : 3 choix) ---
         elif text == get_text("btn_premium", langue):
             if est_premium(user_id):
                 bot.reply_to(message, get_text("premium_actif", langue))
                 return
 
+            # 3 choix de paiement
             markup = telebot.types.InlineKeyboardMarkup(row_width=1)
             markup.add(
                 telebot.types.InlineKeyboardButton(
-                    f"Journalier - {ABONNEMENTS['journalier']['prix_stars']} Stars",
-                    callback_data="buy|journalier"
+                    get_text("btn_pay_stars", langue),
+                    callback_data="pay|stars"
                 ),
                 telebot.types.InlineKeyboardButton(
-                    f"Hebdomadaire - {ABONNEMENTS['hebdomadaire']['prix_stars']} Stars",
-                    callback_data="buy|hebdomadaire"
+                    get_text("btn_pay_mobile", langue),
+                    callback_data="pay|mobile"
                 ),
                 telebot.types.InlineKeyboardButton(
-                    f"Mensuel - {ABONNEMENTS['mensuel']['prix_stars']} Stars",
-                    callback_data="buy|mensuel"
+                    get_text("btn_pay_code", langue),
+                    callback_data="pay|code"
                 ),
             )
 
             bot.reply_to(
                 message,
-                get_text("premium_titre", langue),
+                get_text("premium_choix_titre", langue),
                 reply_markup=markup
             )
 
