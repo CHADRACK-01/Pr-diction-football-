@@ -8,8 +8,30 @@ from users import (
     bannir_user, debannir_user, get_liste_bannis,
     log_admin, get_logs_admin,
     get_parametre, set_parametre, get_tous_parametres,
-    set_premium, get_tous_utilisateurs
+    set_premium, get_tous_utilisateurs,
+    get_user_info
 )
+from users.db import get_connection
+
+
+def _retirer_premium(user_id):
+    """Retire le statut premium d'un utilisateur."""
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE utilisateurs
+            SET status = 'free', date_expiration = NULL
+            WHERE user_id = %s
+        """, (user_id,))
+        conn.commit()
+        rows = cur.rowcount
+        cur.close()
+        conn.close()
+        return rows > 0
+    except Exception as e:
+        print(f"⚠️ Erreur _retirer_premium : {e}")
+        return False
 
 
 def enregistrer_admin_handlers(bot):
@@ -43,6 +65,7 @@ def enregistrer_admin_handlers(bot):
             "/ban ID : Bannir\n"
             "/unban ID : Debannir\n"
             "/add_premium ID jours\n"
+            "/remove_premium ID\n"
             "/add_admin ID\n"
             "/set_param cle valeur",
             reply_markup=markup
@@ -265,6 +288,38 @@ def enregistrer_admin_handlers(bot):
                 )
             except Exception:
                 pass
+
+
+    # =========================================================
+    # /remove_premium  ← NOUVEAU
+    # =========================================================
+    @bot.message_handler(commands=['remove_premium'])
+    def cmd_remove_premium(message):
+        if not est_administrateur(message.from_user.id):
+            bot.reply_to(message, "Acces refuse.")
+            return
+        parts = message.text.split()
+        if len(parts) < 2 or not parts[1].isdigit():
+            bot.reply_to(message, "Usage : /remove_premium ID")
+            return
+        target = int(parts[1])
+
+        if _retirer_premium(target):
+            log_admin(message.from_user.id, "remove_premium", f"ID: {target}")
+            bot.reply_to(
+                message,
+                f"Utilisateur {target} est repasse en FREE."
+            )
+            try:
+                bot.send_message(
+                    target,
+                    "Ton abonnement Premium a ete retire.\n\n"
+                    "Tu peux continuer avec le statut FREE."
+                )
+            except Exception:
+                pass
+        else:
+            bot.reply_to(message, "Utilisateur introuvable.")
 
 
     # =========================================================
