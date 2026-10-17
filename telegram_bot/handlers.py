@@ -3,42 +3,30 @@ Point d'entrée des handlers Telegram.
 Enregistre tous les modules dans le bon ordre.
 """
 
+# ⚠️ L'ADMIN DOIT ÊTRE EN PREMIER
 from telegram_bot.admin_handlers import enregistrer_admin_handlers
-from telegram_bot.payment_handlers import enregistrer_payment_handlers
-from telegram_bot.premium_handlers import enregistrer_premium_handlers
-from telegram_bot.prediction_handlers import enregistrer_prediction_handlers
-from telegram_bot.user_handlers import enregistrer_user_handlers
 from telegram_bot.menu_handlers import enregistrer_menu_handlers
+from telegram_bot.payment_handlers import enregistrer_payment_handlers
+from telegram_bot.prediction_handlers import enregistrer_prediction_handlers
+from telegram_bot.premium_handlers import enregistrer_premium_handlers
+from telegram_bot.user_handlers import enregistrer_user_handlers
 
 
 def enregistrer_handlers(bot):
-    """
-    Enregistre tous les handlers utilisateur.
-    ⚠️ L'ORDRE est CRUCIAL :
-    1. Admin (pour qu'il attrape 'Panneau Admin' en premier)
-    2. Paiement
-    3. Premium
-    4. Prédictions
-    5. Commandes utilisateur
-    6. Menu principal (en dernier, c'est le fallback)
-    """
+    # Liste ordonnée des modules de handlers (du plus restrictif/prioritaire au fallback)
+    handlers_modules = [
+        ("Admin", enregistrer_admin_handlers),
+        ("Paiement", enregistrer_payment_handlers),
+        ("Premium", enregistrer_premium_handlers),
+        ("Prédiction", enregistrer_prediction_handlers),
+        ("User", enregistrer_user_handlers),
+        ("Menu", enregistrer_menu_handlers),  # Fallback en dernier
+    ]
 
-    # 1. ADMIN EN PREMIER (Très important pour le bouton Panneau Admin)
-    enregistrer_admin_handlers(bot)
+    # Enregistrement séquentiel
+    for nom, enregistrer in handlers_modules:
+        enregistrer(bot)
 
-    # 2. Paiement
-    enregistrer_payment_handlers(bot)
-
-    # 3. Premium (coupons + top affiches)
-    enregistrer_premium_handlers(bot)
-
-    # 4. Prédictions (boutons inline)
-    enregistrer_prediction_handlers(bot)
-
-    # 5. Commandes utilisateur (stats, historique, notifs, langue, parrainage)
-    enregistrer_user_handlers(bot)
-
-    # 6. Menu principal + /start (fallback, EN DERNIER)
-    enregistrer_menu_handlers(bot)
-
-    print("✅ Handlers utilisateur enregistrés dans le bon ordre")
+    # Construction dynamique du message de log
+    noms = " -> ".join([nom for nom, _ in handlers_modules])
+    print(f"✅ Handlers enregistrés : {noms}")
