@@ -42,6 +42,7 @@ def envoyer_menu_principal(chat_id, user_id, bot):
     user_info = get_user_info(user_id)
     nom = user_info['first_name'] if user_info else "Utilisateur"
 
+    # Clavier de réponse (boutons en bas de l'écran)
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(
         telebot.types.KeyboardButton(get_text("btn_pronostic", langue)),
@@ -55,19 +56,36 @@ def envoyer_menu_principal(chat_id, user_id, bot):
         telebot.types.KeyboardButton(get_text("btn_parrainage", langue)),
         telebot.types.KeyboardButton(get_text("btn_langue", langue)),
     )
-    
-    # NOUVEAU : Bouton pour rejoindre le canal
-    markup.add(telebot.types.KeyboardButton("📢 Rejoindre notre Canal", url=config.CANAL_LIEN))
 
     if est_administrateur(user_id):
         markup.add(telebot.types.KeyboardButton("Panneau Admin"))
+
+    # Clavier Inline pour le Canal (bouton attaché au message)
+    inline_markup = telebot.types.InlineKeyboardMarkup()
+    inline_markup.add(
+        telebot.types.InlineKeyboardButton("📢 Rejoindre notre Canal", url=config.CANAL_LIEN)
+    )
 
     welcome_text = get_text(
         "welcome", langue, nom=nom, statut=statut_label,
         compteur=compteur, limite=limite, nb_matchs=nb_matchs,
         precision=round(prec * 100, 2)
     )
-    bot.send_message(chat_id, welcome_text, reply_markup=markup)
+    
+    # On envoie le message avec les DEUX claviers (celui du bas + le bouton inline)
+    bot.send_message(
+        chat_id, 
+        welcome_text, 
+        reply_markup=markup,
+        # On ne peut pas mettre deux reply_markup, donc on envoie le bouton inline dans un second message
+    )
+    
+    # Message séparé pour le bouton du canal
+    bot.send_message(
+        chat_id, 
+        "👇 Rejoins notre canal pour ne rien rater des pronostics :", 
+        reply_markup=inline_markup
+    )
 
 def enregistrer_menu_handlers(bot):
 
@@ -81,7 +99,6 @@ def enregistrer_menu_handlers(bot):
         existe_avant = get_user_info(user.id) is not None
         enregistrer_utilisateur(user.id, user.username, user.first_name)
 
-        # CORRECTION : On vérifie que l'utilisateur existe bien en BDD
         if not existe_avant and get_user_info(user.id) is not None:
             parts = message.text.split()
             if len(parts) >= 2 and parts[1].startswith("REF"):
@@ -111,7 +128,6 @@ def enregistrer_menu_handlers(bot):
 
         envoyer_menu_principal(message.chat.id, user.id, bot)
 
-    # CORRECTION : Fallback intelligent
     @bot.message_handler(func=lambda message: True)
     def handle_menu_fallback(message):
         user_id = message.from_user.id
@@ -121,6 +137,5 @@ def enregistrer_menu_handlers(bot):
             bot.reply_to(message, get_text("banni", langue))
             return
 
-        # Si c'est un message inconnu, on renvoie le menu ou l'aide
         bot.reply_to(message, get_text("fallback", langue))
         envoyer_menu_principal(message.chat.id, user_id, bot)
