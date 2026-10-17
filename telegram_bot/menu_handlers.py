@@ -53,11 +53,8 @@ def envoyer_menu_principal(chat_id, user_id, bot):
         telebot.types.KeyboardButton(get_text("btn_notifs", langue)),
         telebot.types.KeyboardButton(get_text("btn_premium", langue)),
         telebot.types.KeyboardButton(get_text("btn_parrainage", langue)),
-        telebot.types.KeyboardButton(get_text("btn_langue", langue)),
+        telebot.types.KeyboardButton(get_text("btn_langue", langue)), # ⚠️ Correction ici
     )
-
-    # ⚠️ NOUVEAU : On n'ajoute plus le bouton "Panneau Admin" au clavier de réponse.
-    # À la place, on crée un bouton Inline (qui ne peut pas être intercepté par le fallback).
 
     welcome_text = get_text(
         "welcome", langue, nom=nom, statut=statut_label,
@@ -67,13 +64,11 @@ def envoyer_menu_principal(chat_id, user_id, bot):
     
     bot.send_message(chat_id, welcome_text, reply_markup=markup)
 
-    # Bouton inline pour le canal
     inline_markup = telebot.types.InlineKeyboardMarkup()
     inline_markup.add(
         telebot.types.InlineKeyboardButton("📢 Rejoindre notre Canal", url=config.CANAL_LIEN)
     )
 
-    # ⚠️ NOUVEAU : Si c'est un admin, on lui ajoute un bouton Inline pour son panneau
     if est_administrateur(user_id):
         inline_markup.add(
             telebot.types.InlineKeyboardButton("🎛️ Ouvrir le Panneau Admin", callback_data="open_admin_panel")
@@ -106,14 +101,12 @@ def enregistrer_menu_handlers(bot):
                             try:
                                 bot.send_message(user.id, get_text("parrainage_bienvenue", langue))
                             except: pass
-                            
                             nb_filleuls = compter_filleuls(parrain_id)
                             palier = get_palier_atteint(nb_filleuls)
                             bonus_palier = ""
                             if palier and nb_filleuls in [5, 10, 20, 50]:
                                 ajouter_jours_premium(parrain_id, palier['bonus'])
                                 bonus_palier = f"\n\n🏆 Palier {palier['nom']} atteint ! +{palier['bonus']} jours bonus"
-                            
                             try:
                                 bot.send_message(parrain_id, f"🎉 Nouveau filleul : {user.first_name}\n\n+1 jour Premium offert !\n📊 Total : {nb_filleuls} filleul(s){bonus_palier}")
                             except: pass
@@ -122,8 +115,10 @@ def enregistrer_menu_handlers(bot):
 
         envoyer_menu_principal(message.chat.id, user.id, bot)
 
-    # ⚠️ On garde le fallback, mais on ne l'utilise plus pour le panneau admin
-    @bot.message_handler(func=lambda message: True)
+    # =========================================================
+    # FALLBACK SÉCURISÉ
+    # =========================================================
+    @bot.message_handler(func=lambda message: not message.text.startswith('/'))
     def handle_menu_fallback(message):
         user_id = message.from_user.id
         langue = get_langue(user_id)
@@ -132,5 +127,28 @@ def enregistrer_menu_handlers(bot):
             bot.reply_to(message, get_text("banni", langue))
             return
 
+        # ⚠️ CORRECTION : On ignore si l'utilisateur est en train de faire une saisie admin
+        from telegram_bot.admin_handlers import ADMIN_SESSIONS
+        if user_id in ADMIN_SESSIONS:
+            return # On laisse le register_next_step_handler gérer la saisie
+
+        # On vérifie si le texte est un bouton connu, sinon on ignore
+        boutons_connus = [
+            get_text("btn_pronostic", langue),
+            get_text("btn_matchs_jour", langue),
+            get_text("btn_coupons", langue),
+            get_text("btn_top_affiches", langue),
+            get_text("btn_historique", langue),
+            get_text("btn_stats", langue),
+            get_text("btn_notifs", langue),
+            get_text("btn_premium", langue),
+            get_text("btn_parrainage", langue),
+            get_text("btn_langue", langue),
+        ]
+
+        if message.text in boutons_connus:
+            pass # Les boutons ont leurs propres handlers ailleurs
+
+        # Si c'est un message inconnu, on affiche le fallback
         bot.reply_to(message, get_text("fallback", langue))
         envoyer_menu_principal(message.chat.id, user_id, bot)
