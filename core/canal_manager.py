@@ -7,33 +7,31 @@ from core.paris_builder import generer_coupons_du_jour, formater_coupon
 def _envoyer_au_canal_securise(bot, texte, dry_run=False, chat_debug=None):
     """
     Envoie un message sur le canal.
-    - dry_run=True : n'envoie pas sur le canal, mais renvoie le texte à l'admin.
-    - chat_debug : ID du chat admin pour recevoir les erreurs.
+    - dry_run=True : n'envoie pas sur le canal, envoie le texte à l'admin pour vérification.
+    - chat_debug : ID du chat admin pour recevoir les erreurs/test.
     """
     try:
-        # 1. Vérification de la taille (Telegram limite à 4096)
+        # Sécurité : On tronque si c'est trop long (Telegram limite à 4096)
         if len(texte) > 4000:
             texte = texte[:3990] + "\n\n[...Message tronqué...]"
 
-        # 2. Mode Test (Dry Run) - On n'envoie rien sur le canal
+        # Mode Test (Dry Run)
         if dry_run:
             if chat_debug:
-                msg = f"🧪 **MODE TEST (Dry Run)**\n\nVoici ce qui aurait été envoyé sur le canal :\n\n{texte}"
-                # On envoie le texte à l'admin pour vérifier le rendu Markdown
+                msg = f"🧪 **MODE TEST (Dry Run)**\n\nVoici le message qui sera envoyé :\n\n{texte}"
                 bot.send_message(chat_debug, msg, parse_mode='Markdown')
             return True
 
-        # 3. Mode Production (Envoi réel)
+        # Mode Production (Envoi réel)
         bot.send_message(CANAL_ID, texte, parse_mode='Markdown')
         return True
 
     except Exception as e:
-        # En cas d'erreur, on log proprement et on prévient l'admin
         erreur_msg = f"❌ ERREUR CANAL : {str(e)}"
         print(erreur_msg)
         if chat_debug:
             try:
-                bot.send_message(chat_debug, f"⚠️ *Échec d'envoi sur le canal*\n\nRaison : `{str(e)}`", parse_mode='Markdown')
+                bot.send_message(chat_debug, f"⚠️ *Échec d'envoi*\n\nRaison : `{str(e)}`", parse_mode='Markdown')
             except Exception:
                 pass
         return False
