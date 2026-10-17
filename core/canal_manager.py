@@ -2,35 +2,27 @@ import time
 from config import CANAL_ID
 from core.daily_matches import get_matchs_du_jour, formater_matchs_du_jour
 from core.paris_builder import generer_coupons_du_jour, formater_coupon
-from core.utils.logs import log_info, log_error, log_canal_action
+from core.utils.logs import log_info, log_error
 
 
 def _envoyer_au_canal_securise(bot, texte, dry_run=False, chat_debug=None):
-    """
-    Envoie un message sur le canal SANS AUCUN Markdown.
-    Cela évite à 100% l'erreur 'can't parse entities'.
-    """
+    """Envoie un message sur le canal SANS AUCUN Markdown."""
     try:
-        # Sécurité : On tronque si c'est trop long
         if len(texte) > 4000:
             texte = texte[:3990] + "\n\n[...Message tronqué...]"
 
         # Mode Test (Dry Run)
         if dry_run:
             if chat_debug:
-                msg = f"🧪 MODE TEST (Dry Run)\n\nVoici le message qui sera envoyé :\n\n{texte}"
-                # On n'utilise AUCUN parse_mode ici non plus
-                bot.send_message(chat_debug, msg)
+                bot.send_message(chat_debug, f"🧪 MODE TEST (Dry Run)\n\nVoici le message qui sera envoyé :\n\n{texte}")
             return True
 
         # Mode Production (Envoi réel)
-        # On n'utilise AUCUN parse_mode
         bot.send_message(CANAL_ID, texte)
         return True
 
     except Exception as e:
-        erreur_msg = f"❌ ERREUR CANAL : {str(e)}"
-        log_error(erreur_msg, "CANAL")
+        log_error(f"ERREUR CANAL : {str(e)}", "CANAL")
         if chat_debug:
             try:
                 bot.send_message(chat_debug, f"⚠️ Échec d'envoi\n\nRaison : {str(e)}")
@@ -39,18 +31,50 @@ def _envoyer_au_canal_securise(bot, texte, dry_run=False, chat_debug=None):
         return False
 
 
+def publier_coupons_sur_canal(bot, dry_run=False, chat_debug=None):
+    try:
+        data = generer_coupons_du_jour()
+        coupons = data['coupons']
+        
+        # ⚠️ DIAGNOSTIC : Si aucun coupon n'est généré, on prévient l'admin
+        if not coupons:
+            msg = "❌ Aucun coupon généré (pas assez de matchs avec cote ≥ 1.30 aujourd'hui)."
+            log_error(msg, "CANAL")
+            if chat_debug and dry_run:
+                bot.send_message(chat_debug, msg)
+            return False
+
+        # On cherche le coupon "modéré" en priorité
+        coupon_a_publier = next((c for c in coupons if c['niveau'] == 'modere'), coupons[0])
+        
+        texte = "🎟️ COUPON DU JOUR (Gratuit) 🎟️\n\n"
+        texte += formater_coupon(coupon_a_publier, langue="fr", montrer_details=False)
+        texte += "\n\n⭐ Passe Premium sur le bot : @MonPronosticFootball_bot"
+        
+        return _envoyer_au_canal_securise(bot, texte, dry_run, chat_debug)
+    except Exception as e:
+        log_error(f"Erreur interne coupons : {e}", "CANAL")
+        if chat_debug:
+            bot.send_message(chat_debug, f"❌ Erreur interne : {e}")
+        return False
+
+
 def publier_matchs_sur_canal(bot, dry_run=False, chat_debug=None):
     try:
         matchs = get_matchs_du_jour()
         if not matchs:
+            msg = "❌ Aucun match trouvé pour aujourd'hui."
+            log_error(msg, "CANAL")
             if chat_debug and dry_run:
-                bot.send_message(chat_debug, "❌ Aucun match trouvé.")
+                bot.send_message(chat_debug, msg)
             return False
 
         matchs_filtres = [m for m in matchs if m.get('analyse_pari') and m['analyse_pari']['cote_bot'] >= 1.30]
         if not matchs_filtres:
+            msg = "⏸️ Aucun match avec cote ≥ 1.30 aujourd'hui."
+            log_error(msg, "CANAL")
             if chat_debug and dry_run:
-                bot.send_message(chat_debug, "⏸️ Aucun match avec cote ≥ 1.30.")
+                bot.send_message(chat_debug, msg)
             return False
 
         texte = "🔥 LES MATCHS DU JOUR 🔥\n\n"
@@ -60,26 +84,8 @@ def publier_matchs_sur_canal(bot, dry_run=False, chat_debug=None):
         return _envoyer_au_canal_securise(bot, texte, dry_run, chat_debug)
     except Exception as e:
         log_error(f"Erreur interne matchs : {e}", "CANAL")
-        return False
-
-
-def publier_coupons_sur_canal(bot, dry_run=False, chat_debug=None):
-    try:
-        data = generer_coupons_du_jour()
-        coupons = data['coupons']
-        if not coupons:
-            if chat_debug and dry_run:
-                bot.send_message(chat_debug, "❌ Aucun coupon généré.")
-            return False
-
-        coupon_a_publier = next((c for c in coupons if c['niveau'] == 'modere'), coupons[0])
-        texte = "🎟️ COUPON DU JOUR (Gratuit) 🎟️\n\n"
-        texte += formater_coupon(coupon_a_publier, langue="fr", montrer_details=False)
-        texte += "\n\n⭐ Passe Premium sur le bot : @MonPronosticFootball_bot"
-        
-        return _envoyer_au_canal_securise(bot, texte, dry_run, chat_debug)
-    except Exception as e:
-        log_error(f"Erreur interne coupons : {e}", "CANAL")
+        if chat_debug:
+            bot.send_message(chat_debug, f"❌ Erreur interne : {e}")
         return False
 
 
