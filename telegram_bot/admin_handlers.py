@@ -20,7 +20,6 @@ def enregistrer_admin_handlers(bot):
     def cmd_admin(message):
         if not est_administrateur(message.from_user.id):
             return
-        # On affiche le menu admin dans le CLAVIER DU BAS (ReplyKeyboard)
         bot.send_message(
             message.chat.id, 
             "🎛️ PANNEAU ADMIN\n\nChoisis une action :", 
@@ -51,7 +50,6 @@ def enregistrer_admin_handlers(bot):
         user_id = call.from_user.id
         bot.answer_callback_query(call.id)
 
-        # Navigation Inline
         if data == "admin_back":
             ADMIN_SESSIONS.pop(user_id, None)
             try:
@@ -87,6 +85,7 @@ def enregistrer_admin_handlers(bot):
         "📊 Stats", "👥 Utilisateurs", "💳 Paiements", "🎟️ Codes Premium",
         "🗄️ Base de données", "👑 Admins", "⚙️ Paramètres", "📝 Logs",
         "🚫 Bannis", "📢 Broadcast", "💎 Premium", "🔙 Quitter Admin",
+        "🔍 Lancer l'Audit", # ⚠️ NOUVEAU
         "➕ Ajouter Premium", "➖ Retirer Premium", "🔙 Retour Admin",
         "Gen 10 jours", "Gen 30 jours", "Gen 90 jours", "Gen custom", "👁️ Voir codes dispo",
         "Heure notifs", "Limite Free", "Prix Stars", "Message accueil", "Mode maintenance", "👁️ Voir parametres",
@@ -105,6 +104,14 @@ def enregistrer_admin_handlers(bot):
         # --- Retour Admin ---
         if text == "🔙 Retour Admin":
             bot.send_message(message.chat.id, "🎛️ PANNEAU ADMIN", reply_markup=menu_admin_bas())
+            return
+
+        # --- Audit ---
+        if text == "🔍 Lancer l'Audit":
+            from core.audit import lancer_audit_complet
+            bot.send_message(message.chat.id, "⏳ Lancement de l'audit... Regarde les logs Render.")
+            lancer_audit_complet()
+            bot.send_message(message.chat.id, "✅ Audit terminé ! Regarde les logs Render pour les détails.")
             return
 
         # --- Navigation vers les sous-menus (Bascule de clavier) ---
