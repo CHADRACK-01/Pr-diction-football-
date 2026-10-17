@@ -132,7 +132,7 @@ def initialiser_tables():
             )
         """)
 
-        # ⚠️ NOUVEAU : Paiements en attente
+        # Paiements en attente
         cur.execute("""
             CREATE TABLE IF NOT EXISTS paiements_attente (
                 id SERIAL PRIMARY KEY,
@@ -149,7 +149,7 @@ def initialiser_tables():
 
         cur.execute("CREATE INDEX IF NOT EXISTS idx_paiements_statut ON paiements_attente(statut)")
 
-        # ⚠️ NOUVEAU : Codes Premium
+        # Codes Premium
         cur.execute("""
             CREATE TABLE IF NOT EXISTS codes_premium (
                 code TEXT PRIMARY KEY,
@@ -163,10 +163,26 @@ def initialiser_tables():
 
         cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_utilise ON codes_premium(utilise)")
 
+        # ⚠️ NOUVELLE TABLE : Résultats des pronostics (remplace le CSV)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS resultats_pronostics (
+                id SERIAL PRIMARY KEY,
+                date_match DATE,
+                home_team TEXT,
+                away_team TEXT,
+                pronostic_reco TEXT,
+                score_reel TEXT,
+                est_gagnant BOOLEAN,
+                date_creation TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_resultats_date ON resultats_pronostics(date_match)")
+
         conn.commit()
         cur.close()
         conn.close()
-        print("✅ Tables PostgreSQL prêtes (avec paiements + codes).")
+        print("✅ Tables PostgreSQL prêtes (avec paiements + codes + resultats).")
     except Exception as e:
         print(f"❌ Erreur init tables : {e}")
 
