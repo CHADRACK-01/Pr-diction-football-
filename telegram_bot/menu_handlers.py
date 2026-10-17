@@ -42,7 +42,6 @@ def envoyer_menu_principal(chat_id, user_id, bot):
     user_info = get_user_info(user_id)
     nom = user_info['first_name'] if user_info else "Utilisateur"
 
-    # Clavier de réponse (boutons en bas de l'écran)
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(
         telebot.types.KeyboardButton(get_text("btn_pronostic", langue)),
@@ -60,7 +59,6 @@ def envoyer_menu_principal(chat_id, user_id, bot):
     if est_administrateur(user_id):
         markup.add(telebot.types.KeyboardButton("Panneau Admin"))
 
-    # Clavier Inline pour le Canal (bouton attaché au message)
     inline_markup = telebot.types.InlineKeyboardMarkup()
     inline_markup.add(
         telebot.types.InlineKeyboardButton("📢 Rejoindre notre Canal", url=config.CANAL_LIEN)
@@ -72,20 +70,8 @@ def envoyer_menu_principal(chat_id, user_id, bot):
         precision=round(prec * 100, 2)
     )
     
-    # On envoie le message avec les DEUX claviers (celui du bas + le bouton inline)
-    bot.send_message(
-        chat_id, 
-        welcome_text, 
-        reply_markup=markup,
-        # On ne peut pas mettre deux reply_markup, donc on envoie le bouton inline dans un second message
-    )
-    
-    # Message séparé pour le bouton du canal
-    bot.send_message(
-        chat_id, 
-        "👇 Rejoins notre canal pour ne rien rater des pronostics :", 
-        reply_markup=inline_markup
-    )
+    bot.send_message(chat_id, welcome_text, reply_markup=markup)
+    bot.send_message(chat_id, "👇 Rejoins notre canal pour ne rien rater des pronostics :", reply_markup=inline_markup)
 
 def enregistrer_menu_handlers(bot):
 
@@ -136,6 +122,20 @@ def enregistrer_menu_handlers(bot):
         if est_banni(user_id):
             bot.reply_to(message, get_text("banni", langue))
             return
+
+        # ⚠️ CORRECTION : On laisse passer les boutons qui ont leur propre handler
+        textes_ignores = [
+            "Panneau Admin", "Stats", "Utilisateurs", "Admins", "Parametres",
+            "Logs", "Bannis", "Broadcast", "Premium", "Retour Menu",
+            "Ajouter Premium", "Retirer Premium", "Retour Admin",
+            "Paiements", "Codes", "Base de donnees",
+            "Gen 10 jours", "Gen 30 jours", "Gen 90 jours", "Gen custom", "Voir codes dispo",
+            "Heure notifs", "Limite Free", "Prix Stars", "Message accueil", "Mode maintenance", "Voir parametres",
+            "Taille BDD", "Detail tables", "Nettoyer"
+        ]
+        
+        if message.text in textes_ignores:
+            return # On laisse le fichier admin_handlers.py s'en occuper
 
         bot.reply_to(message, get_text("fallback", langue))
         envoyer_menu_principal(message.chat.id, user_id, bot)
