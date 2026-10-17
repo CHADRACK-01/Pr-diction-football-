@@ -2,7 +2,6 @@ import io
 import joblib
 import telebot
 import config
-from datetime import datetime
 
 from users import (
     enregistrer_utilisateur, get_langue, set_langue, est_banni,
@@ -28,7 +27,7 @@ def envoyer_menu_principal(chat_id, user_id, bot):
     user_info = get_user_info(user_id)
     nom = user_info['first_name'] if user_info else "Utilisateur"
 
-    # 1. Message de présentation
+    # Message de présentation (après /start)
     presentation = (
         f"👋 Bienvenue {nom} sur Pronostic Football !\n\n"
         f"🤖 Je suis un bot d'Intelligence Artificielle spécialisé dans les pronostics sportifs. "
@@ -39,6 +38,7 @@ def envoyer_menu_principal(chat_id, user_id, bot):
         f"👇 Utilise les boutons ci-dessous pour commencer :"
     )
 
+    # Clavier normal (en bas)
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(
         telebot.types.KeyboardButton(get_text("btn_pronostic", langue)),
@@ -52,32 +52,28 @@ def envoyer_menu_principal(chat_id, user_id, bot):
         telebot.types.KeyboardButton(get_text("btn_parrainage", langue)),
         telebot.types.KeyboardButton(get_text("btn_langue", langue)),
     )
+    # ⚠️ Ajout du bouton Panneau Admin dans le clavier normal
+    if est_administrateur(user_id):
+        markup.add(telebot.types.KeyboardButton("Panneau Admin"))
+
     bot.send_message(chat_id, presentation, reply_markup=markup)
 
-    # 2. Boutons Inline (Canal + Admin)
+    # Boutons Inline (Canal uniquement, et seulement pour les non-membres)
     inline_markup = telebot.types.InlineKeyboardMarkup(row_width=1)
     
-    # Vérifier si l'utilisateur est membre du canal
     try:
         member = bot.get_chat_member(config.CANAL_ID, user_id)
         is_member = member.status in ['member', 'administrator', 'creator']
     except Exception:
         is_member = False
 
-    # Afficher le bouton canal UNIQUEMENT si l'utilisateur n'est pas membre
     if not is_member:
         inline_markup.add(
             telebot.types.InlineKeyboardButton("📢 Rejoindre notre Canal", url=config.CANAL_LIEN)
         )
 
-    # Bouton "Autres" pour l'admin (au lieu du bouton Panneau Admin direct)
-    if est_administrateur(user_id):
-        inline_markup.add(
-            telebot.types.InlineKeyboardButton("⚙️ Autres", callback_data="open_admin_panel")
-        )
-
     if inline_markup.keyboard:
-        bot.send_message(chat_id, "👇 Options supplémentaires :", reply_markup=inline_markup)
+        bot.send_message(chat_id, "👇 Rejoins notre canal pour ne rien rater :", reply_markup=inline_markup)
 
 
 def enregistrer_start_handlers(bot):
