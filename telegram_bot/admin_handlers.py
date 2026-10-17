@@ -117,7 +117,7 @@ def enregistrer_admin_handlers(bot):
         bot.reply_to(message, "🎛️ **PANNEAU ADMIN**\n\nChoisis une action :", reply_markup=_menu_principal_admin(), parse_mode="Markdown")
 
     # =========================================================
-    # ⚠️ NOUVEAU : CALLBACK DU BOUTON INLINE (Ouverture depuis le menu)
+    # CALLBACK DU BOUTON INLINE (Ouverture depuis le menu)
     # =========================================================
     @bot.callback_query_handler(func=lambda call: call.data == "open_admin_panel")
     def open_admin_panel_callback(call):
@@ -145,18 +145,33 @@ def enregistrer_admin_handlers(bot):
         user_id = call.from_user.id
         bot.answer_callback_query(call.id)
 
+        # ⚠️ CORRECTION : On vide la session dès qu'on clique sur un bouton de menu
+        if data in ["admin_back", "admin_premium", "admin_codes", "admin_bdd", "admin_params", "admin_broadcast"]:
+            ADMIN_SESSIONS.pop(user_id, None)
+
         # --- Navigation ---
         if data == "admin_back":
-            bot.edit_message_text("🎛️ **PANNEAU ADMIN**\n\nChoisis une action :", call.message.chat.id, call.message.message_id, reply_markup=_menu_principal_admin(), parse_mode="Markdown")
+            try:
+                bot.edit_message_text("🎛️ **PANNEAU ADMIN**\n\nChoisis une action :", call.message.chat.id, call.message.message_id, reply_markup=_menu_principal_admin(), parse_mode="Markdown")
+            except Exception:
+                bot.send_message(call.message.chat.id, "🎛️ **PANNEAU ADMIN**", reply_markup=_menu_principal_admin(), parse_mode="Markdown")
+                
         elif data == "admin_close":
-            bot.delete_message(call.message.chat.id, call.message.message_id)
+            try:
+                bot.delete_message(call.message.chat.id, call.message.message_id)
+            except Exception:
+                pass
+                
         elif data == "admin_premium":
             bot.edit_message_text("💎 **GESTION PREMIUM**", call.message.chat.id, call.message.message_id, reply_markup=_menu_premium(), parse_mode="Markdown")
+            
         elif data == "admin_codes":
             dispo = compter_codes_disponibles()
             bot.edit_message_text(f"🎟️ **CODES PREMIUM**\n\nCodes disponibles : {dispo}", call.message.chat.id, call.message.message_id, reply_markup=_menu_codes(), parse_mode="Markdown")
+            
         elif data == "admin_bdd":
             bot.edit_message_text("🗄️ **BASE DE DONNÉES**", call.message.chat.id, call.message.message_id, reply_markup=_menu_bdd(), parse_mode="Markdown")
+            
         elif data == "admin_params":
             bot.edit_message_text("⚙️ **PARAMÈTRES**", call.message.chat.id, call.message.message_id, reply_markup=_menu_parametres(), parse_mode="Markdown")
 
