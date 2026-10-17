@@ -14,7 +14,6 @@ def menu_principal_admin():
         telebot.types.InlineKeyboardButton("🚫 Bannis", callback_data="admin_bannis"),
         telebot.types.InlineKeyboardButton("📢 Broadcast", callback_data="admin_broadcast"),
         telebot.types.InlineKeyboardButton("💎 Premium", callback_data="admin_premium"),
-        telebot.types.InlineKeyboardButton("🧪 Tests Canal", callback_data="admin_test_menu"),
         telebot.types.InlineKeyboardButton("❌ Fermer", callback_data="admin_close")
     )
     return markup
@@ -59,17 +58,6 @@ def menu_bdd():
         telebot.types.InlineKeyboardButton("Taille BDD", callback_data="admin_taille_bdd"),
         telebot.types.InlineKeyboardButton("Detail tables", callback_data="admin_detail_tables"),
         telebot.types.InlineKeyboardButton("🧹 Nettoyer", callback_data="admin_nettoyer"),
-        telebot.types.InlineKeyboardButton("🔙 Retour Admin", callback_data="admin_back")
-    )
-    return markup
-
-def menu_test_canal():
-    markup = telebot.types.InlineKeyboardMarkup(row_width=1)
-    markup.add(
-        telebot.types.InlineKeyboardButton("👁️ Dry Run : Matchs du jour", callback_data="dryrun_matchs"),
-        telebot.types.InlineKeyboardButton("👁️ Dry Run : Coupons", callback_data="dryrun_coupons"),
-        telebot.types.InlineKeyboardButton("🚀 ENVOI RÉEL : Matchs du jour", callback_data="send_matchs"),
-        telebot.types.InlineKeyboardButton("🚀 ENVOI RÉEL : Coupons", callback_data="send_coupons"),
         telebot.types.InlineKeyboardButton("🔙 Retour Admin", callback_data="admin_back")
     )
     return markup
