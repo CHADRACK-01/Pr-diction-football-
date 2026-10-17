@@ -25,6 +25,7 @@ def _meilleure_reco(prono):
 
 
 def get_tous_pronostics_disponibles():
+    """Récupère tous les matchs du jour avec leurs pronostics, en filtrant les cotes < 1.30."""
     from core.daily_matches import get_matchs_du_jour
 
     matchs = get_matchs_du_jour()
@@ -33,13 +34,17 @@ def get_tous_pronostics_disponibles():
     for m in matchs:
         home = m['home']
         away = m['away']
-
         try:
             prono = predire_match(home, away)
             if not isinstance(prono, dict) or 'erreur' in prono:
                 continue
 
             reco_label, reco_pct = _meilleure_reco(prono)
+            cote = round(1 / reco_pct, 2) if reco_pct > 0 else 999
+
+            # Filtre : on ignore les matchs avec cote < 1.30
+            if cote < 1.30:
+                continue
 
             resultats.append({
                 'home': home,
@@ -60,6 +65,7 @@ def get_tous_pronostics_disponibles():
 
 
 def construire_coupon(niveau, matchs_disponibles):
+    """Construit un coupon classique (Sur, Modéré, Risqué)."""
     seuil = NIVEAUX[niveau]
 
     candidats = [
@@ -94,7 +100,45 @@ def construire_coupon(niveau, matchs_disponibles):
     }
 
 
+def construire_coupon_outside(matchs_disponibles):
+    """
+    Construit un coupon avec 3 à 5 matchs ayant une cote individuelle entre 1.80 et 2.20.
+    C'est pour les parieurs qui cherchent de la valeur sur des outsiders.
+    """
+    # On garde les matchs dont la probabilité est entre 45% et 55%
+    # (Cote entre 1.81 et 2.22)
+    candidats = [
+        m for m in matchs_disponibles
+        if 0.45 <= m['reco_pct'] <= 0.55
+    ]
+    
+    if len(candidats) < 3:
+        return None
+    
+    # On trie par confiance décroissante (les plus "sûrs" des outsiders en premier)
+    candidats.sort(key=lambda x: x['reco_pct'], reverse=True)
+    
+    # On prend les 3 à 5 meilleurs
+    nb_matchs = min(len(candidats), 5)
+    selection = candidats[:nb_matchs]
+    
+    # Calcul de la cote totale
+    cote_totale = 1.0
+    confiance_cumulee = 1.0
+    for m in selection:
+        cote_totale *= (1 / m['reco_pct'])
+        confiance_cumulee *= m['reco_pct']
+    
+    return {
+        'niveau': 'outside',
+        'matchs': selection,
+        'cote_totale': round(cote_totale, 2),
+        'confiance_cumulee': round(confiance_cumulee, 4),
+    }
+
+
 def generer_coupons_du_jour():
+    """Génère tous les coupons du jour."""
     maintenant = datetime.now(TZ_KINSHASA)
     jour_semaine = maintenant.weekday()
     est_weekend = jour_semaine >= 5
@@ -137,14 +181,21 @@ def generer_coupons_du_jour():
                     coupon['intervalle'] = inter['nom']
                     coupons.append(coupon)
 
+    # Coupon Outside (tous les jours)
+    coupon_outside = construire_coupon_outside(matchs)
+    if coupon_outside:
+        coupons.append(coupon_outside)
+
     return {'weekend': est_weekend, 'coupons': coupons}
 
 
 def formater_coupon(coupon, langue="fr", montrer_details=True):
+    """Formate l'affichage d'un coupon."""
     niveau_labels = {
         "sur": "🔥 COUPON SUR",
-        "modere": "⚖️ COUPON MODERE",
+        "modere": "⚖️ COUPON MODÉRÉ",
         "risque": "🎲 COUPON RISQUE",
+        "outside": "💎 COUPON OUTSIDER (Cote élevée)",
     }
 
     intervalle_labels = {
