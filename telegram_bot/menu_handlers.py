@@ -56,13 +56,8 @@ def envoyer_menu_principal(chat_id, user_id, bot):
         telebot.types.KeyboardButton(get_text("btn_langue", langue)),
     )
 
-    if est_administrateur(user_id):
-        markup.add(telebot.types.KeyboardButton("Panneau Admin"))
-
-    inline_markup = telebot.types.InlineKeyboardMarkup()
-    inline_markup.add(
-        telebot.types.InlineKeyboardButton("📢 Rejoindre notre Canal", url=config.CANAL_LIEN)
-    )
+    # ⚠️ NOUVEAU : On n'ajoute plus le bouton "Panneau Admin" au clavier de réponse.
+    # À la place, on crée un bouton Inline (qui ne peut pas être intercepté par le fallback).
 
     welcome_text = get_text(
         "welcome", langue, nom=nom, statut=statut_label,
@@ -71,7 +66,20 @@ def envoyer_menu_principal(chat_id, user_id, bot):
     )
     
     bot.send_message(chat_id, welcome_text, reply_markup=markup)
-    bot.send_message(chat_id, "👇 Rejoins notre canal pour ne rien rater des pronostics :", reply_markup=inline_markup)
+
+    # Bouton inline pour le canal
+    inline_markup = telebot.types.InlineKeyboardMarkup()
+    inline_markup.add(
+        telebot.types.InlineKeyboardButton("📢 Rejoindre notre Canal", url=config.CANAL_LIEN)
+    )
+
+    # ⚠️ NOUVEAU : Si c'est un admin, on lui ajoute un bouton Inline pour son panneau
+    if est_administrateur(user_id):
+        inline_markup.add(
+            telebot.types.InlineKeyboardButton("🎛️ Ouvrir le Panneau Admin", callback_data="open_admin_panel")
+        )
+
+    bot.send_message(chat_id, "👇 Rejoins notre canal ou accède au panneau :", reply_markup=inline_markup)
 
 def enregistrer_menu_handlers(bot):
 
@@ -114,6 +122,7 @@ def enregistrer_menu_handlers(bot):
 
         envoyer_menu_principal(message.chat.id, user.id, bot)
 
+    # ⚠️ On garde le fallback, mais on ne l'utilise plus pour le panneau admin
     @bot.message_handler(func=lambda message: True)
     def handle_menu_fallback(message):
         user_id = message.from_user.id
@@ -122,20 +131,6 @@ def enregistrer_menu_handlers(bot):
         if est_banni(user_id):
             bot.reply_to(message, get_text("banni", langue))
             return
-
-        # ⚠️ CORRECTION : On laisse passer les boutons qui ont leur propre handler
-        textes_ignores = [
-            "Panneau Admin", "Stats", "Utilisateurs", "Admins", "Parametres",
-            "Logs", "Bannis", "Broadcast", "Premium", "Retour Menu",
-            "Ajouter Premium", "Retirer Premium", "Retour Admin",
-            "Paiements", "Codes", "Base de donnees",
-            "Gen 10 jours", "Gen 30 jours", "Gen 90 jours", "Gen custom", "Voir codes dispo",
-            "Heure notifs", "Limite Free", "Prix Stars", "Message accueil", "Mode maintenance", "Voir parametres",
-            "Taille BDD", "Detail tables", "Nettoyer"
-        ]
-        
-        if message.text in textes_ignores:
-            return # On laisse le fichier admin_handlers.py s'en occuper
 
         bot.reply_to(message, get_text("fallback", langue))
         envoyer_menu_principal(message.chat.id, user_id, bot)
