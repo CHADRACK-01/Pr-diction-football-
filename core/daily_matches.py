@@ -75,6 +75,7 @@ def _nom_competition(code):
 
 
 def get_matchs_du_jour():
+    """Récupère les matchs via l'API avec une gestion d'erreur robuste."""
     if not global_model_data: return []
     if 'teams' not in global_model_data: return []
 
@@ -93,7 +94,9 @@ def get_matchs_du_jour():
             params = {"dateFrom": date_debut, "dateTo": date_fin}
             res = requests.get(url, headers=headers, params=params, timeout=15)
 
-            if res.status_code != 200: continue
+            if res.status_code != 200: 
+                print(f"⚠️ API Error {res.status_code} pour {code}")
+                continue
 
             data = res.json()
             for m in data.get("matches", []):
@@ -107,7 +110,9 @@ def get_matchs_du_jour():
                 try:
                     prono = predire_match(home, away)
                     if not isinstance(prono, dict): continue
-                    if 'erreur' in prono: continue
+                    if 'erreur' in prono: 
+                        print(f"⚠️ Erreur prediction pour {home} vs {away}: {prono['erreur']}")
+                        continue
                     if 'dc_1x' not in prono: continue
 
                     dc_1x = float(prono['dc_1x'])
@@ -116,6 +121,11 @@ def get_matchs_du_jour():
 
                     options = [("1X", dc_1x), ("X2", dc_x2), ("12", dc_12)]
                     meilleure = max(options, key=lambda x: x[1])
+
+                    # Filtre : on ne garde que si la cote du bot est >= 1.30
+                    cote_bot = round(1 / meilleure[1], 2) if meilleure[1] > 0 else 999
+                    if cote_bot < 1.30:
+                        continue
 
                     matchs_trouves.append({
                         "competition": code,
@@ -129,12 +139,14 @@ def get_matchs_du_jour():
                         "dc_label": meilleure[0],
                         "dc_pct": float(meilleure[1]),
                         "confiance": float(meilleure[1]),
-                        "analyse_pari": prono.get('analyse_pari') # ⚠️ NOUVEAU
+                        "analyse_pari": prono.get('analyse_pari')
                     })
-                except Exception:
+                except Exception as e:
+                    print(f"⚠️ Exception match {home} vs {away}: {e}")
                     continue
 
-        except Exception:
+        except Exception as e:
+            print(f"⚠️ Exception API {code}: {e}")
             continue
 
     matchs_trouves.sort(key=lambda x: (x['heure'], -x['confiance']))
@@ -142,9 +154,7 @@ def get_matchs_du_jour():
 
 
 def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None):
-    """
-    Formate la liste des matchs avec la nouvelle analyse de pari (Cote, Value Bet).
-    """
+    """Formate la liste des matchs avec filtrage et gestion d'erreur."""
     from core.translations import get_text
 
     date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
@@ -156,7 +166,13 @@ def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None)
         matchs = matchs[:nb_max]
 
     jours = {}
+    matchs_affiches = 0
+
     for m in matchs:
+        analyse = m.get('analyse_pari')
+        if est_premium and analyse and analyse['cote_bot'] < 1.30:
+            continue
+            
         try:
             dt = datetime.fromisoformat(m['heure'].replace("Z", "+00:00")).astimezone(TZ_KINSHASA)
             jour_key = dt.strftime("%A %d/%m/%Y")
@@ -166,9 +182,18 @@ def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None)
         if jour_key not in jours:
             jours[jour_key] = []
         jours[jour_key].append(m)
+        matchs_affiches += 1
+
+    if matchs_affiches == 0:
+        return (
+            f"📅 Matchs du {date_str}\n\n"
+            f"⚠️ **Aucun match avec une cote intéressante (≥ 1.30) aujourd'hui.**\n\n"
+            f"👉 Essaie les **Coupons** ou les **Top affiches** pour d'autres opportunités !\n"
+            f"👉 Ou tape **Faire un Pronostic** pour analyser un match spécifique."
+        )
 
     texte = get_text("titre_matchs_jour", langue, date=date_str)
-    texte += f"\n({len(matchs)} matchs)\n\n"
+    texte += f"\n({matchs_affiches} matchs avec cote ≥ 1.30)\n\n"
 
     jours_fr = {
         "Monday": "Lundi", "Tuesday": "Mardi", "Wednesday": "Mercredi",
@@ -205,13 +230,11 @@ def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None)
             texte += f"⚽ {m['home']} vs {m['away']}\n"
             texte += f"   🕐 {heure_local} | 🏆 {nom_comp}\n"
 
-            # ⚠️ NOUVEAU : Affichage de l'analyse de pari
             if est_premium:
                 analyse = m.get('analyse_pari')
                 if analyse:
                     texte += f"   🎯 Reco : {analyse['label']} ({round(analyse['proba']*100, 1)}%)\n"
                     texte += f"   🤖 Cote Bot : {analyse['cote_bot']}\n"
-                    
                     if analyse['cote_book']:
                         texte += f"   🏢 Cote Book : {analyse['cote_book']}\n"
                         if analyse['is_value']:
