@@ -36,7 +36,6 @@ def enregistrer_admin_handlers(bot):
         user_id = call.from_user.id
         bot.answer_callback_query(call.id)
 
-        # Navigation
         if data == "admin_back":
             ADMIN_SESSIONS.pop(user_id, None)
             bot.edit_message_text("🎛️ **PANNEAU ADMIN**\n\nChoisis une action :", call.message.chat.id, call.message.message_id, reply_markup=menu_principal_admin(), parse_mode="Markdown")
@@ -57,7 +56,6 @@ def enregistrer_admin_handlers(bot):
             ADMIN_SESSIONS.pop(user_id, None)
             bot.edit_message_text("⚙️ **PARAMÈTRES**", call.message.chat.id, call.message.message_id, reply_markup=menu_parametres(), parse_mode="Markdown")
         else:
-            # Délégation au module actions.py pour toutes les autres actions
             executer_action(bot, call, data, user_id)
 
     @bot.message_handler(commands=['annuler'])
