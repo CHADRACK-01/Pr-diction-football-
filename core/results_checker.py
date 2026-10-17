@@ -7,7 +7,6 @@ TZ_KINSHASA = timezone(timedelta(hours=1))
 
 def _normaliser_nom(nom):
     """Petite fonction pour matcher les noms de l'API avec ceux de la BDD."""
-    # On met en minuscule et on enlève les mots communs pour faciliter la comparaison
     return nom.lower().replace("fc", "").replace("afc", "").replace("cf", "").replace(" ", "").strip()
 
 def verifier_resultats_veille():
@@ -19,7 +18,7 @@ def verifier_resultats_veille():
         conn = get_connection()
         cur = conn.cursor()
         
-        # 1. On récupère tous les pronostics d'hier qui n'ont pas encore été vérifiés (est_gagnant est NULL)
+        # 1. On récupère tous les pronostics d'hier qui n'ont pas encore été vérifiés
         cur.execute("""
             SELECT id, home_team, away_team, pronostic_reco 
             FROM resultats_pronostics 
@@ -65,7 +64,6 @@ def verifier_resultats_veille():
             if api_key in resultats_api:
                 sh, sa = resultats_api[api_key]
                 
-                # Vérification de la reco (Double Chance)
                 est_gagnant = False
                 if reco == "1X" and sh >= sa: est_gagnant = True
                 elif reco == "X2" and sa >= sh: est_gagnant = True
