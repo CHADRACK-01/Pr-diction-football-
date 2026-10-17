@@ -4,8 +4,8 @@ import pandas as pd
 import numpy as np
 from scipy.stats import poisson
 
-from config import FICHIER_HISTORIQUE
 from core.ml_model import global_model_data
+from users.db import get_connection
 
 
 def trouver_nom_exact(nom_partiel, teams):
@@ -151,16 +151,31 @@ def predire_match(home_input, away_input):
 
 
 def sauvegarder_historique(home_team, away_team, p_h, p_d, p_a, best_i, best_j):
-    record = {
-        "Date_Consultation": datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "Match": f"{home_team} vs {away_team}",
-        "Pronostic_1N2": f"1:{round(p_h * 100, 1)}% N:{round(p_d * 100, 1)}% 2:{round(p_a * 100, 1)}%",
-        "Score_Exact": f"{best_i}-{best_j}"
-    }
-    hist_df = pd.DataFrame([record])
+    """Sauvegarde dans PostgreSQL et nettoie les données de + de 30 jours."""
     try:
-        existing = pd.read_csv(FICHIER_HISTORIQUE)
-        updated = pd.concat([existing, hist_df], ignore_index=True)
-        updated.to_csv(FICHIER_HISTORIQUE, index=False)
-    except FileNotFoundError:
-        hist_df.to_csv(FICHIER_HISTORIQUE, index=False)
+        # Déterminer la recommandation principale
+        options = [("1X", p_h + p_d), ("X2", p_d + p_a), ("12", p_h + p_a)]
+        meilleure = max(options, key=lambda x: x[1])[0]
+        score_exact = f"{best_i}-{best_j}"
+        
+        conn = get_connection()
+        cur = conn.cursor()
+        
+        # 1. On enregistre le nouveau pronostic
+        cur.execute("""
+            INSERT INTO resultats_pronostics (date_match, home_team, away_team, pronostic_reco, score_reel)
+            VALUES (CURRENT_DATE, %s, %s, %s, %s)
+        """, (home_team, away_team, meilleure, score_exact))
+        
+        # 2. 🧹 NETTOYAGE AUTOMATIQUE : On supprime les pronostics de plus de 30 jours
+        # (Sauf ceux qui n'ont pas encore de résultat pour le bilan de la veille)
+        cur.execute("""
+            DELETE FROM resultats_pronostics 
+            WHERE date_match < CURRENT_DATE - INTERVAL '30 days'
+        """)
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"⚠️ Erreur sauvegarde historique BDD : {e}")
