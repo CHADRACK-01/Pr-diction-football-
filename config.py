@@ -5,7 +5,7 @@ import os
 # =========================================================
 TOKEN = "8443191637:AAGcCknBZDg1o0NBeL8czLt0SsQ4c2LEMvY"
 
-# ⚠️ Vérifie que l'ID est bien négatif et commence par -100
+# Configuration du Canal Telegram
 CANAL_ID = -1003999473611
 CANAL_USERNAME = "@pronosticsfootball01"
 CANAL_LIEN = "https://t.me/pronosticsfootball01"
@@ -55,6 +55,7 @@ DB_NAME = os.environ.get("DB_NAME", "").strip()
 UPSTASH_BLOB_TOKEN = os.environ.get("UPSTASH_BLOB_TOKEN", "").strip()
 UPSTASH_BUCKET_NAME = "PredictionFootball-csv"
 
+# Debug
 print("=" * 60)
 print(f"🔧 DB_HOST = '{DB_HOST}' | DB_NAME = '{DB_NAME}'")
 print(f"🔧 DB_PASSWORD chargé : {'OUI' if DB_PASSWORD else 'NON'}")
