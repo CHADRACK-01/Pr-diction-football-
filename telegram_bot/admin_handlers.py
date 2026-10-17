@@ -85,7 +85,7 @@ def enregistrer_admin_handlers(bot):
         "📊 Stats", "👥 Utilisateurs", "💳 Paiements", "🎟️ Codes Premium",
         "🗄️ Base de données", "👑 Admins", "⚙️ Paramètres", "📝 Logs",
         "🚫 Bannis", "📢 Broadcast", "💎 Premium", "🔙 Quitter Admin",
-        "🔍 Lancer l'Audit", # ⚠️ NOUVEAU
+        "🔍 Lancer l'Audit",
         "➕ Ajouter Premium", "➖ Retirer Premium", "🔙 Retour Admin",
         "Gen 10 jours", "Gen 30 jours", "Gen 90 jours", "Gen custom", "👁️ Voir codes dispo",
         "Heure notifs", "Limite Free", "Prix Stars", "Message accueil", "Mode maintenance", "👁️ Voir parametres",
