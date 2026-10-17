@@ -86,6 +86,7 @@ def menu_admin_bas():
         telebot.types.KeyboardButton("🚫 Bannis"),
         telebot.types.KeyboardButton("📢 Broadcast"),
         telebot.types.KeyboardButton("💎 Premium"),
+        telebot.types.KeyboardButton("🔍 Lancer l'Audit"), # ⚠️ NOUVEAU
         telebot.types.KeyboardButton("🔙 Quitter Admin")
     )
     return markup
