@@ -13,9 +13,9 @@ from core.utils.logs import log_info, log_error
 
 # Coordonnées Mobile Money
 COORDONNEES_MOBILE = {
-    "Airtel Money": "+243 8XX XXX XXX",
-    "Orange Money": "+243 8XX XXX XXX",
-    "M-Pesa": "+243 8XX XXX XXX",
+    "Airtel Money": "Fonctionnalité à venir",
+    "Orange Money": "+243 842 453 217",
+    "M-Pesa": "Fonctionnalité à venir",
 }
 
 # Stockage temporaire de l'abonnement choisi pour Mobile Money
