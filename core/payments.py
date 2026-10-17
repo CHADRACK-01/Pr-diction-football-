@@ -1,4 +1,6 @@
 import telebot
+from core.utils.logs import log_info, log_error
+
 
 # =========================================================
 # ABONNEMENTS PREMIUM (PRIX EN STARS)
@@ -29,6 +31,7 @@ def envoyer_facture(bot, chat_id, abo_key, user_id):
     - currency doit être 'XTR'
     """
     if abo_key not in ABONNEMENTS:
+        log_error(f"Abonnement inconnu : {abo_key}", "PAYMENTS")
         bot.send_message(chat_id, "Formule inconnue.")
         return False
 
@@ -38,7 +41,7 @@ def envoyer_facture(bot, chat_id, abo_key, user_id):
         bot.send_invoice(
             chat_id=chat_id,
             title=f"Abonnement {abo['nom']}",
-            description=f"Pronostics illimites pendant {abo['duree_jours']} jour(s)",
+            description=f"Pronostics illimités pendant {abo['duree_jours']} jour(s)",
             invoice_payload=f"abo_{abo_key}_{user_id}",
             provider_token="",  # ⚠️ VIDE pour Telegram Stars
             currency="XTR",     # ⚠️ Code des Stars
@@ -50,9 +53,9 @@ def envoyer_facture(bot, chat_id, abo_key, user_id):
             ],
             start_parameter=f"abo_{abo_key}",
         )
-        print(f"Facture envoyee : {abo['nom']} - {abo['prix_stars']} Stars")
+        log_info(f"Facture envoyée : {abo['nom']} - {abo['prix_stars']} Stars (user {user_id})", "PAYMENTS")
         return True
     except Exception as e:
-        print(f"Erreur envoi facture : {e}")
+        log_error(f"Erreur envoi facture : {e}", "PAYMENTS", e)
         bot.send_message(chat_id, f"Erreur : {str(e)[:200]}")
         return False
