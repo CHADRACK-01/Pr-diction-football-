@@ -5,7 +5,7 @@ import os
 # =========================================================
 TOKEN = "8443191637:AAGcCknBZDg1o0NBeL8czLt0SsQ4c2LEMvY"
 
-# Configuration du Canal Telegram
+# ⚠️ Vérifie que l'ID est bien négatif et commence par -100
 CANAL_ID = -1003999473611
 CANAL_USERNAME = "@pronosticsfootball01"
 CANAL_LIEN = "https://t.me/pronosticsfootball01"
@@ -58,10 +58,11 @@ UPSTASH_BUCKET_NAME = "PredictionFootball-csv"
 print("=" * 60)
 print(f"🔧 DB_HOST = '{DB_HOST}' | DB_NAME = '{DB_NAME}'")
 print(f"🔧 DB_PASSWORD chargé : {'OUI' if DB_PASSWORD else 'NON'}")
+print(f"🔧 CANAL_ID = {CANAL_ID}")
 print("=" * 60)
 
 # =========================================================
-# LIMITES PAR DÉFAUT (si non modifiées par l'admin)
+# LIMITES PAR DÉFAUT
 # =========================================================
 LIMITE_FREE_JOUR = 3
 LIMITE_PREMIUM_JOUR = 100
