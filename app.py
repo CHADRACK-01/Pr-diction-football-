@@ -17,7 +17,7 @@ from telegram_bot.inline_handlers import enregistrer_inline_handlers
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
-# ⚠️ ORDRE CRUCIAL :
+# ⚠️ ORDRE CRUCIAL
 enregistrer_admin_handlers(bot)
 enregistrer_inline_handlers(bot)
 enregistrer_handlers(bot)
@@ -111,16 +111,68 @@ def _envoyer_notifications():
 
 
 # =========================================================
+# ENVOI COUPONS PREMIUM
+# =========================================================
+def _envoyer_coupons_premium():
+    """Envoie les coupons à tous les Premium."""
+    from core.paris_builder import generer_coupons_du_jour, formater_coupon
+    from users import get_langue
+    from users.db import get_connection
+
+    try:
+        data = generer_coupons_du_jour()
+        coupons = data['coupons']
+
+        if not coupons:
+            print("Aucun coupon à envoyer")
+            return
+
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT user_id FROM utilisateurs
+            WHERE status = 'premium'
+            AND (date_expiration IS NULL OR date_expiration > NOW())
+        """)
+        premiums = [row[0] for row in cur.fetchall()]
+        cur.close()
+        conn.close()
+
+        succes = 0
+        for uid in premiums:
+            try:
+                langue = get_langue(uid)
+
+                for coupon in coupons:
+                    texte = formater_coupon(coupon, langue, montrer_details=True)
+                    bot.send_message(uid, texte)
+                    time.sleep(0.1)
+
+                succes += 1
+            except Exception as e:
+                print(f"Erreur envoi coupons à {uid} : {e}")
+
+        print(f"📤 Coupons envoyés à {succes} Premium(s)")
+
+    except Exception as e:
+        print(f"Erreur envoi coupons : {e}")
+
+
+# =========================================================
 # SCHEDULER
 # =========================================================
 def _scheduler_notifications():
     print("Scheduler notifications demarre...")
     derniere_date_envoi = None
+    derniere_date_coupons_semaine = None
+    derniere_date_coupons_weekend = None
     dernier_nettoyage = None
 
     while True:
         try:
             now = datetime.now(TZ_KINSHASA)
+            jour_semaine = now.weekday()
+            est_weekend = jour_semaine >= 5
 
             # Notifications à 8h
             if now.hour == 8 and now.minute < 5:
@@ -130,7 +182,21 @@ def _scheduler_notifications():
                     _envoyer_notifications()
                     derniere_date_envoi = date_du_jour
 
-            # Nettoyage une fois par jour à 3h
+                    # Weekend : envoyer les coupons juste après
+                    if est_weekend:
+                        print("Weekend : envoi des coupons...")
+                        _envoyer_coupons_premium()
+                        derniere_date_coupons_weekend = date_du_jour
+
+            # Coupons Semaine à 10h
+            if not est_weekend and now.hour == 10 and now.minute < 5:
+                date_du_jour = now.strftime("%Y-%m-%d")
+                if derniere_date_coupons_semaine != date_du_jour:
+                    print(f"Envoi des coupons du {date_du_jour}...")
+                    _envoyer_coupons_premium()
+                    derniere_date_coupons_semaine = date_du_jour
+
+            # Nettoyage à 3h
             if now.hour == 3 and now.minute < 5:
                 date_du_jour = now.strftime("%Y-%m-%d")
                 if dernier_nettoyage != date_du_jour:
@@ -179,4 +245,4 @@ def index():
 
 
 initialiser_tables()
-print("Bot pret (init differee + notifications + admin + paiements + codes + parrainage).")
+print("Bot pret (init differee + notifications + coupons + paiements + parrainage).")
