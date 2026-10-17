@@ -12,8 +12,10 @@ from users import (
 from core.translations import get_text, LANGUES_DISPONIBLES
 from core.ml_model import global_model_data
 from users import charger_modele_cache
+from core.utils.logs import log_error
 
 BOT_USERNAME = "MonPronosticFootball_bot"
+
 
 def _charger_modele_si_necessaire(message, bot):
     if global_model_data.get('df') is not None and len(global_model_data.get('df', [])) > 0:
@@ -29,8 +31,9 @@ def _charger_modele_si_necessaire(message, bot):
         global_model_data['precision'] = precision
         return True
     except Exception as e:
-        print(f"Erreur chargement cache : {e}")
+        log_error(f"Erreur chargement cache : {e}", "MENU")
         return False
+
 
 def envoyer_menu_principal(chat_id, user_id, bot):
     langue = get_langue(user_id)
@@ -56,6 +59,10 @@ def envoyer_menu_principal(chat_id, user_id, bot):
         telebot.types.KeyboardButton(get_text("btn_parrainage", langue)),
         telebot.types.KeyboardButton(get_text("btn_langue", langue)),
     )
+    
+    # ⚠️ Ajout du bouton Panneau Admin dans le clavier normal (en bas)
+    if est_administrateur(user_id):
+        markup.add(telebot.types.KeyboardButton("Panneau Admin"))
 
     welcome_text = get_text(
         "welcome", langue, nom=nom, statut=statut_label,
@@ -65,17 +72,23 @@ def envoyer_menu_principal(chat_id, user_id, bot):
     
     bot.send_message(chat_id, welcome_text, reply_markup=markup)
 
-    inline_markup = telebot.types.InlineKeyboardMarkup()
-    inline_markup.add(
-        telebot.types.InlineKeyboardButton("📢 Rejoindre notre Canal", url=config.CANAL_LIEN)
-    )
+    # Boutons Inline (Canal uniquement pour les non-membres)
+    inline_markup = telebot.types.InlineKeyboardMarkup(row_width=1)
+    
+    try:
+        member = bot.get_chat_member(config.CANAL_ID, user_id)
+        is_member = member.status in ['member', 'administrator', 'creator']
+    except Exception:
+        is_member = False
 
-    if est_administrateur(user_id):
+    if not is_member:
         inline_markup.add(
-            telebot.types.InlineKeyboardButton("🎛️ Ouvrir le Panneau Admin", callback_data="open_admin_panel")
+            telebot.types.InlineKeyboardButton("📢 Rejoindre notre Canal", url=config.CANAL_LIEN)
         )
 
-    bot.send_message(chat_id, "👇 Rejoins notre canal ou accède au panneau :", reply_markup=inline_markup)
+    if inline_markup.keyboard:
+        bot.send_message(chat_id, "👇 Rejoins notre canal pour ne rien rater :", reply_markup=inline_markup)
+
 
 def enregistrer_menu_handlers(bot):
 
@@ -101,7 +114,7 @@ def enregistrer_menu_handlers(bot):
                             langue = get_langue(user.id)
                             try:
                                 bot.send_message(user.id, get_text("parrainage_bienvenue", langue))
-                            except: 
+                            except Exception: 
                                 pass
                             nb_filleuls = compter_filleuls(parrain_id)
                             palier = get_palier_atteint(nb_filleuls)
@@ -111,14 +124,34 @@ def enregistrer_menu_handlers(bot):
                                 bonus_palier = f"\n\n🏆 Palier {palier['nom']} atteint ! +{palier['bonus']} jours bonus"
                             try:
                                 bot.send_message(parrain_id, f"🎉 Nouveau filleul : {user.first_name}\n\n+1 jour Premium offert !\n📊 Total : {nb_filleuls} filleul(s){bonus_palier}")
-                            except: 
+                            except Exception: 
                                 pass
                 except Exception as e:
-                    print(f"⚠️ Erreur parrainage : {e}")
+                    log_error(f"Erreur parrainage : {e}", "MENU")
 
         envoyer_menu_principal(message.chat.id, user.id, bot)
 
-    # Fallback sécurisé
+    @bot.message_handler(commands=['langue', 'language'])
+    def cmd_langue(message):
+        user_id = message.from_user.id
+        langue = get_langue(user_id)
+        markup = telebot.types.InlineKeyboardMarkup(row_width=1)
+        for code, nom in LANGUES_DISPONIBLES.items():
+            markup.add(telebot.types.InlineKeyboardButton(nom, callback_data=f"lang|{code}"))
+        bot.reply_to(message, get_text("choix_langue", langue), reply_markup=markup)
+
+    @bot.callback_query_handler(func=lambda call: call.data.startswith("lang|"))
+    def traiter_langue(call):
+        user_id = call.from_user.id
+        langue = call.data.split("|")[1]
+        if set_langue(user_id, langue):
+            bot.answer_callback_query(call.id, "OK")
+            bot.send_message(call.message.chat.id, get_text("langue_changee", langue))
+            envoyer_menu_principal(call.message.chat.id, user_id, bot)
+        else:
+            bot.answer_callback_query(call.id, "Erreur")
+
+    # ⚠️ FALLBACK : On ignore "Panneau Admin" pour que admin_handlers.py le gère
     @bot.message_handler(func=lambda message: not message.text.startswith('/'))
     def handle_menu_fallback(message):
         user_id = message.from_user.id
@@ -128,25 +161,14 @@ def enregistrer_menu_handlers(bot):
             bot.reply_to(message, get_text("banni", langue))
             return
 
+        # On laisse passer "Panneau Admin" vers admin_handlers.py
+        if message.text == "Panneau Admin":
+            return
+
+        # On ignore si l'utilisateur est en session admin (pour ne pas interrompre)
         from telegram_bot.admin.actions import ADMIN_SESSIONS
         if user_id in ADMIN_SESSIONS:
             return
-
-        boutons_connus = [
-            get_text("btn_pronostic", langue),
-            get_text("btn_matchs_jour", langue),
-            get_text("btn_coupons", langue),
-            get_text("btn_top_affiches", langue),
-            get_text("btn_historique", langue),
-            get_text("btn_stats", langue),
-            get_text("btn_notifs", langue),
-            get_text("btn_premium", langue),
-            get_text("btn_parrainage", langue),
-            get_text("btn_langue", langue),
-        ]
-
-        if message.text in boutons_connus:
-            pass
 
         bot.reply_to(message, get_text("fallback", langue))
         envoyer_menu_principal(message.chat.id, user_id, bot)
