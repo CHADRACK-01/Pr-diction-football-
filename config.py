@@ -5,6 +5,11 @@ import os
 # =========================================================
 TOKEN = "8443191637:AAGcCknBZDg1o0NBeL8czLt0SsQ4c2LEMvY"
 
+# Configuration du Canal Telegram
+CANAL_ID = -1003999473611
+CANAL_USERNAME = "@pronosticsfootball01"
+CANAL_LIEN = "https://t.me/pronosticsfootball01"
+
 # =========================================================
 # DÉTECTION DE L'ENVIRONNEMENT
 # =========================================================
@@ -20,7 +25,6 @@ DOSSIER_PASSE = os.path.join(DOSSIER_BASE, "archives_passe")
 DOSSIER_ACTUEL = os.path.join(DOSSIER_BASE, "saison_actuelle")
 FICHIER_HISTORIQUE = os.path.join(DOSSIER_BASE, "historique_pronostics.csv")
 
-# Création automatique des dossiers
 try:
     os.makedirs(DOSSIER_PASSE, exist_ok=True)
     os.makedirs(DOSSIER_ACTUEL, exist_ok=True)
@@ -31,16 +35,9 @@ except Exception as e:
 # CHAMPIONNATS
 # =========================================================
 CHAMPIONNATS = {
-    "premier_league": "E0",
-    "championship": "E1",
-    "laliga": "SP1",
-    "laliga_2": "SP2",
-    "ligue_1": "F1",
-    "ligue_2": "F2",
-    "bundesliga_1": "D1",
-    "bundesliga_2": "D2",
-    "serie_a": "I1",
-    "serie_b": "I2"
+    "premier_league": "E0", "championship": "E1", "laliga": "SP1",
+    "laliga_2": "SP2", "ligue_1": "F1", "ligue_2": "F2",
+    "bundesliga_1": "D1", "bundesliga_2": "D2", "serie_a": "I1", "serie_b": "I2"
 }
 
 # =========================================================
@@ -58,19 +55,13 @@ DB_NAME = os.environ.get("DB_NAME", "").strip()
 UPSTASH_BLOB_TOKEN = os.environ.get("UPSTASH_BLOB_TOKEN", "").strip()
 UPSTASH_BUCKET_NAME = "PredictionFootball-csv"
 
-# Debug
 print("=" * 60)
-print("🔧 VÉRIFICATION DES VARIABLES D'ENVIRONNEMENT")
-print(f"🔧 DB_HOST     = '{DB_HOST}'")
-print(f"🔧 DB_PORT     = '{DB_PORT}'")
-print(f"🔧 DB_USER     = '{DB_USER}'")
-print(f"🔧 DB_NAME     = '{DB_NAME}'")
-print(f"🔧 DB_PASSWORD chargé : {'OUI' if DB_PASSWORD else 'NON'} (longueur={len(DB_PASSWORD)})")
-print(f"🔧 UPSTASH_BLOB_TOKEN chargé : {'OUI' if UPSTASH_BLOB_TOKEN else 'NON'} (longueur={len(UPSTASH_BLOB_TOKEN)})")
+print(f"🔧 DB_HOST = '{DB_HOST}' | DB_NAME = '{DB_NAME}'")
+print(f"🔧 DB_PASSWORD chargé : {'OUI' if DB_PASSWORD else 'NON'}")
 print("=" * 60)
 
 # =========================================================
-# LIMITES PAR STATUT
+# LIMITES PAR DÉFAUT (si non modifiées par l'admin)
 # =========================================================
 LIMITE_FREE_JOUR = 3
 LIMITE_PREMIUM_JOUR = 100
