@@ -28,7 +28,7 @@ TZ_KINSHASA = timezone(timedelta(hours=1))
 
 
 # =========================================================
-# NOTIFICATIONS QUOTIDIENNES
+# NOTIFICATIONS QUOTIDIENNES (FILTRÉES)
 # =========================================================
 def _envoyer_notifications():
     try:
@@ -56,38 +56,48 @@ def _envoyer_notifications():
             global_model_data['model'] = donnees['model']
             global_model_data['features'] = donnees['features']
 
-        top = get_top_pronostics_du_jour(nb=3)
+        # On demande plus de pronostics pour pouvoir filtrer
+        top = get_top_pronostics_du_jour(nb=15)
 
         if not top:
             print("Notifications : aucun pronostic disponible")
             return
 
         date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
-
-        texte = (
-            f"PRONOSTICS DU JOUR\n"
-            f"Date : {date_str}\n\n"
-        )
-
-        for i, item in enumerate(top, 1):
+        texte = f"🔥 **PRONOSTICS VALUE BET DU JOUR** 🔥\nDate : {date_str}\n\n"
+        
+        compte = 0
+        for item in top:
             prono = item['prono']
-            dc_1x = round(prono['dc_1x'] * 100, 1)
-            dc_x2 = round(prono['dc_x2'] * 100, 1)
-            dc_12 = round(prono['dc_12'] * 100, 1)
+            
+            # Utilisation de la nouvelle analyse
+            analyse = prono.get('analyse_pari')
+            if not analyse:
+                continue
+                
+            # FILTRE : On ne garde que si Cote > 1.25 ET Confiance > 65%
+            if analyse['cote_bot'] >= 1.25 and analyse['proba'] >= 0.65:
+                compte += 1
+                texte += (
+                    f"------------------------\n"
+                    f"{compte}. {item['home']} vs {item['away']}\n"
+                    f"✅ Reco : {analyse['label']} ({round(analyse['proba']*100, 1)}%)\n"
+                    f"💰 Cote Bot : {analyse['cote_bot']}\n"
+                )
+                if analyse['cote_book']:
+                    texte += f"🏢 Cote Book : {analyse['cote_book']}\n"
+                    if analyse['is_value']:
+                        texte += f"🔥 **VALUE BET !**\n"
+                
+                texte += f"⚽ Score probable : {prono['best_score'][0]} - {prono['best_score'][1]}\n\n"
+            
+            if compte >= 3: # On s'arrête à 3 top pronostics
+                break
 
-            meilleure = max(
-                [("1X", dc_1x), ("X2", dc_x2), ("12", dc_12)],
-                key=lambda x: x[1]
-            )
-
-            texte += (
-                f"------------------------\n"
-                f"{i}. {item['home']} vs {item['away']}\n"
-                f"------------------------\n"
-                f"Recommande : {meilleure[0]} ({meilleure[1]}%)\n"
-                f"Score probable : {prono['best_score'][0]} - {prono['best_score'][1]}\n\n"
-            )
-
+        if compte == 0:
+            print("Notifications : Aucun Value Bet trouvé aujourd'hui.")
+            return
+            
         texte += (
             f"------------------------\n"
             f"Tape une affiche pour plus de details\n"
@@ -100,7 +110,7 @@ def _envoyer_notifications():
 
         for uid in users:
             try:
-                bot.send_message(uid, texte)
+                bot.send_message(uid, texte, parse_mode='Markdown')
                 succes += 1
                 time.sleep(0.1)
             except Exception:
