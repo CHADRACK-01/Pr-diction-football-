@@ -42,8 +42,67 @@ def trouver_nom_exact(nom_partiel, teams):
     return lower_teams[matches[0]] if matches else nom_partiel
 
 
-def predire_match(home_input, away_input):
-    """Retourne un dict avec toutes les probabilités."""
+def _calculer_meilleur_pari(prono, cotes_book=None):
+    """
+    Calcule la meilleure option de pari en appliquant les règles :
+    - Cote Bot > 1.25
+    - Si Cote Bookmaker dispo, on détecte le Value Bet.
+    """
+    # Liste de toutes les options possibles
+    options = [
+        ("1X", prono['dc_1x']),
+        ("X2", prono['dc_x2']),
+        ("12", prono['dc_12']),
+        ("Over 2.5", prono['over_25']),
+        ("BTTS Oui", prono['btts_yes']),
+        ("1 (Domicile)", prono['p_h']),
+        ("2 (Extérieur)", prono['p_a'])
+    ]
+    
+    # Trie par probabilité décroissante
+    options.sort(key=lambda x: x[1], reverse=True)
+    
+    for label, proba in options:
+        cote_bot = round(1 / proba, 2) if proba > 0 else 999
+        
+        # RÈGLE 1 : On ignore si la cote est < 1.25
+        if cote_bot < 1.25:
+            continue
+            
+        # RÈGLE 2 : Comparaison avec le bookmaker
+        cote_book = None
+        is_value_bet = False
+        
+        if cotes_book:
+            # Calcul des cotes bookmaker pour les doubles chances
+            if label == "1X" and cotes_book.get('h') and cotes_book.get('d'):
+                cote_book = round(1 / (1/cotes_book['h'] + 1/cotes_book['d']), 2)
+            elif label == "X2" and cotes_book.get('a') and cotes_book.get('d'):
+                cote_book = round(1 / (1/cotes_book['a'] + 1/cotes_book['d']), 2)
+            elif label == "12" and cotes_book.get('h') and cotes_book.get('a'):
+                cote_book = round(1 / (1/cotes_book['h'] + 1/cotes_book['a']), 2)
+            elif label == "1 (Domicile)":
+                cote_book = cotes_book.get('h')
+            elif label == "2 (Extérieur)":
+                cote_book = cotes_book.get('a')
+                
+            if cote_book and cote_bot < cote_book:
+                is_value_bet = True
+
+        # On retourne la première option qui passe le filtre 1.25
+        return {
+            "label": label,
+            "proba": proba,
+            "cote_bot": cote_bot,
+            "cote_book": cote_book,
+            "is_value": is_value_bet
+        }
+    
+    return None # Aucune option valable
+
+
+def predire_match(home_input, away_input, cotes_book=None):
+    """Retourne un dict avec toutes les probabilités et l'analyse de pari."""
     if not global_model_data:
         return {"erreur": "Modèle non chargé."}
 
@@ -80,7 +139,6 @@ def predire_match(home_input, away_input):
         [poisson.pmf(j, lambda_away) for j in range(max_goals + 1)]
     )
 
-    # ✅ Convertir tous les np.sum() en float
     prob_home_win = float(np.sum(np.tril(score_matrix, -1)))
     prob_draw = float(np.sum(np.diag(score_matrix)))
     prob_away_win = float(np.sum(np.triu(score_matrix, 1)))
@@ -90,7 +148,6 @@ def predire_match(home_input, away_input):
     p_d = prob_draw / total_prob
     p_a = prob_away_win / total_prob
 
-    # ✅ Convertir en float
     under_25 = float(np.sum([
         score_matrix[i, j]
         for i in range(max_goals + 1)
@@ -105,11 +162,9 @@ def predire_match(home_input, away_input):
         for j in range(1, max_goals + 1)
     ]))
 
-    # Meilleur score
     best_i, best_j = np.unravel_index(np.argmax(score_matrix), score_matrix.shape)
     best_i, best_j = int(best_i), int(best_j)
 
-    # Top 3 scores
     indices = np.dstack(np.unravel_index(np.argsort(score_matrix.ravel())[::-1], score_matrix.shape))[0]
     top_scores = []
     for idx in indices[:3]:
@@ -117,7 +172,6 @@ def predire_match(home_input, away_input):
         proba = float(score_matrix[i, j])
         top_scores.append((i, j, proba))
 
-    # ✅ Convertir max en float
     max_prob = float(max(p_h, p_d, p_a))
     if max_prob >= 0.55:
         fiabilite = "🔥 CONFIANCE ÉLEVÉE"
@@ -126,12 +180,11 @@ def predire_match(home_input, away_input):
     else:
         fiabilite = "⚠️ MATCH INCERTAIN / RISQUÉ"
 
-    # ✅ Convertir Double Chance en float
     dc_1x = float(p_h + p_d)
     dc_x2 = float(p_d + p_a)
     dc_12 = float(p_h + p_a)
 
-    return {
+    prono = {
         "home_team": home_team,
         "away_team": away_team,
         "p_h": float(p_h),
@@ -148,12 +201,17 @@ def predire_match(home_input, away_input):
         "top_scores": top_scores,
         "fiabilite": fiabilite,
     }
+    
+    # ⚠️ NOUVEAU : Ajout de l'analyse de pari
+    analyse_pari = _calculer_meilleur_pari(prono, cotes_book)
+    prono["analyse_pari"] = analyse_pari
+
+    return prono
 
 
 def sauvegarder_historique(home_team, away_team, p_h, p_d, p_a, best_i, best_j):
     """Sauvegarde dans PostgreSQL et nettoie les données de + de 30 jours."""
     try:
-        # Déterminer la recommandation principale
         options = [("1X", p_h + p_d), ("X2", p_d + p_a), ("12", p_h + p_a)]
         meilleure = max(options, key=lambda x: x[1])[0]
         score_exact = f"{best_i}-{best_j}"
@@ -161,14 +219,12 @@ def sauvegarder_historique(home_team, away_team, p_h, p_d, p_a, best_i, best_j):
         conn = get_connection()
         cur = conn.cursor()
         
-        # 1. On enregistre le nouveau pronostic
         cur.execute("""
             INSERT INTO resultats_pronostics (date_match, home_team, away_team, pronostic_reco, score_reel)
             VALUES (CURRENT_DATE, %s, %s, %s, %s)
         """, (home_team, away_team, meilleure, score_exact))
         
-        # 2. 🧹 NETTOYAGE AUTOMATIQUE : On supprime les pronostics de plus de 30 jours
-        # (Sauf ceux qui n'ont pas encore de résultat pour le bilan de la veille)
+        # Nettoyage automatique (+ de 30 jours)
         cur.execute("""
             DELETE FROM resultats_pronostics 
             WHERE date_match < CURRENT_DATE - INTERVAL '30 days'
