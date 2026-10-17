@@ -10,7 +10,6 @@ from users import (
 from core.payments import ABONNEMENTS, envoyer_facture
 from core.translations import get_text
 
-
 # Coordonnées Mobile Money
 COORDONNEES_MOBILE = {
     "Airtel Money": "+243 8XX XXX XXX",
@@ -18,6 +17,8 @@ COORDONNEES_MOBILE = {
     "M-Pesa": "+243 8XX XXX XXX",
 }
 
+# Stockage temporaire de l'abonnement choisi pour Mobile Money
+PAIEMENT_SESSIONS = {}
 
 def enregistrer_payment_handlers(bot):
 
@@ -91,6 +92,9 @@ def enregistrer_payment_handlers(bot):
             bot.answer_callback_query(call.id, "Inconnu")
             return
 
+        # On sauvegarde l'abonnement choisi en session
+        PAIEMENT_SESSIONS[user_id] = abo_key
+        
         abo = ABONNEMENTS[abo_key]
         montant_cdf = int(abo['prix_stars']) * 40
 
@@ -105,7 +109,20 @@ def enregistrer_payment_handlers(bot):
         for nom, numero in COORDONNEES_MOBILE.items():
             texte += f"📱 {nom} : {numero}\n"
 
-        bot.send_message(call.message.chat.id, texte)
+        # NOUVEAU : Bouton pour signaler le paiement
+        markup = telebot.types.InlineKeyboardMarkup()
+        markup.add(telebot.types.InlineKeyboardButton("📸 J'ai payé (Envoyer la preuve)", callback_data="preuve_ok"))
+
+        bot.send_message(call.message.chat.id, texte, reply_markup=markup)
+
+    # =========================================================
+    # NOUVEAU : Callback pour demander la preuve
+    # =========================================================
+    @bot.callback_query_handler(func=lambda call: call.data == "preuve_ok")
+    def demander_preuve(call):
+        bot.answer_callback_query(call.id, "OK")
+        msg = bot.send_message(call.message.chat.id, "Envoie la capture d'écran de ton paiement :")
+        bot.register_next_step_handler(msg, recevoir_capture)
 
 
     # =========================================================
@@ -140,14 +157,19 @@ def enregistrer_payment_handlers(bot):
     # =========================================================
     # RÉCEPTION DE LA CAPTURE (photo)
     # =========================================================
-    @bot.message_handler(content_types=['photo'])
     def recevoir_capture(message):
         user_id = message.from_user.id
         langue = get_langue(user_id)
 
+        # Vérification que c'est bien une photo
+        if not message.photo:
+            bot.reply_to(message, "Ce n'est pas une photo valide. Action annulée.")
+            return
+
         file_id = message.photo[-1].file_id
 
-        abo_key = "journalier"
+        # On récupère l'abonnement choisi (par défaut journalier si erreur)
+        abo_key = PAIEMENT_SESSIONS.get(user_id, "journalier")
         abo = ABONNEMENTS[abo_key]
         montant = int(abo['prix_stars']) * 40
 
@@ -192,6 +214,9 @@ def enregistrer_payment_handlers(bot):
                 bot.send_photo(a['user_id'], file_id, caption=caption, reply_markup=markup)
             except Exception as e:
                 print(f"⚠️ Erreur notif admin {a['user_id']} : {e}")
+        
+        # On nettoie la session
+        PAIEMENT_SESSIONS.pop(user_id, None)
 
 
     # =========================================================
@@ -309,6 +334,12 @@ def enregistrer_payment_handlers(bot):
                 abo_key = "mensuel"
 
             abo = ABONNEMENTS[abo_key]
+            
+            # ✅ VÉRIFICATION DU MONTANT PAYÉ (Sécurité)
+            if payment.total_amount != abo['prix_stars']:
+                bot.send_message(user_id, "⚠️ Erreur : Le montant payé ne correspond pas à l'abonnement choisi.")
+                return
+
             duree = abo["duree_jours"]
             nom_abo = abo["nom"]
 
