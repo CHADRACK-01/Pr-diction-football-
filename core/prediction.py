@@ -48,7 +48,6 @@ def _calculer_meilleur_pari(prono, cotes_book=None):
     - Cote Bot > 1.25
     - Si Cote Bookmaker dispo, on détecte le Value Bet.
     """
-    # Liste de toutes les options possibles
     options = [
         ("1X", prono['dc_1x']),
         ("X2", prono['dc_x2']),
@@ -59,7 +58,6 @@ def _calculer_meilleur_pari(prono, cotes_book=None):
         ("2 (Extérieur)", prono['p_a'])
     ]
     
-    # Trie par probabilité décroissante
     options.sort(key=lambda x: x[1], reverse=True)
     
     for label, proba in options:
@@ -74,7 +72,6 @@ def _calculer_meilleur_pari(prono, cotes_book=None):
         is_value_bet = False
         
         if cotes_book:
-            # Calcul des cotes bookmaker pour les doubles chances
             if label == "1X" and cotes_book.get('h') and cotes_book.get('d'):
                 cote_book = round(1 / (1/cotes_book['h'] + 1/cotes_book['d']), 2)
             elif label == "X2" and cotes_book.get('a') and cotes_book.get('d'):
@@ -89,7 +86,6 @@ def _calculer_meilleur_pari(prono, cotes_book=None):
             if cote_book and cote_bot < cote_book:
                 is_value_bet = True
 
-        # On retourne la première option qui passe le filtre 1.25
         return {
             "label": label,
             "proba": proba,
@@ -98,7 +94,7 @@ def _calculer_meilleur_pari(prono, cotes_book=None):
             "is_value": is_value_bet
         }
     
-    return None # Aucune option valable
+    return None
 
 
 def predire_match(home_input, away_input, cotes_book=None):
@@ -108,7 +104,8 @@ def predire_match(home_input, away_input, cotes_book=None):
 
     teams = global_model_data['teams']
     team_to_code = global_model_data['team_to_code']
-    team_global_stats = global_model_data['team_global_stats']
+    team_global_stats = global_model_data.get('team_global_stats', {})
+    team_xg_stats = global_model_data.get('team_xg_stats', {})
     df = global_model_data['df']
 
     home_team = trouver_nom_exact(home_input, teams)
@@ -117,22 +114,41 @@ def predire_match(home_input, away_input, cotes_book=None):
     if home_team not in team_to_code or away_team not in team_to_code:
         return {"erreur": f"Équipe introuvable : '{home_input}' ou '{away_input}'"}
 
-    h_g_hist = team_global_stats[home_team]['scored']
-    h_g_cond = team_global_stats[home_team]['conceded']
-    a_g_hist = team_global_stats[away_team]['scored']
-    a_g_cond = team_global_stats[away_team]['conceded']
+    # =========================================================
+    # UTILISATION DES XG (avec fallback sur les buts si absents)
+    # =========================================================
+    h_xg_hist = team_xg_stats.get(home_team, {}).get('xg_for', [])
+    h_xga_hist = team_xg_stats.get(home_team, {}).get('xg_against', [])
+    a_xg_hist = team_xg_stats.get(away_team, {}).get('xg_for', [])
+    a_xga_hist = team_xg_stats.get(away_team, {}).get('xg_against', [])
 
-    league_avg_home = df['FTHG'].mean()
-    league_avg_away = df['FTAG'].mean()
+    # Si on a des stats xG, on les utilise
+    if h_xg_hist and a_xg_hist:
+        h_att = sum(h_xg_hist[-5:]) / len(h_xg_hist[-5:])
+        h_def = sum(h_xga_hist[-5:]) / len(h_xga_hist[-5:])
+        a_att = sum(a_xg_hist[-5:]) / len(a_xg_hist[-5:])
+        a_def = sum(a_xga_hist[-5:]) / len(a_xga_hist[-5:])
+    else:
+        # Sinon, on retombe sur les buts (ancien modèle)
+        h_g_hist = team_global_stats.get(home_team, {}).get('scored', [])
+        h_g_cond = team_global_stats.get(home_team, {}).get('conceded', [])
+        a_g_hist = team_global_stats.get(away_team, {}).get('scored', [])
+        a_g_cond = team_global_stats.get(away_team, {}).get('conceded', [])
+        
+        h_att = sum(h_g_hist) / len(h_g_hist) if h_g_hist else 1.2
+        h_def = sum(h_g_cond) / len(h_g_cond) if h_g_cond else 1.2
+        a_att = sum(a_g_hist) / len(a_g_hist) if a_g_hist else 1.0
+        a_def = sum(a_g_cond) / len(a_g_cond) if a_g_cond else 1.3
 
-    h_att = (sum(h_g_hist) / len(h_g_hist)) if h_g_hist else league_avg_home
-    h_def = (sum(h_g_cond) / len(h_g_cond)) if h_g_cond else league_avg_away
-    a_att = (sum(a_g_hist) / len(a_g_hist)) if a_g_hist else league_avg_away
-    a_def = (sum(a_g_cond) / len(a_g_cond)) if a_g_cond else league_avg_home
+    league_avg_home = df['FTHG'].mean() if 'FTHG' in df else 1.5
+    league_avg_away = df['FTAG'].mean() if 'FTAG' in df else 1.2
 
     lambda_home = max(0.2, (h_att * a_def) / league_avg_home)
     lambda_away = max(0.2, (a_att * h_def) / league_avg_away)
 
+    # =========================================================
+    # CALCUL DES PROBABILITÉS (Poisson)
+    # =========================================================
     max_goals = 5
     score_matrix = np.outer(
         [poisson.pmf(i, lambda_home) for i in range(max_goals + 1)],
@@ -202,7 +218,7 @@ def predire_match(home_input, away_input, cotes_book=None):
         "fiabilite": fiabilite,
     }
     
-    # ⚠️ NOUVEAU : Ajout de l'analyse de pari
+    # Ajout de l'analyse de pari
     analyse_pari = _calculer_meilleur_pari(prono, cotes_book)
     prono["analyse_pari"] = analyse_pari
 
@@ -224,7 +240,6 @@ def sauvegarder_historique(home_team, away_team, p_h, p_d, p_a, best_i, best_j):
             VALUES (CURRENT_DATE, %s, %s, %s, %s)
         """, (home_team, away_team, meilleure, score_exact))
         
-        # Nettoyage automatique (+ de 30 jours)
         cur.execute("""
             DELETE FROM resultats_pronostics 
             WHERE date_match < CURRENT_DATE - INTERVAL '30 days'
