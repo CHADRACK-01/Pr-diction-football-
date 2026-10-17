@@ -14,24 +14,17 @@ from users import (
     initialiser_tables, get_utilisateurs_notifies, est_banni, 
     est_administrateur, get_parametre
 )
-# ⚠️ NOUVEAU : On importe la fonction centralisée
 from telegram_bot.handlers import enregistrer_handlers
 
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
-# ⚠️ ORDRE CRUCIAL : On utilise UNIQUEMENT cette ligne pour charger les handlers.
-# C'est elle qui garantit que l'Admin est chargé avant le Menu (Fallback).
 enregistrer_handlers(bot)
 
 TZ_KINSHASA = timezone(timedelta(hours=1))
 
 
-# =========================================================
-# FONCTION DE DÉCOUPAGE DES MESSAGES
-# =========================================================
 def _envoyer_message_securise(chat_id, texte, parse_mode=None):
-    """Envoie un message en le découpant s'il est trop long pour Telegram."""
     limite = 4000
     try:
         if len(texte) <= limite:
@@ -40,36 +33,27 @@ def _envoyer_message_securise(chat_id, texte, parse_mode=None):
             morceaux = [texte[i:i+limite] for i in range(0, len(texte), limite)]
             for morceau in morceaux:
                 bot.send_message(chat_id, morceau, parse_mode=parse_mode)
-                time.sleep(0.3) # Pause pour éviter le flood
+                time.sleep(0.3)
     except Exception as e:
         print(f"⚠️ Erreur envoi message sécurisé à {chat_id} : {e}")
 
 
-# =========================================================
-# CHARGEMENT DU MODÈLE (UNIVERSEL)
-# =========================================================
 def charger_modele_universel():
-    """Charge le modèle (RF ou XGBoost) depuis PostgreSQL dans global_model_data."""
     from core.ml_model import global_model_data
-    
     if global_model_data.get('model') is not None:
         return True
-
     try:
         from users import charger_modele_cache
         cache = charger_modele_cache()
         if not cache:
             print("❌ Aucun modèle en cache.")
             return False
-
         modele_bytes, precision, nb_matchs = cache
         buffer = io.BytesIO(modele_bytes)
         donnees = joblib.load(buffer)
-
         global_model_data.update(donnees)
         global_model_data['precision'] = precision
         global_model_data['_tables_initialisees'] = True
-        
         print(f"✅ Modèle chargé : {type(global_model_data['model']).__name__} (Précision : {round(precision*100, 2)}%)")
         return True
     except Exception as e:
@@ -77,13 +61,9 @@ def charger_modele_universel():
         return False
 
 
-# =========================================================
-# NOTIFICATIONS QUOTIDIENNES (FILTRÉES VALUE BET)
-# =========================================================
 def _envoyer_notifications():
     try:
         from core.ml_model import get_top_pronostics_du_jour
-
         if not charger_modele_universel():
             print("Notifications : impossible de charger le modèle.")
             return
@@ -145,9 +125,6 @@ def _envoyer_notifications():
         print(f"Erreur envoi notifications : {e}")
 
 
-# =========================================================
-# ENVOI COUPONS PREMIUM
-# =========================================================
 def _envoyer_coupons_premium():
     from core.paris_builder import generer_coupons_du_jour, formater_coupon
     from users import get_langue
@@ -160,7 +137,6 @@ def _envoyer_coupons_premium():
 
         data = generer_coupons_du_jour()
         coupons = data['coupons']
-
         if not coupons:
             print("Aucun coupon à envoyer")
             return
@@ -194,9 +170,6 @@ def _envoyer_coupons_premium():
         print(f"Erreur envoi coupons : {e}")
 
 
-# =========================================================
-# SCHEDULER (Le Cerveau du Bot)
-# =========================================================
 def _scheduler_notifications():
     print("Scheduler demarre...")
     derniere_date_envoi = None
@@ -258,6 +231,14 @@ def _scheduler_notifications():
                 if derniere_date_coupons_semaine != date_du_jour:
                     print(f"Envoi des coupons du {date_du_jour}...")
                     _envoyer_coupons_premium()
+                    
+                    # ⚠️ NOUVEAU : Publication des coupons sur le canal
+                    try:
+                        from core.canal_manager import publier_coupons_sur_canal
+                        publier_coupons_sur_canal(bot)
+                    except Exception as e:
+                        print(f"⚠️ Erreur publication coupons canal : {e}")
+                        
                     derniere_date_coupons_semaine = date_du_jour
 
             # 4. Teasing Canal (à 17h)
@@ -292,9 +273,6 @@ def _scheduler_notifications():
 threading.Thread(target=_scheduler_notifications, daemon=True).start()
 
 
-# =========================================================
-# WEBHOOK (Gestion des requêtes Telegram)
-# =========================================================
 @app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
     try:
