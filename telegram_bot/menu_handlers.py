@@ -20,7 +20,8 @@ def _charger_modele_si_necessaire(message, bot):
         return True
     try:
         cache = charger_modele_cache()
-        if not cache: return False
+        if not cache: 
+            return False
         modele_bytes, precision, nb_matchs = cache
         buffer = io.BytesIO(modele_bytes)
         donnees = joblib.load(buffer)
@@ -53,7 +54,7 @@ def envoyer_menu_principal(chat_id, user_id, bot):
         telebot.types.KeyboardButton(get_text("btn_notifs", langue)),
         telebot.types.KeyboardButton(get_text("btn_premium", langue)),
         telebot.types.KeyboardButton(get_text("btn_parrainage", langue)),
-        telebot.types.KeyboardButton(get_text("btn_langue", langue)), # ⚠️ Correction ici
+        telebot.types.KeyboardButton(get_text("btn_langue", langue)),
     )
 
     welcome_text = get_text(
@@ -100,7 +101,8 @@ def enregistrer_menu_handlers(bot):
                             langue = get_langue(user.id)
                             try:
                                 bot.send_message(user.id, get_text("parrainage_bienvenue", langue))
-                            except: pass
+                            except: 
+                                pass
                             nb_filleuls = compter_filleuls(parrain_id)
                             palier = get_palier_atteint(nb_filleuls)
                             bonus_palier = ""
@@ -109,15 +111,14 @@ def enregistrer_menu_handlers(bot):
                                 bonus_palier = f"\n\n🏆 Palier {palier['nom']} atteint ! +{palier['bonus']} jours bonus"
                             try:
                                 bot.send_message(parrain_id, f"🎉 Nouveau filleul : {user.first_name}\n\n+1 jour Premium offert !\n📊 Total : {nb_filleuls} filleul(s){bonus_palier}")
-                            except: pass
+                            except: 
+                                pass
                 except Exception as e:
                     print(f"⚠️ Erreur parrainage : {e}")
 
         envoyer_menu_principal(message.chat.id, user.id, bot)
 
-    # =========================================================
-    # FALLBACK SÉCURISÉ
-    # =========================================================
+    # Fallback sécurisé
     @bot.message_handler(func=lambda message: not message.text.startswith('/'))
     def handle_menu_fallback(message):
         user_id = message.from_user.id
@@ -127,12 +128,10 @@ def enregistrer_menu_handlers(bot):
             bot.reply_to(message, get_text("banni", langue))
             return
 
-        # ⚠️ CORRECTION : On ignore si l'utilisateur est en train de faire une saisie admin
-        from telegram_bot.admin_handlers import ADMIN_SESSIONS
+        from telegram_bot.admin.actions import ADMIN_SESSIONS
         if user_id in ADMIN_SESSIONS:
-            return # On laisse le register_next_step_handler gérer la saisie
+            return
 
-        # On vérifie si le texte est un bouton connu, sinon on ignore
         boutons_connus = [
             get_text("btn_pronostic", langue),
             get_text("btn_matchs_jour", langue),
@@ -147,8 +146,7 @@ def enregistrer_menu_handlers(bot):
         ]
 
         if message.text in boutons_connus:
-            pass # Les boutons ont leurs propres handlers ailleurs
+            pass
 
-        # Si c'est un message inconnu, on affiche le fallback
         bot.reply_to(message, get_text("fallback", langue))
         envoyer_menu_principal(message.chat.id, user_id, bot)
