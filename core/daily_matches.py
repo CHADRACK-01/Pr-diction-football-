@@ -6,13 +6,10 @@ from core.ml_model import global_model_data
 from core.prediction import predire_match
 
 
-# Clé API Football-Data.org
 FOOTBALL_DATA_KEY = "5a7a6a3afcca4bc88400d73a0e394588"
 
-# Fuseau horaire de Kinshasa (UTC+1)
 TZ_KINSHASA = timezone(timedelta(hours=1))
 
-# Codes des 6 compétitions gratuites
 COMPETITIONS = {
     "premier_league": "PL",
     "championship": "ELC",
@@ -24,7 +21,6 @@ COMPETITIONS = {
 
 
 def _normaliser(nom):
-    """Convertit un nom Football-Data.org vers le nom utilisé dans ton modèle."""
     special = {
         "Manchester City FC": "Man City",
         "Manchester United FC": "Man United",
@@ -131,7 +127,6 @@ def _normaliser(nom):
 
 
 def _nom_competition(code):
-    """Retourne le nom lisible d'une compétition."""
     noms = {
         "premier_league": "Premier League",
         "championship": "Championship",
@@ -144,29 +139,18 @@ def _nom_competition(code):
 
 
 def get_matchs_du_jour():
-    """
-    Récupère les matchs du jour + les 3 prochains jours.
-    Génère les pronostics avec ton IA.
-    """
-    # Vérifier que le modèle est chargé
     if not global_model_data:
-        print("⚠️ Modèle non chargé")
         return []
 
     if 'teams' not in global_model_data:
-        print("⚠️ Pas de 'teams' dans global_model_data")
         return []
 
     teams_data = global_model_data.get('teams')
     if teams_data is None or len(teams_data) == 0:
-        print("⚠️ Aucune équipe dans le modèle")
         return []
 
-    # Plage : aujourd'hui + 3 jours
     date_debut = datetime.now(TZ_KINSHASA).strftime("%Y-%m-%d")
     date_fin = (datetime.now(TZ_KINSHASA) + timedelta(days=3)).strftime("%Y-%m-%d")
-
-    print(f"📅 Recherche des matchs du {date_debut} au {date_fin}")
 
     headers = {"X-Auth-Token": FOOTBALL_DATA_KEY}
     matchs_trouves = []
@@ -178,12 +162,10 @@ def get_matchs_du_jour():
             res = requests.get(url, headers=headers, params=params, timeout=15)
 
             if res.status_code != 200:
-                print(f"⚠️ {code} : HTTP {res.status_code}")
                 continue
 
             data = res.json()
             for m in data.get("matches", []):
-                # Garder SCHEDULED et TIMED
                 status = m.get("status", "")
                 if status not in ["SCHEDULED", "TIMED"]:
                     continue
@@ -194,7 +176,6 @@ def get_matchs_du_jour():
 
                 try:
                     prono = predire_match(home, away)
-
                     if not isinstance(prono, dict):
                         continue
                     if 'erreur' in prono:
@@ -206,11 +187,7 @@ def get_matchs_du_jour():
                     dc_x2 = float(prono['dc_x2'])
                     dc_12 = float(prono['dc_12'])
 
-                    options = [
-                        ("1X", dc_1x),
-                        ("X2", dc_x2),
-                        ("12", dc_12),
-                    ]
+                    options = [("1X", dc_1x), ("X2", dc_x2), ("12", dc_12)]
                     meilleure = max(options, key=lambda x: x[1])
 
                     matchs_trouves.append({
@@ -226,29 +203,31 @@ def get_matchs_du_jour():
                         "dc_pct": float(meilleure[1]),
                         "confiance": float(meilleure[1]),
                     })
-                except Exception as e:
-                    print(f"⚠️ Erreur prediction {home} vs {away} : {e}")
+                except Exception:
                     continue
 
-        except Exception as e:
-            print(f"⚠️ Erreur {code} : {e}")
+        except Exception:
             continue
 
-    # Trier par date puis par confiance
     matchs_trouves.sort(key=lambda x: (x['heure'], -x['confiance']))
-
-    print(f"✅ {len(matchs_trouves)} matchs trouvés")
     return matchs_trouves
 
 
-def formater_matchs_du_jour(matchs, langue="fr"):
-    """Formate la liste des matchs par jour et par compétition."""
+def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None):
+    """
+    Formate la liste des matchs.
+    - est_premium : si False, pas de recommandations
+    - nb_max : limite le nombre de matchs affichés (None = tous)
+    """
     from core.translations import get_text
 
     date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
 
     if matchs is None or len(matchs) == 0:
         return get_text("aucun_match_jour", langue, date=date_str)
+
+    if nb_max is not None:
+        matchs = matchs[:nb_max]
 
     # Grouper par jour
     jours = {}
@@ -263,14 +242,9 @@ def formater_matchs_du_jour(matchs, langue="fr"):
             jours[jour_key] = []
         jours[jour_key].append(m)
 
-    # Limiter à 15 matchs au total
-    total_affiches = 0
-    max_total = 15
-
     texte = get_text("titre_matchs_jour", langue, date=date_str)
-    texte += f" (sur 3 jours)\n\n"
+    texte += f"\n({len(matchs)} matchs)\n\n"
 
-    # Traduction des noms de jours
     jours_fr = {
         "Monday": "Lundi", "Tuesday": "Mardi", "Wednesday": "Mercredi",
         "Thursday": "Jeudi", "Friday": "Vendredi", "Saturday": "Samedi", "Sunday": "Dimanche"
@@ -281,18 +255,12 @@ def formater_matchs_du_jour(matchs, langue="fr"):
     }
 
     for jour_label, matchs_jour in jours.items():
-        if total_affiches >= max_total:
-            break
-
-        # Traduire le jour
         jour_parts = jour_label.split(" ", 1)
         jour_en = jour_parts[0]
-        if langue == "fr":
-            jour_trad = jours_fr.get(jour_en, jour_en)
-        elif langue == "ln":
-            jour_trad = jours_fr.get(jour_en, jour_en)
+        if langue == "en":
+            jour_trad = jours_en.get(jour_en, jour_en)
         else:
-            jour_trad = jour_en
+            jour_trad = jours_fr.get(jour_en, jour_en)
 
         date_part = jour_parts[1] if len(jour_parts) > 1 else ""
         texte += f"━━━━━━━━━━━━━━━━━━━━\n"
@@ -300,9 +268,6 @@ def formater_matchs_du_jour(matchs, langue="fr"):
         texte += f"━━━━━━━━━━━━━━━━━━━━\n\n"
 
         for m in matchs_jour:
-            if total_affiches >= max_total:
-                break
-
             try:
                 heure_local = datetime.fromisoformat(
                     m['heure'].replace("Z", "+00:00")
@@ -312,15 +277,18 @@ def formater_matchs_du_jour(matchs, langue="fr"):
 
             nom_comp = _nom_competition(m['competition'])
 
-            texte += (
-                f"⚽ {m['home']} vs {m['away']}\n"
-                f"   🕐 {heure_local} | 🏆 {nom_comp}\n"
-                f"   💡 Reco : {m['dc_label']} a {round(m['dc_pct']*100, 1)}%\n\n"
-            )
-            total_affiches += 1
+            texte += f"⚽ {m['home']} vs {m['away']}\n"
+            texte += f"   🕐 {heure_local} | 🏆 {nom_comp}\n"
 
-    if total_affiches == 0:
-        return get_text("aucun_match_jour", langue, date=date_str)
+            # Recommandation UNIQUEMENT pour Premium
+            if est_premium:
+                texte += f"   💡 Reco : {m['dc_label']} a {round(m['dc_pct']*100, 1)}%\n"
+
+            texte += "\n"
+
+    if not est_premium:
+        texte += "\n━━━━━━━━━━━━━━━━━━━━\n"
+        texte += "⭐ Passe Premium pour voir les recommandations !\n"
 
     texte += get_text("tip_matchs_jour", langue)
     return texte
