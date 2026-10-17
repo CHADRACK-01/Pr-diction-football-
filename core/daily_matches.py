@@ -75,7 +75,7 @@ def _nom_competition(code):
 
 
 def get_matchs_du_jour():
-    """Récupère les matchs via l'API avec une gestion d'erreur robuste."""
+    """Récupère les matchs via l'API avec les cotes bookmaker et une gestion d'erreur robuste."""
     if not global_model_data: return []
     if 'teams' not in global_model_data: return []
 
@@ -107,8 +107,28 @@ def get_matchs_du_jour():
                 away = _normaliser(m["awayTeam"]["name"])
                 heure_utc = m["utcDate"]
 
+                # ⚠️ RÉCUPÉRATION DES COTES BOOKMAKER (Bet365)
+                cotes_book = None
+                odds = m.get("odds", {})
+                # L'API football-data retourne parfois les cotes sous différentes structures
+                if isinstance(odds, dict) and "bet365" in odds:
+                    b365 = odds["bet365"]
+                    cotes_book = {
+                        'h': b365.get('homeWin'),
+                        'd': b365.get('draw'),
+                        'a': b365.get('awayWin')
+                    }
+                # Fallback : parfois les cotes sont direct dans le match
+                elif isinstance(odds, dict) and odds.get('homeWin'):
+                    cotes_book = {
+                        'h': odds.get('homeWin'),
+                        'd': odds.get('draw'),
+                        'a': odds.get('awayWin')
+                    }
+
                 try:
-                    prono = predire_match(home, away)
+                    # On passe les cotes du bookmaker à predire_match
+                    prono = predire_match(home, away, cotes_book=cotes_book)
                     if not isinstance(prono, dict): continue
                     if 'erreur' in prono: 
                         print(f"⚠️ Erreur prediction pour {home} vs {away}: {prono['erreur']}")
@@ -122,7 +142,6 @@ def get_matchs_du_jour():
                     options = [("1X", dc_1x), ("X2", dc_x2), ("12", dc_12)]
                     meilleure = max(options, key=lambda x: x[1])
 
-                    # Filtre : on ne garde que si la cote du bot est >= 1.30
                     cote_bot = round(1 / meilleure[1], 2) if meilleure[1] > 0 else 999
                     if cote_bot < 1.30:
                         continue
