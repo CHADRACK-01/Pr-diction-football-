@@ -3,36 +3,32 @@ from users import est_administrateur, compter_codes_disponibles
 
 from telegram_bot.admin.menus import (
     menu_principal_admin, menu_premium, menu_codes,
-    menu_parametres, menu_bdd
+    menu_parametres, menu_bdd,
+    menu_admin_bas, menu_premium_bas, menu_codes_bas,
+    menu_parametres_bas, menu_bdd_bas
 )
-from telegram_bot.admin.actions import executer_action, ADMIN_SESSIONS
+from telegram_bot.admin.actions import executer_action, executer_action_bas, ADMIN_SESSIONS
 
 
 def enregistrer_admin_handlers(bot):
 
     # =========================================================
-    # COMMANDE /admin (SECOURS)
+    # COMMANDE /admin et bouton "Panneau Admin" (Texte)
     # =========================================================
     @bot.message_handler(commands=['admin'])
+    @bot.message_handler(func=lambda m: m.text == "Panneau Admin" and est_administrateur(m.from_user.id))
     def cmd_admin(message):
         if not est_administrateur(message.from_user.id):
             return
-        bot.send_message(message.chat.id, "🎛️ PANNEAU ADMIN\n\nChoisis une action :", reply_markup=menu_principal_admin())
-
-    # =========================================================
-    # BOUTON TEXTE "Panneau Admin" (depuis le clavier en bas)
-    # =========================================================
-    @bot.message_handler(func=lambda m: m.text == "Panneau Admin" and est_administrateur(m.from_user.id))
-    def handle_panneau_admin_text(message):
-        # On envoie un NOUVEAU message avec les boutons Inline
+        # On affiche le menu admin dans le CLAVIER DU BAS (ReplyKeyboard)
         bot.send_message(
             message.chat.id, 
             "🎛️ PANNEAU ADMIN\n\nChoisis une action :", 
-            reply_markup=menu_principal_admin()
+            reply_markup=menu_admin_bas()
         )
 
     # =========================================================
-    # OUVERTURE DU PANNEAU (Bouton Inline)
+    # OUVERTURE DU PANNEAU (Bouton Inline - si utilisé ailleurs)
     # =========================================================
     @bot.callback_query_handler(func=lambda call: call.data == "open_admin_panel")
     def open_admin_panel_callback(call):
@@ -43,7 +39,7 @@ def enregistrer_admin_handlers(bot):
         bot.send_message(call.message.chat.id, "🎛️ PANNEAU ADMIN\n\nChoisis une action :", reply_markup=menu_principal_admin())
 
     # =========================================================
-    # GESTIONNAIRE DES BOUTONS ADMIN
+    # GESTIONNAIRE DES BOUTONS INLINE (Conservé)
     # =========================================================
     @bot.callback_query_handler(func=lambda call: call.data.startswith(("admin_", "param_", "bcast_")))
     def handle_admin_callbacks(call):
@@ -55,7 +51,7 @@ def enregistrer_admin_handlers(bot):
         user_id = call.from_user.id
         bot.answer_callback_query(call.id)
 
-        # Navigation
+        # Navigation Inline
         if data == "admin_back":
             ADMIN_SESSIONS.pop(user_id, None)
             try:
@@ -82,8 +78,52 @@ def enregistrer_admin_handlers(bot):
             ADMIN_SESSIONS.pop(user_id, None)
             bot.edit_message_text("⚙️ PARAMÈTRES", call.message.chat.id, call.message.message_id, reply_markup=menu_parametres())
         else:
-            # Délégation au module actions.py
             executer_action(bot, call, data, user_id)
+
+    # =========================================================
+    # GESTIONNAIRE DES BOUTONS EN BAS (ReplyKeyboard)
+    # =========================================================
+    @bot.message_handler(func=lambda m: est_administrateur(m.from_user.id) and m.text in [
+        "📊 Stats", "👥 Utilisateurs", "💳 Paiements", "🎟️ Codes Premium",
+        "🗄️ Base de données", "👑 Admins", "⚙️ Paramètres", "📝 Logs",
+        "🚫 Bannis", "📢 Broadcast", "💎 Premium", "🔙 Quitter Admin",
+        "➕ Ajouter Premium", "➖ Retirer Premium", "🔙 Retour Admin",
+        "Gen 10 jours", "Gen 30 jours", "Gen 90 jours", "Gen custom", "👁️ Voir codes dispo",
+        "Heure notifs", "Limite Free", "Prix Stars", "Message accueil", "Mode maintenance", "👁️ Voir parametres",
+        "Taille BDD", "Detail tables", "🧹 Nettoyer"
+    ])
+    def handle_admin_buttons_text(message):
+        text = message.text
+        user_id = message.from_user.id
+
+        # --- Quitter Admin ---
+        if text == "🔙 Quitter Admin":
+            from telegram_bot.handlers.start import envoyer_menu_principal
+            envoyer_menu_principal(message.chat.id, user_id, bot)
+            return
+
+        # --- Retour Admin ---
+        if text == "🔙 Retour Admin":
+            bot.send_message(message.chat.id, "🎛️ PANNEAU ADMIN", reply_markup=menu_admin_bas())
+            return
+
+        # --- Navigation vers les sous-menus (Bascule de clavier) ---
+        if text == "⚙️ Paramètres":
+            bot.send_message(message.chat.id, "⚙️ PARAMÈTRES", reply_markup=menu_parametres_bas())
+            return
+        if text == "🎟️ Codes Premium":
+            dispo = compter_codes_disponibles()
+            bot.send_message(message.chat.id, f"🎟️ CODES PREMIUM (Dispo : {dispo})", reply_markup=menu_codes_bas())
+            return
+        if text == "🗄️ Base de données":
+            bot.send_message(message.chat.id, "🗄️ BASE DE DONNÉES", reply_markup=menu_bdd_bas())
+            return
+        if text == "💎 Premium":
+            bot.send_message(message.chat.id, "💎 GESTION PREMIUM", reply_markup=menu_premium_bas())
+            return
+
+        # --- Exécution des actions ---
+        executer_action_bas(bot, message, text, user_id)
 
     # =========================================================
     # COMMANDE /annuler
