@@ -145,7 +145,17 @@ def get_compteur_jour(user_id):
 
 
 def get_limite_jour(user_id):
-    return LIMITE_PREMIUM_JOUR if est_premium(user_id) else LIMITE_FREE_JOUR
+    """Récupère la limite en fonction du statut, avec paramètre dynamique pour le Free."""
+    if est_premium(user_id):
+        return LIMITE_PREMIUM_JOUR
+    
+    # On lit le paramètre dynamique en BDD (s'il existe), sinon on utilise la valeur par défaut du config.py
+    from users.admin import get_parametre
+    try:
+        limite_free_bdd = int(get_parametre("limite_free", LIMITE_FREE_JOUR))
+        return limite_free_bdd
+    except Exception:
+        return LIMITE_FREE_JOUR
 
 
 def peut_faire_pronostic(user_id):
