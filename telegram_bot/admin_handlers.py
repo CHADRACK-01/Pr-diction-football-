@@ -24,7 +24,12 @@ def enregistrer_admin_handlers(bot):
     # =========================================================
     @bot.message_handler(func=lambda m: m.text == "Panneau Admin" and est_administrateur(m.from_user.id))
     def handle_panneau_admin_text(message):
-        bot.send_message(message.chat.id, "🎛️ PANNEAU ADMIN\n\nChoisis une action :", reply_markup=menu_principal_admin())
+        # On envoie un NOUVEAU message avec les boutons Inline
+        bot.send_message(
+            message.chat.id, 
+            "🎛️ PANNEAU ADMIN\n\nChoisis une action :", 
+            reply_markup=menu_principal_admin()
+        )
 
     # =========================================================
     # OUVERTURE DU PANNEAU (Bouton Inline)
