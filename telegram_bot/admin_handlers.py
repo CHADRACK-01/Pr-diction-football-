@@ -112,7 +112,7 @@ def _menu_bdd():
 def enregistrer_admin_handlers(bot):
 
     # =========================================================
-    # COMMANDES TEXTE (/admin, /gen_codes, etc.)
+    # COMMANDES TEXTE
     # =========================================================
     @bot.message_handler(commands=['admin'])
     def cmd_admin(message):
@@ -169,6 +169,50 @@ def enregistrer_admin_handlers(bot):
             message,
             f"STATISTIQUES\n\nTotal : {stats.get('total', 0)}\nPremium : {stats.get('premium', 0)}\nFree : {stats.get('free', 0)}"
         )
+
+    # NOUVEAU : Stats du jour
+    @bot.message_handler(commands=['stats_jour'])
+    def cmd_stats_jour(message):
+        if not est_administrateur(message.from_user.id): return
+        try:
+            conn = get_connection()
+            cur = conn.cursor()
+            
+            cur.execute("SELECT COUNT(*) FROM resultats_pronostics WHERE date_match = CURRENT_DATE")
+            nb_pronos = cur.fetchone()[0]
+            
+            cur.execute("SELECT COUNT(*) FROM utilisateurs WHERE date_inscription::date = CURRENT_DATE")
+            nb_new_users = cur.fetchone()[0]
+            
+            cur.execute("SELECT COUNT(*) FROM compteurs_jour WHERE date = CURRENT_DATE")
+            nb_actifs = cur.fetchone()[0]
+            
+            cur.close()
+            conn.close()
+            bot.reply_to(message, f"📊 STATS DU JOUR\n\nPronostics générés : {nb_pronos}\nNouveaux inscrits : {nb_new_users}\nUtilisateurs actifs : {nb_actifs}")
+        except Exception as e:
+            bot.reply_to(message, f"Erreur : {e}")
+
+    # NOUVEAU : Taux de conversion
+    @bot.message_handler(commands=['conversion'])
+    def cmd_conversion(message):
+        if not est_administrateur(message.from_user.id): return
+        try:
+            conn = get_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT COUNT(*) FROM utilisateurs")
+            total = cur.fetchone()[0]
+            cur.execute("SELECT COUNT(*) FROM utilisateurs WHERE status = 'premium'")
+            premium = cur.fetchone()[0]
+            cur.execute("SELECT COUNT(*) FROM paiements_attente WHERE statut = 'valide'")
+            nb_paiements = cur.fetchone()[0]
+            cur.close()
+            conn.close()
+            
+            taux = round((premium / total) * 100, 1) if total > 0 else 0
+            bot.reply_to(message, f"💳 CONVERSION\n\nTotal users : {total}\nPremium : {premium}\nTaux : {taux}%\nPaiements validés : {nb_paiements}")
+        except Exception as e:
+            bot.reply_to(message, f"Erreur : {e}")
 
     @bot.message_handler(commands=['users'])
     def cmd_users(message):
@@ -303,7 +347,7 @@ def enregistrer_admin_handlers(bot):
 
 
     # =========================================================
-    # BOUTONS ADMIN (Reply Keyboard)
+    # BOUTONS ADMIN
     # =========================================================
     @bot.message_handler(func=lambda m: m.from_user and est_administrateur(m.from_user.id) and m.text in [
         "Panneau Admin", "Stats", "Utilisateurs", "Admins", "Parametres",
