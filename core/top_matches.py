@@ -1,10 +1,9 @@
 from datetime import datetime, timezone, timedelta
-
 from core.paris_builder import get_tous_pronostics_disponibles, _meilleure_reco
+from core.utils.logs import log_info, log_warning
 
 
 TZ_KINSHASA = timezone(timedelta(hours=1))
-
 
 # Seuil minimum pour les top affiches
 SEUIL_CONFIANCE_MIN = 0.75
@@ -15,34 +14,44 @@ NB_MIN_AFFICHES = 3
 def get_top_affiches(limite=10):
     """
     Retourne les affiches avec la plus forte confiance.
-    Seuil minimum : 75%
+    Filtre : Confiance >= 75% ET Cote >= 1.30.
     """
     matchs = get_tous_pronostics_disponibles()
 
     if not matchs:
+        log_warning("Aucun match disponible pour les top affiches.", "TOP")
         return []
 
-    # Filtrer uniquement les matchs à 75%+
+    # Filtre 1 : Confiance >= 75%
     top = [m for m in matchs if m['reco_pct'] >= SEUIL_CONFIANCE_MIN]
 
     if not top:
+        log_warning(f"Aucun match avec confiance >= {SEUIL_CONFIANCE_MIN*100}%.", "TOP")
         return []
 
-    # Trier par confiance décroissante
+    # Filtre 2 : Cote >= 1.30 (déjà fait dans get_tous_pronostics_disponibles, mais sécurité)
+    top = [m for m in top if round(1/m['reco_pct'], 2) >= 1.30]
+
+    if not top:
+        log_warning("Aucun match avec cote >= 1.30.", "TOP")
+        return []
+
+    # Tri par confiance décroissante
     top.sort(key=lambda x: x['reco_pct'], reverse=True)
 
+    log_info(f"{len(top)} top affiches trouvées (limite : {limite}).", "TOP")
     return top[:limite]
 
 
 def formater_top_affiches(affiches, langue="fr", montrer_details=True):
-    """Formate la liste des top affiches."""
+    """Formate la liste des top affiches pour Telegram."""
     date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
 
     if not affiches:
-        return "Aucune affiche a fort potentiel aujourd'hui."
+        return "Aucune affiche à fort potentiel aujourd'hui."
 
     texte = f"🎯 TOP AFFICHES - {date_str}\n"
-    texte += f"_Seuil : {int(SEUIL_CONFIANCE_MIN*100)}%+_\n\n"
+    texte += f"Seuil : {int(SEUIL_CONFIANCE_MIN*100)}%+ | Cote : ≥ 1.30\n\n"
 
     for i, m in enumerate(affiches, 1):
         texte += f"{i}. {m['home']} vs {m['away']}\n"
@@ -59,6 +68,6 @@ def formater_top_affiches(affiches, langue="fr", montrer_details=True):
         texte += "\n"
 
     if not montrer_details:
-        texte += "_Passe Premium pour les details complets_\n"
+        texte += "_Passe Premium pour les détails complets_\n"
 
     return texte
