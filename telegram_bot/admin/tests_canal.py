@@ -7,20 +7,22 @@ def enregistrer_tests_handlers(bot):
     @bot.callback_query_handler(func=lambda call: call.data.startswith(("dryrun_", "send_", "admin_test_menu")))
     def handle_test_canal_callbacks(call):
         if not est_administrateur(call.from_user.id):
-            bot.answer_callback_query(call.id, "Acces refuse")
+            bot.answer_callback_query(call.id, "Accès refusé")
             return
 
         data = call.data
         bot.answer_callback_query(call.id)
 
         if data == "admin_test_menu":
-            bot.edit_message_text(
-                "🧪 **TESTS DU CANAL**\n\nChoisis une action :",
-                call.message.chat.id,
-                call.message.message_id,
-                reply_markup=menu_test_canal(),
-                parse_mode="Markdown"
-            )
+            try:
+                bot.edit_message_text(
+                    "🧪 TESTS DU CANAL\n\nChoisis une action :",
+                    call.message.chat.id,
+                    call.message.message_id,
+                    reply_markup=menu_test_canal()
+                )
+            except Exception:
+                bot.send_message(call.message.chat.id, "🧪 TESTS DU CANAL", reply_markup=menu_test_canal())
             return
 
         if data == "dryrun_matchs":
