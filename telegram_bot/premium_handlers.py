@@ -1,12 +1,8 @@
 import telebot
-from datetime import datetime, timezone, timedelta
 
 from users import get_langue, est_premium, est_banni
 from core.paris_builder import generer_coupons_du_jour, formater_coupon
 from core.top_matches import get_top_affiches, formater_top_affiches
-
-
-TZ_KINSHASA = timezone(timedelta(hours=1))
 
 
 def enregistrer_premium_handlers(bot):
@@ -32,21 +28,18 @@ def enregistrer_premium_handlers(bot):
             coupons = data['coupons']
 
             if not coupons:
-                bot.send_message(
-                    message.chat.id,
-                    "Aucun coupon disponible aujourd'hui."
-                )
+                bot.send_message(message.chat.id, "Aucun coupon disponible aujourd'hui.")
                 return
 
             is_premium = est_premium(user_id)
 
             if is_premium:
-                # Premium : tout voir
+                # Premium : tous les coupons avec détails
                 for coupon in coupons:
                     texte = formater_coupon(coupon, langue, montrer_details=True)
                     bot.send_message(message.chat.id, texte)
             else:
-                # Free : voir uniquement le coupon Modere sans details
+                # Free : 1 seul coupon Modéré sans détails
                 coupon_modere = next(
                     (c for c in coupons if c['niveau'] == 'modere'),
                     coupons[0]
@@ -80,10 +73,7 @@ def enregistrer_premium_handlers(bot):
             affiches = get_top_affiches(limite=10)
 
             if not affiches:
-                bot.send_message(
-                    message.chat.id,
-                    "Aucune affiche a fort potentiel aujourd'hui."
-                )
+                bot.send_message(message.chat.id, "Aucune affiche a fort potentiel aujourd'hui.")
                 return
 
             is_premium = est_premium(user_id)
@@ -92,7 +82,7 @@ def enregistrer_premium_handlers(bot):
                 texte = formater_top_affiches(affiches, langue, montrer_details=True)
                 bot.send_message(message.chat.id, texte)
             else:
-                # Free : voir 1 seule affiche sans details
+                # Free : 1 seule affiche sans détails
                 texte = formater_top_affiches(affiches[:1], langue, montrer_details=False)
                 bot.send_message(message.chat.id, texte)
 
