@@ -55,11 +55,17 @@ DB_NAME = os.environ.get("DB_NAME", "").strip()
 UPSTASH_BLOB_TOKEN = os.environ.get("UPSTASH_BLOB_TOKEN", "").strip()
 UPSTASH_BUCKET_NAME = "PredictionFootball-csv"
 
+# =========================================================
+# API FOOTBALL-DATA
+# =========================================================
+FOOTBALL_DATA_KEY = "5a7a6a3afcca4bc88400d73a0e394588"
+
 # Debug
 print("=" * 60)
 print(f"🔧 DB_HOST = '{DB_HOST}' | DB_NAME = '{DB_NAME}'")
 print(f"🔧 DB_PASSWORD chargé : {'OUI' if DB_PASSWORD else 'NON'}")
 print(f"🔧 CANAL_ID = {CANAL_ID}")
+print(f"🔧 FOOTBALL_DATA_KEY chargé : {'OUI' if FOOTBALL_DATA_KEY else 'NON'}")
 print("=" * 60)
 
 # =========================================================
