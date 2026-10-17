@@ -236,7 +236,17 @@ def enregistrer_user_handlers(bot):
                     return
 
                 matchs = get_matchs_du_jour()
-                texte = formater_matchs_du_jour(matchs, langue)
+                is_prem = est_premium(user_id)
+                
+                # Free : 15 matchs max SANS reco / Premium : tous les matchs avec recos
+                nb_max = None if is_prem else 15
+
+                texte = formater_matchs_du_jour(
+                    matchs, 
+                    langue,
+                    est_premium=is_prem,
+                    nb_max=nb_max
+                )
                 bot.send_message(message.chat.id, texte)
             except Exception as e:
                 import traceback
@@ -302,7 +312,7 @@ def enregistrer_user_handlers(bot):
                 reply_markup=markup
             )
 
-        # --- Premium (NOUVEAU : 3 choix) ---
+        # --- Premium (3 choix) ---
         elif text == get_text("btn_premium", langue):
             if est_premium(user_id):
                 bot.reply_to(message, get_text("premium_actif", langue))
