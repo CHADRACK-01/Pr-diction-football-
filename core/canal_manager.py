@@ -2,37 +2,38 @@ import time
 from config import CANAL_ID
 from core.daily_matches import get_matchs_du_jour, formater_matchs_du_jour
 from core.paris_builder import generer_coupons_du_jour, formater_coupon
-from core.utils.markdown import formater_proprement
+from core.utils.logs import log_info, log_error, log_canal_action
 
 
 def _envoyer_au_canal_securise(bot, texte, dry_run=False, chat_debug=None):
     """
-    Envoie un message sur le canal.
-    - dry_run=True : envoie le texte à l'admin pour vérification.
-    - dry_run=False : envoie sur le canal SANS Markdown (pour éviter les erreurs).
+    Envoie un message sur le canal SANS AUCUN Markdown.
+    Cela évite à 100% l'erreur 'can't parse entities'.
     """
     try:
-        # Sécurité : On tronque si c'est trop long (Telegram limite à 4096)
+        # Sécurité : On tronque si c'est trop long
         if len(texte) > 4000:
             texte = texte[:3990] + "\n\n[...Message tronqué...]"
 
-        # Mode Test (Dry Run) - On garde le Markdown pour que tu voies le rendu
+        # Mode Test (Dry Run)
         if dry_run:
             if chat_debug:
-                msg = f"🧪 **MODE TEST (Dry Run)**\n\nVoici le message qui sera envoyé :\n\n{texte}"
-                bot.send_message(chat_debug, msg, parse_mode='Markdown')
+                msg = f"🧪 MODE TEST (Dry Run)\n\nVoici le message qui sera envoyé :\n\n{texte}"
+                # On n'utilise AUCUN parse_mode ici non plus
+                bot.send_message(chat_debug, msg)
             return True
 
-        # Mode Production (Envoi réel) - SANS Markdown pour éviter l'erreur 400
-        bot.send_message(CANAL_ID, texte)  # ⚠️ Plus de parse_mode ici
+        # Mode Production (Envoi réel)
+        # On n'utilise AUCUN parse_mode
+        bot.send_message(CANAL_ID, texte)
         return True
 
     except Exception as e:
         erreur_msg = f"❌ ERREUR CANAL : {str(e)}"
-        print(erreur_msg)
+        log_error(erreur_msg, "CANAL")
         if chat_debug:
             try:
-                bot.send_message(chat_debug, f"⚠️ Échec d'envoi\n\nRaison : `{str(e)}`", parse_mode='Markdown')
+                bot.send_message(chat_debug, f"⚠️ Échec d'envoi\n\nRaison : {str(e)}")
             except Exception:
                 pass
         return False
@@ -42,23 +43,23 @@ def publier_matchs_sur_canal(bot, dry_run=False, chat_debug=None):
     try:
         matchs = get_matchs_du_jour()
         if not matchs:
-            if chat_debug and dry_run: 
+            if chat_debug and dry_run:
                 bot.send_message(chat_debug, "❌ Aucun match trouvé.")
             return False
 
         matchs_filtres = [m for m in matchs if m.get('analyse_pari') and m['analyse_pari']['cote_bot'] >= 1.30]
         if not matchs_filtres:
-            if chat_debug and dry_run: 
+            if chat_debug and dry_run:
                 bot.send_message(chat_debug, "⏸️ Aucun match avec cote ≥ 1.30.")
             return False
 
-        texte = "🔥 **LES MATCHS DU JOUR** 🔥\n\n"
+        texte = "🔥 LES MATCHS DU JOUR 🔥\n\n"
         texte += formater_matchs_du_jour(matchs_filtres, langue="fr", est_premium=True)
         texte += "\n\n👉 Rejoignez le bot : @MonPronosticFootball_bot"
         
         return _envoyer_au_canal_securise(bot, texte, dry_run, chat_debug)
     except Exception as e:
-        print(f"❌ Erreur interne matchs : {e}")
+        log_error(f"Erreur interne matchs : {e}", "CANAL")
         return False
 
 
@@ -67,18 +68,18 @@ def publier_coupons_sur_canal(bot, dry_run=False, chat_debug=None):
         data = generer_coupons_du_jour()
         coupons = data['coupons']
         if not coupons:
-            if chat_debug and dry_run: 
+            if chat_debug and dry_run:
                 bot.send_message(chat_debug, "❌ Aucun coupon généré.")
             return False
 
         coupon_a_publier = next((c for c in coupons if c['niveau'] == 'modere'), coupons[0])
-        texte = "🎟️ **COUPON DU JOUR (Gratuit)** 🎟️\n\n"
+        texte = "🎟️ COUPON DU JOUR (Gratuit) 🎟️\n\n"
         texte += formater_coupon(coupon_a_publier, langue="fr", montrer_details=False)
         texte += "\n\n⭐ Passe Premium sur le bot : @MonPronosticFootball_bot"
         
         return _envoyer_au_canal_securise(bot, texte, dry_run, chat_debug)
     except Exception as e:
-        print(f"❌ Erreur interne coupons : {e}")
+        log_error(f"Erreur interne coupons : {e}", "CANAL")
         return False
 
 
@@ -96,4 +97,4 @@ def publier_teasing(bot):
         )
         _envoyer_au_canal_securise(bot, texte, dry_run=False)
     except Exception as e:
-        print(f"❌ Erreur teasing : {e}")
+        log_error(f"Erreur teasing : {e}", "CANAL")
