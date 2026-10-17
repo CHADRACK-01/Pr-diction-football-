@@ -1,7 +1,19 @@
 import time
+import re
 from config import CANAL_ID
 from core.daily_matches import get_matchs_du_jour, formater_matchs_du_jour
 from core.paris_builder import generer_coupons_du_jour, formater_coupon
+
+
+def _nettoyer_markdown(texte):
+    """
+    Échappe les caractères spéciaux du Markdown qui pourraient casser l'envoi.
+    Telegram utilise le format MarkdownV2, mais pyTelegramBotAPI utilise 'Markdown'.
+    On va donc échapper les caractères dangereux.
+    """
+    # On échappe les underscores, astérisques, crochets, etc. qui ne sont pas dans nos balises volontaires
+    # (On garde les ** pour le gras et les _ pour l'italique si on veut, mais ici on sécurise tout)
+    return texte.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[").replace("]", "\\]").replace("`", "\\`")
 
 
 def _envoyer_au_canal_securise(bot, texte, dry_run=False, chat_debug=None):
@@ -19,11 +31,16 @@ def _envoyer_au_canal_securise(bot, texte, dry_run=False, chat_debug=None):
         if dry_run:
             if chat_debug:
                 msg = f"🧪 **MODE TEST (Dry Run)**\n\nVoici le message qui sera envoyé :\n\n{texte}"
+                # On envoie le texte à l'admin pour vérifier le rendu Markdown
+                # On n'échappe pas le texte ici pour que l'admin voie le rendu réel
                 bot.send_message(chat_debug, msg, parse_mode='Markdown')
             return True
 
         # Mode Production (Envoi réel)
-        bot.send_message(CANAL_ID, texte, parse_mode='Markdown')
+        # On échappe les caractères spéciaux avant l'envoi pour éviter l'erreur 400
+        texte_securise = _nettoyer_markdown(texte)
+        
+        bot.send_message(CANAL_ID, texte_securise, parse_mode='Markdown')
         return True
 
     except Exception as e:
