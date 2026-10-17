@@ -1,5 +1,7 @@
 import requests
 import difflib
+import io
+import joblib
 from datetime import datetime, timezone, timedelta
 
 from core.ml_model import global_model_data
@@ -104,13 +106,38 @@ def _nom_competition(code):
     return noms.get(code, code)
 
 
+def _charger_modele_si_necessaire():
+    """Charge le modèle IA depuis PostgreSQL si la mémoire est vide."""
+    if global_model_data and 'model' in global_model_data and global_model_data.get('model') is not None:
+        return True
+    
+    print("🔄 Modèle absent en mémoire. Tentative de chargement depuis la BDD...")
+    try:
+        from users import charger_modele_cache
+        cache = charger_modele_cache()
+        if not cache:
+            print("❌ Cache vide. Impossible de charger le modèle.")
+            return False
+            
+        modele_bytes, precision, nb_matchs = cache
+        buffer = io.BytesIO(modele_bytes)
+        donnees = joblib.load(buffer)
+        
+        global_model_data.update(donnees)
+        global_model_data['precision'] = precision
+        global_model_data['_tables_initialisees'] = True
+        print(f"✅ Modèle chargé avec succès ! (Précision : {round(precision*100, 2)}%)")
+        return True
+    except Exception as e:
+        print(f"❌ Erreur lors du chargement du modèle : {e}")
+        return False
+
+
 def get_matchs_du_jour():
     """Récupère les matchs via l'API avec les cotes bookmaker et une gestion d'erreur robuste."""
-    if not global_model_data: 
-        print("⚠️ API : Modèle non chargé.")
-        return []
-    if 'teams' not in global_model_data: 
-        print("⚠️ API : Données des équipes manquantes.")
+    
+    # ⚠️ SÉCURITÉ : On s'assure que le modèle est chargé avant de continuer
+    if not _charger_modele_si_necessaire():
         return []
 
     teams_data = global_model_data.get('teams')
@@ -143,7 +170,7 @@ def get_matchs_du_jour():
                 away = _normaliser(m["awayTeam"]["name"])
                 heure_utc = m["utcDate"]
 
-                # RÉCUPÉRATION DES COTES BOOKMAKER (Bet365)
+                # RÉCUPÉRATION DES COTES BOOKMAKER
                 cotes_book = None
                 odds = m.get("odds", {})
                 if isinstance(odds, dict) and "bet365" in odds:
