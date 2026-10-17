@@ -2,6 +2,7 @@ import psycopg2.extras
 from datetime import datetime
 
 from users.db import get_connection
+from core.utils.logs import log_error
 
 
 # =========================================================
@@ -23,7 +24,7 @@ def creer_demande_paiement(user_id, abonnement, montant, preuve_photo_id):
         print(f"💳 Demande paiement #{demande_id} créée par {user_id}")
         return demande_id
     except Exception as e:
-        print(f"⚠️ Erreur creer_demande_paiement : {e}")
+        log_error(f"Erreur creer_demande_paiement : {e}", "PAIEMENTS")
         return None
 
 
@@ -37,7 +38,7 @@ def get_demande(demande_id):
         conn.close()
         return dict(row) if row else None
     except Exception as e:
-        print(f"⚠️ Erreur get_demande : {e}")
+        log_error(f"Erreur get_demande : {e}", "PAIEMENTS")
         return None
 
 
@@ -56,7 +57,7 @@ def get_demandes_en_attente(limite=20):
         conn.close()
         return [dict(r) for r in rows]
     except Exception as e:
-        print(f"⚠️ Erreur get_demandes_en_attente : {e}")
+        log_error(f"Erreur get_demandes_en_attente : {e}", "PAIEMENTS")
         return []
 
 
@@ -75,7 +76,7 @@ def valider_demande(demande_id, admin_id):
         conn.close()
         return rows > 0
     except Exception as e:
-        print(f"⚠️ Erreur valider_demande : {e}")
+        log_error(f"Erreur valider_demande : {e}", "PAIEMENTS")
         return False
 
 
@@ -94,7 +95,7 @@ def refuser_demande(demande_id, admin_id):
         conn.close()
         return rows > 0
     except Exception as e:
-        print(f"⚠️ Erreur refuser_demande : {e}")
+        log_error(f"Erreur refuser_demande : {e}", "PAIEMENTS")
         return False
 
 
@@ -108,6 +109,7 @@ def compter_demandes_en_attente():
         conn.close()
         return result[0] if result else 0
     except Exception as e:
+        log_error(f"Erreur compter_demandes_en_attente : {e}", "PAIEMENTS")
         return 0
 
 
@@ -136,7 +138,7 @@ def generer_code(jours, prefix="PREM"):
         conn.close()
         return code
     except Exception as e:
-        print(f"⚠️ Erreur generer_code : {e}")
+        log_error(f"Erreur generer_code : {e}", "PAIEMENTS")
         return None
 
 
@@ -167,7 +169,7 @@ def utiliser_code(code, user_id):
         if utilise:
             cur.close()
             conn.close()
-            return {"erreur": "Code deja utilise"}
+            return {"erreur": "Code déjà utilisé"}
 
         cur.execute("""
             UPDATE codes_premium
@@ -179,7 +181,7 @@ def utiliser_code(code, user_id):
         conn.close()
         return {"jours": jours}
     except Exception as e:
-        print(f"⚠️ Erreur utiliser_code : {e}")
+        log_error(f"Erreur utiliser_code : {e}", "PAIEMENTS")
         return {"erreur": str(e)}
 
 
@@ -198,6 +200,7 @@ def get_codes_disponibles(limite=50):
         conn.close()
         return [dict(r) for r in rows]
     except Exception as e:
+        log_error(f"Erreur get_codes_disponibles : {e}", "PAIEMENTS")
         return []
 
 
@@ -216,6 +219,7 @@ def get_codes_utilises(limite=50):
         conn.close()
         return [dict(r) for r in rows]
     except Exception as e:
+        log_error(f"Erreur get_codes_utilises : {e}", "PAIEMENTS")
         return []
 
 
@@ -229,4 +233,5 @@ def compter_codes_disponibles():
         conn.close()
         return result[0] if result else 0
     except Exception as e:
+        log_error(f"Erreur compter_codes_disponibles : {e}", "PAIEMENTS")
         return 0
