@@ -19,6 +19,7 @@ from users import (
 )
 from users.db import get_connection
 from core.broadcast_manager import lancer_broadcast_async
+from config import CANAL_ID
 
 ADMIN_SESSIONS = {}
 
@@ -53,6 +54,7 @@ def _menu_principal_admin():
         telebot.types.InlineKeyboardButton("🚫 Bannis", callback_data="admin_bannis"),
         telebot.types.InlineKeyboardButton("📢 Broadcast", callback_data="admin_broadcast"),
         telebot.types.InlineKeyboardButton("💎 Premium", callback_data="admin_premium"),
+        telebot.types.InlineKeyboardButton("🧪 Tester le Canal", callback_data="admin_test_canal"),
         telebot.types.InlineKeyboardButton("❌ Fermer", callback_data="admin_close")
     )
     return markup
@@ -101,6 +103,7 @@ def _menu_bdd():
     )
     return markup
 
+
 def enregistrer_admin_handlers(bot):
 
     # =========================================================
@@ -113,7 +116,7 @@ def enregistrer_admin_handlers(bot):
         bot.send_message(message.chat.id, "🎛️ **PANNEAU ADMIN**\n\nChoisis une action :", reply_markup=_menu_principal_admin(), parse_mode="Markdown")
 
     # =========================================================
-    # OUVERTURE DU PANNEAU (Bouton Inline du menu)
+    # OUVERTURE DU PANNEAU (Bouton Inline)
     # =========================================================
     @bot.callback_query_handler(func=lambda call: call.data == "open_admin_panel")
     def open_admin_panel_callback(call):
@@ -124,11 +127,10 @@ def enregistrer_admin_handlers(bot):
         bot.send_message(call.message.chat.id, "🎛️ **PANNEAU ADMIN**\n\nChoisis une action :", reply_markup=_menu_principal_admin(), parse_mode="Markdown")
 
     # =========================================================
-    # GESTIONNAIRE UNIQUE DES BOUTONS ADMIN
+    # GESTIONNAIRE DES BOUTONS ADMIN
     # =========================================================
     @bot.callback_query_handler(func=lambda call: call.data.startswith(("admin_", "param_", "bcast_")))
     def handle_admin_callbacks(call):
-        # ⚠️ SÉCURITÉ : On vérifie l'admin IMMÉDIATEMENT
         if not est_administrateur(call.from_user.id):
             bot.answer_callback_query(call.id, "Acces refuse")
             return
@@ -136,6 +138,15 @@ def enregistrer_admin_handlers(bot):
         data = call.data
         user_id = call.from_user.id
         bot.answer_callback_query(call.id)
+
+        # --- TEST DU CANAL ---
+        if data == "admin_test_canal":
+            try:
+                res = bot.send_message(CANAL_ID, "🧪 **TEST DE CANAL** 🧪\n\nSi tu vois ce message, le bot a les droits de publication !", parse_mode="Markdown")
+                bot.send_message(call.message.chat.id, f"✅ Message envoyé au canal avec succès (ID: {res.message_id}).")
+            except Exception as e:
+                bot.send_message(call.message.chat.id, f"❌ **ÉCHEC DE L'ENVOI.**\n\nRaison : `{e}`\n\nVérifie que :\n1. Le bot est Admin du canal.\n2. L'ID du canal est correct.", parse_mode="Markdown")
+            return
 
         # --- Navigation ---
         if data == "admin_back":
@@ -283,66 +294,147 @@ def enregistrer_admin_handlers(bot):
                 texte += f"- **{p['cle']}** = `{p['valeur']}`\n"
             bot.send_message(call.message.chat.id, texte, parse_mode="Markdown")
 
+
     # =========================================================
     # TRAITEMENTS (Next Step Handlers)
     # =========================================================
+    @bot.message_handler(commands=['annuler'])
+    def cmd_annuler(message):
+        if not est_administrateur(message.from_user.id): return
+        ADMIN_SESSIONS.pop(message.from_user.id, None)
+        bot.reply_to(message, "Action annulee.")
+
     def _traiter_gen_custom(message):
         user_id = message.from_user.id
-        if message.text == "/annuler":
+        texte = message.text
+
+        if texte == "/annuler":
             ADMIN_SESSIONS.pop(user_id, None)
+            bot.reply_to(message, "Annule.")
             return
-        parts = message.text.split()
-        if len(parts) >= 2 and parts[0].isdigit() and parts[1].isdigit():
-            codes = generer_lot_codes(int(parts[0]), int(parts[1]))
-            texte = f"🎟️ Codes générés :\n"
-            for c in codes:
-                texte += f"`{c}`\n"
-            bot.reply_to(message, texte, parse_mode="Markdown")
+
+        parts = texte.split()
+        if len(parts) < 2 or not parts[0].isdigit() or not parts[1].isdigit():
+            bot.reply_to(message, "Format invalide.")
+            return
+
+        jours = int(parts[0])
+        quantite = int(parts[1])
+
+        if quantite > 100:
+            bot.reply_to(message, "Maximum 100 codes.")
+            return
+
+        codes = generer_lot_codes(jours, quantite)
+        log_admin(user_id, "gen_codes_custom", f"{quantite} codes de {jours}j")
+
+        texte = f"🎟️ {len(codes)} code(s) généré(s) pour {jours} jours :\n\n"
+        for c in codes:
+            texte += f"`{c}`\n"
+        bot.reply_to(message, texte, parse_mode="Markdown")
+
         ADMIN_SESSIONS.pop(user_id, None)
 
     def _traiter_param(message):
         user_id = message.from_user.id
-        if message.text == "/annuler":
+        texte = message.text
+
+        if texte == "/annuler":
             ADMIN_SESSIONS.pop(user_id, None)
+            bot.reply_to(message, "Annule.")
             return
+
         session = ADMIN_SESSIONS.get(user_id, {})
         cle = session.get("cle")
-        if cle and set_parametre(cle, message.text):
-            bot.reply_to(message, f"✅ **{cle}** mis à jour : `{message.text}`", parse_mode="Markdown")
+
+        if not cle:
+            bot.reply_to(message, "Erreur session.")
+            return
+
+        if set_parametre(cle, texte):
+            log_admin(user_id, "set_param", f"{cle} = {texte}")
+            bot.reply_to(message, f"✅ **{cle}** a été mis à jour sur : `{texte}`", parse_mode="Markdown")
+
         ADMIN_SESSIONS.pop(user_id, None)
 
     def _traiter_broadcast(message):
         user_id = message.from_user.id
-        if message.text == "/annuler":
+        texte = message.text
+
+        if texte == "/annuler":
             ADMIN_SESSIONS.pop(user_id, None)
+            bot.reply_to(message, "Annule.")
             return
-        cible = ADMIN_SESSIONS.get(user_id, {}).get("cible", "users")
+
+        if not texte:
+            bot.reply_to(message, "Message vide.")
+            return
+
+        session = ADMIN_SESSIONS.get(user_id, {})
+        cible = session.get("cible", "users")
+
         users = get_tous_utilisateurs() if cible in ["users", "all"] else []
         admins = get_tous_admins()
         envoyer_canal = cible in ["canal", "all"]
-        bot.reply_to(message, "🚀 Diffusion lancée...")
-        lancer_broadcast_async(bot, users, message.text, admins, canal=envoyer_canal)
+
+        bot.reply_to(message, "🚀 Diffusion lancée en arrière-plan. Tu recevras un récapitulatif à la fin.")
+        
+        lancer_broadcast_async(bot, users, texte, admins, canal=envoyer_canal)
+        
+        log_admin(user_id, "broadcast", f"Cible: {cible}")
         ADMIN_SESSIONS.pop(user_id, None)
 
     def _traiter_add_premium(message):
         user_id = message.from_user.id
-        if message.text == "/annuler":
+        texte = message.text
+
+        if texte == "/annuler":
             ADMIN_SESSIONS.pop(user_id, None)
+            bot.reply_to(message, "Annule.")
             return
-        parts = message.text.split()
-        if len(parts) >= 2 and parts[0].isdigit() and parts[1].isdigit():
-            target, jours = int(parts[0]), int(parts[1])
-            expiration = (datetime.now() + timedelta(days=jours)).strftime("%Y-%m-%d %H:%M")
-            if set_premium(target, expiration):
-                bot.reply_to(message, f"✅ User `{target}` PREMIUM pour {jours}j.", parse_mode="Markdown")
+
+        parts = texte.split()
+        if len(parts) < 2 or not parts[0].isdigit() or not parts[1].isdigit():
+            bot.reply_to(message, "Format invalide. Usage : ID jours")
+            return
+
+        target = int(parts[0])
+        jours = int(parts[1])
+        expiration = (datetime.now() + timedelta(days=jours)).strftime("%Y-%m-%d %H:%M")
+
+        if set_premium(target, expiration):
+            log_admin(user_id, "add_premium", f"ID: {target} - {jours}j")
+            bot.reply_to(message, f"✅ Utilisateur `{target}` PREMIUM pour {jours} jours\nExpire : {expiration}", parse_mode="Markdown")
+            try:
+                bot.send_message(target, f"💎 Ton compte a été passé en PREMIUM !\n\nDurée : {jours} jours\nExpire : {expiration}")
+            except Exception: pass
+        else:
+            bot.reply_to(message, "Utilisateur introuvable.")
+
         ADMIN_SESSIONS.pop(user_id, None)
 
     def _traiter_remove_premium(message):
         user_id = message.from_user.id
-        if message.text == "/annuler":
+        texte = message.text
+
+        if texte == "/annuler":
             ADMIN_SESSIONS.pop(user_id, None)
+            bot.reply_to(message, "Annule.")
             return
-        if message.text.isdigit():
-            if _retirer_premium(int(message.text)):
-                bot.reply_to(message, f"✅ User repassé en FREE.")
+
+        if not texte.isdigit():
+            bot.reply_to(message, "ID invalide.")
+            return
+
+        target = int(texte)
+
+        if _retirer_premium(target):
+            log_admin(user_id, "remove_premium", f"ID: {target}")
+            bot.reply_to(message, f"✅ Utilisateur `{target}` est repassé en FREE.", parse_mode="Markdown")
+            try:
+                bot.send_message(target, "Ton abonnement Premium a été retiré.")
+            except Exception: pass
+        else:
+            bot.reply_to(message, "Utilisateur introuvable.")
+
         ADMIN_SESSIONS.pop(user_id, None)
