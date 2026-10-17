@@ -163,7 +163,7 @@ def initialiser_tables():
 
         cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_utilise ON codes_premium(utilise)")
 
-        # ⚠️ NOUVELLE TABLE : Résultats des pronostics (remplace le CSV)
+        # Résultats des pronostics (remplace le CSV)
         cur.execute("""
             CREATE TABLE IF NOT EXISTS resultats_pronostics (
                 id SERIAL PRIMARY KEY,
@@ -205,7 +205,10 @@ def get_taille_base():
 
 
 def get_detail_tables():
-    """Retourne la taille de chaque table."""
+    """
+    Retourne la taille de chaque table.
+    Méthode compatible avec Aiven (pas besoin de droits super-utilisateur).
+    """
     try:
         conn = get_connection()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -213,8 +216,8 @@ def get_detail_tables():
             SELECT 
                 relname AS table_name,
                 pg_size_pretty(pg_total_relation_size(relid)) AS size,
-                n_live_tup AS rows
-            FROM pg_stat_user_tables
+                0 AS rows
+            FROM pg_catalog.pg_statio_user_tables
             ORDER BY pg_total_relation_size(relid) DESC
         """)
         rows = cur.fetchall()
