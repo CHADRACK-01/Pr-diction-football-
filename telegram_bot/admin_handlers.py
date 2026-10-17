@@ -216,9 +216,12 @@ def enregistrer_admin_handlers(bot):
             bot.send_message(call.message.chat.id, f"🗄️ Taille totale : **{get_taille_base()}**", parse_mode="Markdown")
         elif data == "admin_detail_tables":
             tables = get_detail_tables()
+            if not tables:
+                bot.send_message(call.message.chat.id, "❌ Impossible de récupérer les détails (droits insuffisants sur Aiven).")
+                return
             texte = "🗄️ **DETAIL PAR TABLE**\n\n"
             for t in tables[:10]:
-                texte += f"• {t['table_name']} : {t['size']} ({t['rows']} lignes)\n"
+                texte += f"• {t['table_name']} : {t['size']}\n"
             bot.send_message(call.message.chat.id, texte, parse_mode="Markdown")
         elif data == "admin_nettoyer":
             logs = nettoyer_logs_anciens(jours=30)
@@ -304,12 +307,16 @@ def enregistrer_admin_handlers(bot):
                 texte += f"`{c['code']}` ({c['jours']}j)\n"
             bot.send_message(call.message.chat.id, texte, parse_mode="Markdown")
 
-        # --- Paramètres ---
+        # ⚠️ CORRECTION : Pour les paramètres, on efface le message du menu pour obliger la saisie
         elif data.startswith("param_"):
             cle = data.replace("param_", "")
             ADMIN_SESSIONS[user_id] = {"action": "param", "cle": cle}
+            try:
+                bot.delete_message(call.message.chat.id, call.message.message_id)
+            except Exception: pass
             msg = bot.send_message(call.message.chat.id, f"Envoie la nouvelle valeur pour **{cle}** :\n\n/annuler pour annuler.", parse_mode="Markdown")
             bot.register_next_step_handler(msg, _traiter_param)
+            
         elif data == "admin_voir_params":
             params = get_tous_parametres()
             if not params:
