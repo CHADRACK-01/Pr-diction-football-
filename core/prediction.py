@@ -99,14 +99,12 @@ def predire_match(home_input, away_input, cotes_book=None):
     home_team = trouver_nom_exact(home_input, teams)
     away_team = trouver_nom_exact(away_input, teams)
 
-    # ⚠️ GESTION INTELLIGENTE DES ERREURS D'ÉQUIPES
     if home_team not in team_to_code:
         return {"erreur": f"⚠️ Équipe introuvable : **{home_input}**.\n\nLe bot prend en charge : Premier League, Championship, LaLiga, Ligue 1, Bundesliga, Serie A.\n\n(Note : les équipes reléguées dans les divisions inférieures ne sont plus analysées)."}
         
     if away_team not in team_to_code:
         return {"erreur": f"⚠️ Équipe introuvable : **{away_input}**.\n\nLe bot prend en charge : Premier League, Championship, LaLiga, Ligue 1, Bundesliga, Serie A.\n\n(Note : les équipes reléguées dans les divisions inférieures ne sont plus analysées)."}
 
-    # Calculs xG avec fallback
     h_xg_hist = team_xg_stats.get(home_team, {}).get('xg_for', [])
     h_xga_hist = team_xg_stats.get(home_team, {}).get('xg_against', [])
     a_xg_hist = team_xg_stats.get(away_team, {}).get('xg_for', [])
@@ -184,6 +182,24 @@ def predire_match(home_input, away_input, cotes_book=None):
     dc_1x = float(p_h + p_d)
     dc_x2 = float(p_d + p_a)
     dc_12 = float(p_h + p_a)
+
+    # ⚠️ CORRECTION : Score cohérent avec la recommandation
+    options_dc = [("1X", dc_1x), ("X2", dc_x2), ("12", dc_12)]
+    meilleure_dc = max(options_dc, key=lambda x: x[1])[0]
+
+    if meilleure_dc == "1X":
+        if best_i < best_j:
+            best_i, best_j = best_j, best_i
+    elif meilleure_dc == "X2":
+        if best_i > best_j:
+            best_i, best_j = best_j, best_i
+    elif meilleure_dc == "12":
+        if best_i == best_j:
+            best_i += 1
+            
+    # On s'assure que le score modifié est en tête du top 3
+    if (best_i, best_j) != (top_scores[0][0], top_scores[0][1]):
+        top_scores.insert(0, (best_i, best_j, float(score_matrix[best_i, best_j])))
 
     prono = {
         "home_team": home_team,
