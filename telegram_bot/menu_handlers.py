@@ -71,6 +71,8 @@ def envoyer_menu_principal(chat_id, user_id, bot):
     markup.add(
         telebot.types.KeyboardButton(get_text("btn_pronostic", langue)),
         telebot.types.KeyboardButton(get_text("btn_matchs_jour", langue)),
+        telebot.types.KeyboardButton(get_text("btn_coupons", langue)),
+        telebot.types.KeyboardButton(get_text("btn_top_affiches", langue)),
         telebot.types.KeyboardButton(get_text("btn_historique", langue)),
         telebot.types.KeyboardButton(get_text("btn_stats", langue)),
         telebot.types.KeyboardButton(get_text("btn_notifs", langue)),
@@ -109,7 +111,7 @@ def enregistrer_menu_handlers(bot):
 
         enregistrer_utilisateur(user.id, user.username, user.first_name)
 
-        # Détection du parrain (avec paliers)
+        # Détection du parrain
         if not existe_avant:
             parts = message.text.split()
             if len(parts) >= 2 and parts[1].startswith("REF"):
@@ -129,20 +131,18 @@ def enregistrer_menu_handlers(bot):
 
                             nb_filleuls = compter_filleuls(parrain_id)
 
-                            # Vérifier palier
                             palier = get_palier_atteint(nb_filleuls)
                             bonus_palier = ""
                             if palier and nb_filleuls in [5, 10, 20, 50]:
                                 ajouter_jours_premium(parrain_id, palier['bonus'])
-                                bonus_palier = f"\n\n🏆 *Palier {palier['nom']}* atteint ! +{palier['bonus']} jours bonus"
+                                bonus_palier = f"\n\n🏆 Palier {palier['nom']} atteint ! +{palier['bonus']} jours bonus"
 
                             try:
                                 bot.send_message(
                                     parrain_id,
-                                    f"🎉 *Nouveau filleul : {user.first_name}*\n\n"
+                                    f"🎉 Nouveau filleul : {user.first_name}\n\n"
                                     f"+1 jour Premium offert !\n"
-                                    f"📊 Total : *{nb_filleuls} filleul(s)*{bonus_palier}",
-                                    parse_mode="Markdown"
+                                    f"📊 Total : {nb_filleuls} filleul(s){bonus_palier}"
                                 )
                             except Exception:
                                 pass
