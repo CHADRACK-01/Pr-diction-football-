@@ -18,7 +18,7 @@ from users import (
     ajouter_jours_premium
 )
 from users.db import get_connection
-
+from core.broadcast_manager import lancer_broadcast_async
 
 ADMIN_SESSIONS = {}
 
@@ -112,7 +112,7 @@ def _menu_bdd():
 def enregistrer_admin_handlers(bot):
 
     # =========================================================
-    # /admin
+    # COMMANDES TEXTE (/admin, /gen_codes, etc.)
     # =========================================================
     @bot.message_handler(commands=['admin'])
     def cmd_admin(message):
@@ -125,10 +125,6 @@ def enregistrer_admin_handlers(bot):
             reply_markup=_menu_admin()
         )
 
-
-    # =========================================================
-    # COMMANDES TEXTE
-    # =========================================================
     @bot.message_handler(commands=['gen_codes'])
     def cmd_gen_codes(message):
         if not est_administrateur(message.from_user.id):
@@ -152,7 +148,6 @@ def enregistrer_admin_handlers(bot):
             texte += f"`{c}`\n"
         bot.reply_to(message, texte, parse_mode="Markdown")
 
-
     @bot.message_handler(commands=['nettoyer'])
     def cmd_nettoyer(message):
         if not est_administrateur(message.from_user.id):
@@ -163,7 +158,6 @@ def enregistrer_admin_handlers(bot):
             message,
             f"🧹 Nettoyage termine\n\n• {logs} log(s) supprime(s)\n• {paiements} paiement(s) supprime(s)"
         )
-
 
     @bot.message_handler(commands=['stats'])
     def cmd_stats(message):
@@ -176,7 +170,6 @@ def enregistrer_admin_handlers(bot):
             f"STATISTIQUES\n\nTotal : {stats.get('total', 0)}\nPremium : {stats.get('premium', 0)}\nFree : {stats.get('free', 0)}"
         )
 
-
     @bot.message_handler(commands=['users'])
     def cmd_users(message):
         if not est_administrateur(message.from_user.id):
@@ -188,7 +181,6 @@ def enregistrer_admin_handlers(bot):
             statut = "P" if u['status'] == 'premium' else "F"
             texte += f"{i}. [{statut}] {u['first_name'] or '?'} : {u['user_id']}\n"
         bot.reply_to(message, texte)
-
 
     @bot.message_handler(commands=['add_admin'])
     def cmd_add_admin(message):
@@ -204,7 +196,6 @@ def enregistrer_admin_handlers(bot):
             log_admin(message.from_user.id, "add_admin", f"ID: {new_id}")
             bot.reply_to(message, f"Admin {new_id} ajoute.")
 
-
     @bot.message_handler(commands=['remove_admin'])
     def cmd_remove_admin(message):
         if not est_administrateur(message.from_user.id):
@@ -218,7 +209,6 @@ def enregistrer_admin_handlers(bot):
         if retirer_admin(target):
             log_admin(message.from_user.id, "remove_admin", f"ID: {target}")
             bot.reply_to(message, f"Admin {target} retire.")
-
 
     @bot.message_handler(commands=['ban'])
     def cmd_ban(message):
@@ -235,7 +225,6 @@ def enregistrer_admin_handlers(bot):
             log_admin(message.from_user.id, "ban", f"ID: {target}")
             bot.reply_to(message, f"Utilisateur {target} banni.")
 
-
     @bot.message_handler(commands=['unban'])
     def cmd_unban(message):
         if not est_administrateur(message.from_user.id):
@@ -249,7 +238,6 @@ def enregistrer_admin_handlers(bot):
         if debannir_user(target):
             log_admin(message.from_user.id, "unban", f"ID: {target}")
             bot.reply_to(message, f"Utilisateur {target} debanni.")
-
 
     @bot.message_handler(commands=['add_premium'])
     def cmd_add_premium(message):
@@ -271,7 +259,6 @@ def enregistrer_admin_handlers(bot):
             log_admin(message.from_user.id, "add_premium", f"ID: {target} - {jours}j")
             bot.reply_to(message, f"Utilisateur {target} PREMIUM pour {jours} jours\nExpire : {expiration}")
 
-
     @bot.message_handler(commands=['remove_premium'])
     def cmd_remove_premium(message):
         if not est_administrateur(message.from_user.id):
@@ -286,7 +273,6 @@ def enregistrer_admin_handlers(bot):
             log_admin(message.from_user.id, "remove_premium", f"ID: {target}")
             bot.reply_to(message, f"Utilisateur {target} est repasse en FREE.")
 
-
     @bot.message_handler(commands=['set_param'])
     def cmd_set_param(message):
         if not est_administrateur(message.from_user.id):
@@ -299,7 +285,6 @@ def enregistrer_admin_handlers(bot):
             log_admin(message.from_user.id, "set_param", f"{parts[1]} = {parts[2]}")
             bot.reply_to(message, f"{parts[1]} = {parts[2]}")
 
-
     @bot.message_handler(commands=['get_param'])
     def cmd_get_param(message):
         if not est_administrateur(message.from_user.id):
@@ -311,7 +296,6 @@ def enregistrer_admin_handlers(bot):
         val = get_parametre(parts[1], "Non defini")
         bot.reply_to(message, f"{parts[1]} = {val}")
 
-
     @bot.message_handler(commands=['annuler'])
     def cmd_annuler(message):
         ADMIN_SESSIONS.pop(message.from_user.id, None)
@@ -319,7 +303,7 @@ def enregistrer_admin_handlers(bot):
 
 
     # =========================================================
-    # BOUTONS ADMIN
+    # BOUTONS ADMIN (Reply Keyboard)
     # =========================================================
     @bot.message_handler(func=lambda m: m.from_user and est_administrateur(m.from_user.id) and m.text in [
         "Panneau Admin", "Stats", "Utilisateurs", "Admins", "Parametres",
@@ -527,14 +511,15 @@ def enregistrer_admin_handlers(bot):
                 texte += f"- {b['user_id']} : {b['raison'] or 'Sans raison'}\n"
             bot.reply_to(message, texte)
 
-        # --- Broadcast ---
+        # --- Broadcast (NOUVEAU : Choix de la cible) ---
         elif text == "Broadcast":
-            ADMIN_SESSIONS[user_id] = {"action": "broadcast"}
-            msg = bot.reply_to(
-                message,
-                "Envoie le message a diffuser. Il sera envoyé à TOUS les utilisateurs."
+            markup = telebot.types.InlineKeyboardMarkup(row_width=2)
+            markup.add(
+                telebot.types.InlineKeyboardButton("📱 Utilisateurs + 📢 Canal", callback_data="bcast|all"),
+                telebot.types.InlineKeyboardButton("📱 Utilisateurs uniquement", callback_data="bcast|users"),
+                telebot.types.InlineKeyboardButton("📢 Canal uniquement", callback_data="bcast|canal")
             )
-            bot.register_next_step_handler(msg, _traiter_broadcast)
+            bot.reply_to(message, "Où veux-tu envoyer l'annonce ?", reply_markup=markup)
 
         # --- Premium ---
         elif text == "Premium":
@@ -552,7 +537,25 @@ def enregistrer_admin_handlers(bot):
 
 
     # =========================================================
-    # TRAITEMENTS
+    # CALLBACK POUR LE BROADCAST
+    # =========================================================
+    @bot.callback_query_handler(func=lambda call: call.data.startswith("bcast|"))
+    def traiter_choix_broadcast(call):
+        if not est_administrateur(call.from_user.id):
+            bot.answer_callback_query(call.id, "Acces refuse")
+            return
+            
+        choix = call.data.split("|")[1]
+        user_id = call.from_user.id
+        ADMIN_SESSIONS[user_id] = {"action": "broadcast", "cible": choix}
+        
+        bot.answer_callback_query(call.id, "OK")
+        msg = bot.send_message(call.message.chat.id, "Envoie le message à diffuser :\n\n/annuler pour annuler.")
+        bot.register_next_step_handler(msg, _traiter_broadcast)
+
+
+    # =========================================================
+    # TRAITEMENTS (Next Step Handlers)
     # =========================================================
     def _traiter_gen_custom(message):
         user_id = message.from_user.id
@@ -622,35 +625,19 @@ def enregistrer_admin_handlers(bot):
             bot.reply_to(message, "Message vide.")
             return
 
-        users = get_tous_utilisateurs()
-        succes = 0
-        echecs = 0
-        for uid in users:
-            try:
-                bot.send_message(uid, f"ANNONCE ADMIN\n\n{texte}")
-                succes += 1
-                time.sleep(0.05)
-            except Exception:
-                echecs += 1
+        session = ADMIN_SESSIONS.get(user_id, {})
+        cible = session.get("cible", "users")
 
-        log_admin(user_id, "broadcast", f"{succes} ok, {echecs} echecs")
-
-        # ⚠️ Récapitulatif envoyé UNIQUEMENT aux admins
+        users = get_tous_utilisateurs() if cible in ["users", "all"] else []
         admins = get_tous_admins()
-        recap = f"📢 Récapitulatif broadcast :\n\n✅ Envoyés : {succes}\n❌ Échecs : {echecs}"
+        envoyer_canal = cible in ["canal", "all"]
 
-        for a in admins:
-            try:
-                bot.send_message(a['user_id'], recap, reply_markup=_menu_admin())
-            except Exception:
-                pass
-
-        # Admin principal
-        try:
-            bot.send_message(8653408729, recap, reply_markup=_menu_admin())
-        except Exception:
-            pass
-
+        bot.reply_to(message, "🚀 Diffusion lancée en arrière-plan. Tu recevras un récapitulatif à la fin.", reply_markup=_menu_admin())
+        
+        # Lancement du broadcast asynchrone
+        lancer_broadcast_async(bot, users, texte, admins, canal=envoyer_canal)
+        
+        log_admin(user_id, "broadcast", f"Cible: {cible}")
         ADMIN_SESSIONS.pop(user_id, None)
 
 
