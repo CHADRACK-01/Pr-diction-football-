@@ -1,6 +1,6 @@
 import psycopg2.extras
-
 from users.db import get_connection
+from core.utils.logs import log_error
 
 
 # =========================================================
@@ -16,7 +16,7 @@ def get_parametre(cle, defaut=None):
         conn.close()
         return row[0] if row else defaut
     except Exception as e:
-        print(f"⚠️ Erreur get_parametre : {e}")
+        log_error(f"Erreur get_parametre : {e}", "ADMIN")
         return defaut
 
 
@@ -37,7 +37,7 @@ def set_parametre(cle, valeur, description=""):
         conn.close()
         return True
     except Exception as e:
-        print(f"⚠️ Erreur set_parametre : {e}")
+        log_error(f"Erreur set_parametre : {e}", "ADMIN")
         return False
 
 
@@ -51,7 +51,7 @@ def get_tous_parametres():
         conn.close()
         return [dict(r) for r in rows]
     except Exception as e:
-        print(f"⚠️ Erreur get_tous_parametres : {e}")
+        log_error(f"Erreur get_tous_parametres : {e}", "ADMIN")
         return []
 
 
@@ -70,7 +70,7 @@ def est_administrateur(user_id):
         conn.close()
         return row is not None
     except Exception as e:
-        print(f"⚠️ Erreur est_administrateur : {e}")
+        log_error(f"Erreur est_administrateur : {e}", "ADMIN")
         return False
 
 
@@ -88,7 +88,7 @@ def ajouter_admin(user_id, nom=""):
         conn.close()
         return True
     except Exception as e:
-        print(f"⚠️ Erreur ajouter_admin : {e}")
+        log_error(f"Erreur ajouter_admin : {e}", "ADMIN")
         return False
 
 
@@ -103,7 +103,7 @@ def retirer_admin(user_id):
         conn.close()
         return rows > 0
     except Exception as e:
-        print(f"⚠️ Erreur retirer_admin : {e}")
+        log_error(f"Erreur retirer_admin : {e}", "ADMIN")
         return False
 
 
@@ -117,6 +117,7 @@ def get_tous_admins():
         conn.close()
         return [dict(r) for r in rows]
     except Exception as e:
+        log_error(f"Erreur get_tous_admins : {e}", "ADMIN")
         return []
 
 
@@ -133,6 +134,7 @@ def est_banni(user_id):
         conn.close()
         return row is not None
     except Exception as e:
+        log_error(f"Erreur est_banni : {e}", "ADMIN")
         return False
 
 
@@ -150,6 +152,7 @@ def bannir_user(user_id, raison=""):
         conn.close()
         return True
     except Exception as e:
+        log_error(f"Erreur bannir_user : {e}", "ADMIN")
         return False
 
 
@@ -164,6 +167,7 @@ def debannir_user(user_id):
         conn.close()
         return rows > 0
     except Exception as e:
+        log_error(f"Erreur debannir_user : {e}", "ADMIN")
         return False
 
 
@@ -177,6 +181,7 @@ def get_liste_bannis():
         conn.close()
         return [dict(r) for r in rows]
     except Exception as e:
+        log_error(f"Erreur get_liste_bannis : {e}", "ADMIN")
         return []
 
 
@@ -195,7 +200,7 @@ def log_admin(admin_id, action, details=""):
         cur.close()
         conn.close()
     except Exception as e:
-        print(f"⚠️ Erreur log_admin : {e}")
+        log_error(f"Erreur log_admin : {e}", "ADMIN")
 
 
 def get_logs_admin(limite=20):
@@ -212,6 +217,7 @@ def get_logs_admin(limite=20):
         conn.close()
         return [dict(r) for r in rows]
     except Exception as e:
+        log_error(f"Erreur get_logs_admin : {e}", "ADMIN")
         return []
 
 
@@ -256,7 +262,7 @@ def get_stats_globales():
             'bannis': bannis
         }
     except Exception as e:
-        print(f"⚠️ Erreur get_stats_globales : {e}")
+        log_error(f"Erreur get_stats_globales : {e}", "ADMIN")
         return {}
 
 
@@ -284,4 +290,5 @@ def get_liste_utilisateurs(limite=30, seulement_premium=False):
         conn.close()
         return [dict(r) for r in rows]
     except Exception as e:
+        log_error(f"Erreur get_liste_utilisateurs : {e}", "ADMIN")
         return []
