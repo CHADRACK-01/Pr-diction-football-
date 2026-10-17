@@ -21,12 +21,7 @@ COMPETITIONS = {
 
 
 def _normaliser(nom):
-    """
-    Dictionnaire de correspondance entre les noms de l'API et les noms du modèle.
-    On élargit au maximum pour éviter les 'Équipe introuvable'.
-    """
     special = {
-        # Premier League / Championship
         "Manchester City FC": "Man City", "Manchester United FC": "Man United",
         "Newcastle United FC": "Newcastle", "Nottingham Forest FC": "Nott'm Forest",
         "Tottenham Hotspur FC": "Tottenham", "Wolverhampton Wanderers FC": "Wolves",
@@ -44,30 +39,24 @@ def _normaliser(nom):
         "Rotherham United FC": "Rotherham", "Huddersfield Town AFC": "Huddersfield",
         "Blackburn Rovers FC": "Blackburn", "Watford FC": "Watford",
         "Burnley FC": "Burnley", "Luton Town FC": "Luton",
-        
-        # LaLiga
         "Real Madrid CF": "Real Madrid", "FC Barcelona": "Barcelona",
         "Atletico de Madrid": "Ath Madrid", "Athletic Club": "Ath Bilbao",
         "Real Sociedad de Futbol": "Sociedad", "Real Betis Balompie": "Betis",
-        "Real Betis Balompié": "Betis", # ⚠️ CORRECTION
-        "Sevilla FC": "Sevilla", "Valencia CF": "Valencia",
-        "Villarreal CF": "Villarreal", "Getafe CF": "Getafe",
-        "RCD Espanyol de Barcelona": "Espanol", "Rayo Vallecano de Madrid": "Vallecano",
-        "RC Celta de Vigo": "Celta", "RCD Mallorca": "Mallorca",
-        "CA Osasuna": "Osasuna", "Granada CF": "Granada",
-        "Deportivo Alaves": "Alaves", "Deportivo Alavés": "Alaves", # ⚠️ CORRECTION
-        "Cadiz CF": "Cadiz", "UD Las Palmas": "Las Palmas",
-        "Girona FC": "Girona", "Real Valladolid CF": "Valladolid",
-        "Levante UD": "Levante", "Real Racing Club de Santander": "Santander", # ⚠️ CORRECTION
-        "Elche CF": "Elche", "CD Leganes": "Leganes",
-        "Real Zaragoza": "Zaragoza", "Real Oviedo": "Oviedo",
+        "Real Betis Balompié": "Betis", "Sevilla FC": "Sevilla",
+        "Valencia CF": "Valencia", "Villarreal CF": "Villarreal",
+        "Getafe CF": "Getafe", "RCD Espanyol de Barcelona": "Espanol",
+        "Rayo Vallecano de Madrid": "Vallecano", "RC Celta de Vigo": "Celta",
+        "RCD Mallorca": "Mallorca", "CA Osasuna": "Osasuna",
+        "Granada CF": "Granada", "Deportivo Alaves": "Alaves",
+        "Deportivo Alavés": "Alaves", "Cadiz CF": "Cadiz",
+        "UD Las Palmas": "Las Palmas", "Girona FC": "Girona",
+        "Real Valladolid CF": "Valladolid", "Levante UD": "Levante",
+        "Real Racing Club de Santander": "Santander", "Elche CF": "Elche",
+        "CD Leganes": "Leganes", "Real Zaragoza": "Zaragoza", "Real Oviedo": "Oviedo",
         "Sporting Gijon": "Sp Gijon", "Racing de Ferrol": "Ferrol",
         "Albacete Balompie": "Albacete", "Burgos CF": "Burgos",
         "FC Andorra": "Andorra", "SD Huesca": "Huesca",
         "CD Mirandes": "Mirandes", "UD Ibiza": "Ibiza",
-        "Villarreal B": "Villarreal B",
-        
-        # Bundesliga
         "FC Bayern München": "Bayern Munich", "Borussia Dortmund": "Dortmund",
         "Bayer 04 Leverkusen": "Leverkusen", "Eintracht Frankfurt": "Ein Frankfurt",
         "VfB Stuttgart": "Stuttgart", "VfL Wolfsburg": "Wolfsburg",
@@ -77,39 +66,29 @@ def _normaliser(nom):
         "SV Werder Bremen": "Werder Bremen", "VfL Bochum 1848": "Bochum",
         "1. FC Köln": "FC Koln", "SV Darmstadt 98": "Darmstadt",
         "1. FC Heidenheim 1846": "Heidenheim", "FC St. Pauli": "St Pauli",
-        "Holstein Kiel": "Holstein Kiel",
-        
-        # Ligue 1
-        "Paris Saint-Germain FC": "Paris SG", "Olympique de Marseille": "Marseille",
-        "Olympique Lyonnais": "Lyon", "AS Monaco FC": "Monaco",
-        "LOSC Lille": "Lille", "OGC Nice": "Nice",
+        "Holstein Kiel": "Holstein Kiel", "Paris Saint-Germain FC": "Paris SG",
+        "Olympique de Marseille": "Marseille", "Olympique Lyonnais": "Lyon",
+        "AS Monaco FC": "Monaco", "LOSC Lille": "Lille", "OGC Nice": "Nice",
         "Stade Rennais FC 1901": "Rennes", "Racing Club de Lens": "Lens",
         "Stade de Reims": "Reims", "Montpellier HSC": "Montpellier",
         "FC Nantes": "Nantes", "Stade Brestois 29": "Brest",
         "RC Strasbourg Alsace": "Strasbourg", "Toulouse FC": "Toulouse",
-        "FC Metz": "Metz", "Le Havre AC": "Le Havre",
-        "Clermont Foot 63": "Clermont", "FC Lorient": "Lorient",
-        "Angers SCO": "Angers", "AS Saint-Etienne": "St Etienne",
-        "AJ Auxerre": "Auxerre",
-        
-        # Serie A
-        "AS Roma": "Roma", "SS Lazio": "Lazio",
+        "FC Metz": "Metz", "Le Havre AC": "Le Havre", "Clermont Foot 63": "Clermont",
+        "FC Lorient": "Lorient", "Angers SCO": "Angers", "AS Saint-Etienne": "St Etienne",
+        "AJ Auxerre": "Auxerre", "AS Roma": "Roma", "SS Lazio": "Lazio",
         "Juventus FC": "Juventus", "AC Milan": "Milan",
         "FC Internazionale Milano": "Inter", "SSC Napoli": "Napoli",
         "ACF Fiorentina": "Fiorentina", "Atalanta BC": "Atalanta",
         "Bologna FC 1909": "Bologna", "Torino FC": "Torino",
         "Udinese Calcio": "Udinese", "US Sassuolo Calcio": "Sassuolo",
-        "Empoli FC": "Empoli", "US Lecce": "Lecce",
-        "Hellas Verona FC": "Verona", "Cagliari Calcio": "Cagliari",
-        "Genoa CFC": "Genoa", "US Salernitana 1919": "Salernitana",
-        "Frosinone Calcio": "Frosinone", "AC Monza": "Monza",
-        "Parma Calcio 1913": "Parma", # ⚠️ CORRECTION
-        "Como 1907": "Como", "Venezia FC": "Venezia",
+        "Empoli FC": "Empoli", "US Lecce": "Lecce", "Hellas Verona FC": "Verona",
+        "Cagliari Calcio": "Cagliari", "Genoa CFC": "Genoa",
+        "US Salernitana 1919": "Salernitana", "Frosinone Calcio": "Frosinone",
+        "AC Monza": "Monza", "Parma Calcio 1913": "Parma", "Como 1907": "Como",
+        "Venezia FC": "Venezia",
     }
-    
     if nom in special:
         return special[nom]
-        
     for suf in [" FC", " AFC", " CF", " SC", " AC", " Balompie", " Balompié"]:
         if nom.endswith(suf):
             return nom[:-len(suf)]
@@ -127,11 +106,17 @@ def _nom_competition(code):
 
 def get_matchs_du_jour():
     """Récupère les matchs via l'API avec les cotes bookmaker et une gestion d'erreur robuste."""
-    if not global_model_data: return []
-    if 'teams' not in global_model_data: return []
+    if not global_model_data: 
+        print("⚠️ API : Modèle non chargé.")
+        return []
+    if 'teams' not in global_model_data: 
+        print("⚠️ API : Données des équipes manquantes.")
+        return []
 
     teams_data = global_model_data.get('teams')
-    if teams_data is None or len(teams_data) == 0: return []
+    if teams_data is None or len(teams_data) == 0: 
+        print("⚠️ API : Liste des équipes vide.")
+        return []
 
     date_debut = datetime.now(TZ_KINSHASA).strftime("%Y-%m-%d")
     date_fin = (datetime.now(TZ_KINSHASA) + timedelta(days=3)).strftime("%Y-%m-%d")
@@ -176,11 +161,9 @@ def get_matchs_du_jour():
                     }
 
                 try:
-                    # On passe les cotes du bookmaker à predire_match
                     prono = predire_match(home, away, cotes_book=cotes_book)
                     if not isinstance(prono, dict): continue
                     if 'erreur' in prono: 
-                        # On n'affiche plus le long message d'erreur dans les logs pour éviter le spam
                         print(f"⚠️ Skip {home} vs {away} : équipe inconnue du modèle.")
                         continue
                     if 'dc_1x' not in prono: continue
@@ -218,11 +201,28 @@ def get_matchs_du_jour():
             print(f"⚠️ Exception API {code}: {e}")
             continue
 
-    matchs_trouves.sort(key=lambda x: (x['heure'], -x['confiance']))
-    return matchs_trouves
+    # --- LOGS DE DIAGNOSTIC ---
+    if not matchs_trouves:
+        print("⚠️ API : Aucun match trouvé via l'API (date ou championnat vide).")
+    else:
+        print(f"🔍 {len(matchs_trouves)} matchs trouvés AVANT filtrage des cotes.")
+        
+    matchs_filtres = []
+    for m in matchs_trouves:
+        if m.get('analyse_pari') and m['analyse_pari']['cote_bot'] >= 1.30:
+            matchs_filtres.append(m)
+            
+    if not matchs_filtres:
+        print("⚠️ Filtrage : Aucun match ne passe le filtre de cote (≥ 1.30).")
+    else:
+        print(f"✅ {len(matchs_filtres)} matchs après filtrage des cotes.")
+
+    matchs_filtres.sort(key=lambda x: (x['heure'], -x['confiance']))
+    return matchs_filtres
 
 
 def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None):
+    """Formate la liste des matchs avec filtrage et gestion d'erreur."""
     from core.translations import get_text
 
     date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
