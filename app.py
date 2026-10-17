@@ -74,7 +74,7 @@ def _envoyer_notifications():
             return
 
         date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
-        texte = f"🔥 **PRONOSTICS VALUE BET DU JOUR** 🔥\nDate : {date_str}\n\n"
+        texte = f"🔥 PRONOSTICS VALUE BET DU JOUR 🔥\nDate : {date_str}\n\n"
         
         compte = 0
         for item in top:
@@ -94,7 +94,7 @@ def _envoyer_notifications():
                 if analyse['cote_book']:
                     texte += f"🏢 Cote Book : {analyse['cote_book']}\n"
                     if analyse['is_value']:
-                        texte += f"🔥 **VALUE BET !**\n"
+                        texte += f"🔥 VALUE BET !\n"
                 texte += f"⚽ Score probable : {prono['best_score'][0]} - {prono['best_score'][1]}\n\n"
             
             if compte >= 3: 
@@ -115,7 +115,7 @@ def _envoyer_notifications():
         echecs = 0
         for uid in users:
             try:
-                bot.send_message(uid, texte, parse_mode='Markdown')
+                bot.send_message(uid, texte)
                 succes += 1
                 time.sleep(0.1)
             except Exception:
@@ -223,7 +223,7 @@ def _scheduler_notifications():
                     if derniere_date_canal != date_du_jour:
                         try:
                             from core.canal_manager import publier_matchs_sur_canal
-                            publier_matchs_sur_canal(bot)
+                            publier_matchs_sur_canal(bot)  # ⚠️ Envoi réel sur le canal
                         except Exception as e:
                             print(f"⚠️ Erreur publication canal : {e}")
                         derniere_date_canal = date_du_jour
@@ -235,7 +235,7 @@ def _scheduler_notifications():
                     _envoyer_coupons_premium()
                     try:
                         from core.canal_manager import publier_coupons_sur_canal
-                        publier_coupons_sur_canal(bot)
+                        publier_coupons_sur_canal(bot)  # ⚠️ Envoi réel sur le canal
                     except Exception as e:
                         print(f"⚠️ Erreur publication coupons canal : {e}")
                     derniere_date_coupons_semaine = date_du_jour
