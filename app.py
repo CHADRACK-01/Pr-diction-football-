@@ -14,16 +14,14 @@ from users import (
     initialiser_tables, get_utilisateurs_notifies, est_banni, 
     est_administrateur, get_parametre
 )
+# ⚠️ NOUVEAU : On importe la fonction centralisée
 from telegram_bot.handlers import enregistrer_handlers
-from telegram_bot.admin_handlers import enregistrer_admin_handlers
-from telegram_bot.inline_handlers import enregistrer_inline_handlers
 
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
-# ⚠️ ORDRE CRUCIAL D'ENREGISTREMENT DES HANDLERS
-enregistrer_admin_handlers(bot)
-enregistrer_inline_handlers(bot)
+# ⚠️ ORDRE CRUCIAL : On utilise UNIQUEMENT cette ligne pour charger les handlers.
+# C'est elle qui garantit que l'Admin est chargé avant le Menu (Fallback).
 enregistrer_handlers(bot)
 
 TZ_KINSHASA = timezone(timedelta(hours=1))
@@ -184,7 +182,7 @@ def _envoyer_coupons_premium():
                 langue = get_langue(uid)
                 for coupon in coupons:
                     texte = formater_coupon(coupon, langue, montrer_details=True)
-                    bot.send_message(uid, texte)
+                    _envoyer_message_securise(uid, texte)
                     time.sleep(0.1)
                 succes += 1
             except Exception as e:
@@ -201,7 +199,6 @@ def _envoyer_coupons_premium():
 # =========================================================
 def _scheduler_notifications():
     print("Scheduler demarre...")
-    # Variables d'état (pour ne pas envoyer deux fois la même chose)
     derniere_date_envoi = None
     derniere_date_coupons_semaine = None
     derniere_date_coupons_weekend = None
