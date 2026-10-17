@@ -2,6 +2,7 @@ import io
 import joblib
 import telebot
 import config
+from datetime import datetime
 
 from users import (
     enregistrer_utilisateur, get_langue, set_langue, est_banni,
@@ -27,6 +28,17 @@ def envoyer_menu_principal(chat_id, user_id, bot):
     user_info = get_user_info(user_id)
     nom = user_info['first_name'] if user_info else "Utilisateur"
 
+    # 1. Message de présentation
+    presentation = (
+        f"👋 Bienvenue {nom} sur Pronostic Football !\n\n"
+        f"🤖 Je suis un bot d'Intelligence Artificielle spécialisé dans les pronostics sportifs. "
+        f"J'analyse des milliers de matchs (xG, forme, Elo) pour te donner les meilleures prédictions.\n\n"
+        f"📊 Statut : {statut_label}\n"
+        f"🎯 Pronostics aujourd'hui : {compteur}/{limite}\n"
+        f"⚙️ Précision du modèle : {prec*100:.2f}%\n\n"
+        f"👇 Utilise les boutons ci-dessous pour commencer :"
+    )
+
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(
         telebot.types.KeyboardButton(get_text("btn_pronostic", langue)),
@@ -40,24 +52,32 @@ def envoyer_menu_principal(chat_id, user_id, bot):
         telebot.types.KeyboardButton(get_text("btn_parrainage", langue)),
         telebot.types.KeyboardButton(get_text("btn_langue", langue)),
     )
+    bot.send_message(chat_id, presentation, reply_markup=markup)
 
-    welcome_text = get_text(
-        "welcome", langue, nom=nom, statut=statut_label,
-        compteur=compteur, limite=limite, nb_matchs=nb_matchs,
-        precision=round(prec * 100, 2)
-    )
+    # 2. Boutons Inline (Canal + Admin)
+    inline_markup = telebot.types.InlineKeyboardMarkup(row_width=1)
     
-    bot.send_message(chat_id, welcome_text, reply_markup=markup)
+    # Vérifier si l'utilisateur est membre du canal
+    try:
+        member = bot.get_chat_member(config.CANAL_ID, user_id)
+        is_member = member.status in ['member', 'administrator', 'creator']
+    except Exception:
+        is_member = False
 
-    inline_markup = telebot.types.InlineKeyboardMarkup()
-    inline_markup.add(
-        telebot.types.InlineKeyboardButton("📢 Rejoindre notre Canal", url=config.CANAL_LIEN)
-    )
+    # Afficher le bouton canal UNIQUEMENT si l'utilisateur n'est pas membre
+    if not is_member:
+        inline_markup.add(
+            telebot.types.InlineKeyboardButton("📢 Rejoindre notre Canal", url=config.CANAL_LIEN)
+        )
+
+    # Bouton "Autres" pour l'admin (au lieu du bouton Panneau Admin direct)
     if est_administrateur(user_id):
         inline_markup.add(
-            telebot.types.InlineKeyboardButton("🎛️ Ouvrir le Panneau Admin", callback_data="open_admin_panel")
+            telebot.types.InlineKeyboardButton("⚙️ Autres", callback_data="open_admin_panel")
         )
-    bot.send_message(chat_id, "👇 Rejoins notre canal ou accède au panneau :", reply_markup=inline_markup)
+
+    if inline_markup.keyboard:
+        bot.send_message(chat_id, "👇 Options supplémentaires :", reply_markup=inline_markup)
 
 
 def enregistrer_start_handlers(bot):
