@@ -106,6 +106,9 @@ def _menu_bdd():
 
 def enregistrer_admin_handlers(bot):
 
+    # =========================================================
+    # COMMANDE /admin (SECOURS)
+    # =========================================================
     @bot.message_handler(commands=['admin'])
     def cmd_admin(message):
         if not est_administrateur(message.from_user.id):
@@ -113,9 +116,24 @@ def enregistrer_admin_handlers(bot):
             return
         bot.reply_to(message, "🎛️ **PANNEAU ADMIN**\n\nChoisis une action :", reply_markup=_menu_principal_admin(), parse_mode="Markdown")
 
+    # =========================================================
+    # ⚠️ NOUVEAU : CALLBACK DU BOUTON INLINE (Ouverture depuis le menu)
+    # =========================================================
+    @bot.callback_query_handler(func=lambda call: call.data == "open_admin_panel")
+    def open_admin_panel_callback(call):
+        if not est_administrateur(call.from_user.id):
+            bot.answer_callback_query(call.id, "Acces refuse")
+            return
+        bot.answer_callback_query(call.id, "Ouverture du panneau...")
+        bot.send_message(
+            call.message.chat.id, 
+            "🎛️ **PANNEAU ADMIN**\n\nChoisis une action :", 
+            reply_markup=_menu_principal_admin(), 
+            parse_mode="Markdown"
+        )
 
     # =========================================================
-    # CALLBACKS (Boutons Inline)
+    # CALLBACKS (Boutons Inline du panneau)
     # =========================================================
     @bot.callback_query_handler(func=lambda call: call.data.startswith("admin_") or call.data.startswith("param_") or call.data.startswith("bcast_"))
     def handle_admin_callbacks(call):
@@ -249,7 +267,7 @@ def enregistrer_admin_handlers(bot):
             bot.register_next_step_handler(msg, _traiter_remove_premium)
 
         # --- Codes ---
-        elif data == "admin_gen_10" or data == "admin_gen_30" or data == "admin_gen_90":
+        elif data in ["admin_gen_10", "admin_gen_30", "admin_gen_90"]:
             jours = int(data.split("_")[-1])
             codes = generer_lot_codes(jours, 10)
             log_admin(user_id, "gen_codes", f"10 codes de {jours}j")
@@ -293,6 +311,7 @@ def enregistrer_admin_handlers(bot):
     # =========================================================
     @bot.message_handler(commands=['annuler'])
     def cmd_annuler(message):
+        if not est_administrateur(message.from_user.id): return
         ADMIN_SESSIONS.pop(message.from_user.id, None)
         bot.reply_to(message, "Action annulee.")
 
