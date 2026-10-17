@@ -9,12 +9,13 @@ from users import (
 )
 from core.payments import ABONNEMENTS, envoyer_facture
 from core.translations import get_text
+from core.utils.logs import log_info, log_error
 
 # Coordonnées Mobile Money
 COORDONNEES_MOBILE = {
-    "Airtel Money": "Fonctionnalité à venir",
-    "Orange Money": "+243 842 453 217",
-    "M-Pesa": "Fonctionnalité à venir",
+    "Airtel Money": "+243 8XX XXX XXX",
+    "Orange Money": "+243 8XX XXX XXX",
+    "M-Pesa": "+243 8XX XXX XXX",
 }
 
 # Stockage temporaire de l'abonnement choisi pour Mobile Money
@@ -37,24 +38,11 @@ def enregistrer_payment_handlers(bot):
         if action == "stars":
             markup = telebot.types.InlineKeyboardMarkup(row_width=1)
             markup.add(
-                telebot.types.InlineKeyboardButton(
-                    f"Journalier - {ABONNEMENTS['journalier']['prix_stars']} Stars",
-                    callback_data="buy|journalier"
-                ),
-                telebot.types.InlineKeyboardButton(
-                    f"Hebdomadaire - {ABONNEMENTS['hebdomadaire']['prix_stars']} Stars",
-                    callback_data="buy|hebdomadaire"
-                ),
-                telebot.types.InlineKeyboardButton(
-                    f"Mensuel - {ABONNEMENTS['mensuel']['prix_stars']} Stars",
-                    callback_data="buy|mensuel"
-                ),
+                telebot.types.InlineKeyboardButton(f"Journalier - {ABONNEMENTS['journalier']['prix_stars']} Stars", callback_data="buy|journalier"),
+                telebot.types.InlineKeyboardButton(f"Hebdomadaire - {ABONNEMENTS['hebdomadaire']['prix_stars']} Stars", callback_data="buy|hebdomadaire"),
+                telebot.types.InlineKeyboardButton(f"Mensuel - {ABONNEMENTS['mensuel']['prix_stars']} Stars", callback_data="buy|mensuel"),
             )
-            bot.send_message(
-                call.message.chat.id,
-                get_text("premium_titre", langue),
-                reply_markup=markup
-            )
+            bot.send_message(call.message.chat.id, get_text("premium_titre", langue), reply_markup=markup)
 
         # --- Mobile Money ---
         elif action == "mobile":
@@ -64,20 +52,12 @@ def enregistrer_payment_handlers(bot):
                 telebot.types.InlineKeyboardButton("Hebdomadaire - 6 000 CDF", callback_data="paym|hebdomadaire"),
                 telebot.types.InlineKeyboardButton("Mensuel - 10 000 CDF", callback_data="paym|mensuel"),
             )
-            bot.send_message(
-                call.message.chat.id,
-                "MOBILE MONEY\n\nChoisis ton abonnement :",
-                reply_markup=markup
-            )
+            bot.send_message(call.message.chat.id, "MOBILE MONEY\n\nChoisis ton abonnement :", reply_markup=markup)
 
         # --- Code Premium ---
         elif action == "code":
-            msg = bot.send_message(
-                call.message.chat.id,
-                get_text("pay_code_titre", langue) + "\n\nTape /annuler pour annuler."
-            )
+            msg = bot.send_message(call.message.chat.id, get_text("pay_code_titre", langue) + "\n\nTape /annuler pour annuler.")
             bot.register_next_step_handler(msg, _traiter_code)
-
 
     # =========================================================
     # CALLBACK : Choix abonnement Mobile Money
@@ -92,38 +72,30 @@ def enregistrer_payment_handlers(bot):
             bot.answer_callback_query(call.id, "Inconnu")
             return
 
-        # On sauvegarde l'abonnement choisi en session
         PAIEMENT_SESSIONS[user_id] = abo_key
-        
         abo = ABONNEMENTS[abo_key]
         montant_cdf = int(abo['prix_stars']) * 40
 
         bot.answer_callback_query(call.id, "OK")
 
-        texte = get_text(
-            "pay_mobile_titre", langue,
-            montant=montant_cdf,
-            abo=abo['nom']
-        )
+        texte = get_text("pay_mobile_titre", langue, montant=montant_cdf, abo=abo['nom'])
         texte += "\n\n"
         for nom, numero in COORDONNEES_MOBILE.items():
             texte += f"📱 {nom} : {numero}\n"
 
-        # NOUVEAU : Bouton pour signaler le paiement
         markup = telebot.types.InlineKeyboardMarkup()
         markup.add(telebot.types.InlineKeyboardButton("📸 J'ai payé (Envoyer la preuve)", callback_data="preuve_ok"))
 
         bot.send_message(call.message.chat.id, texte, reply_markup=markup)
 
     # =========================================================
-    # NOUVEAU : Callback pour demander la preuve
+    # CALLBACK : Demander la preuve
     # =========================================================
     @bot.callback_query_handler(func=lambda call: call.data == "preuve_ok")
     def demander_preuve(call):
         bot.answer_callback_query(call.id, "OK")
         msg = bot.send_message(call.message.chat.id, "Envoie la capture d'écran de ton paiement :")
         bot.register_next_step_handler(msg, recevoir_capture)
-
 
     # =========================================================
     # TRAITEMENT DU CODE PREMIUM
@@ -140,19 +112,12 @@ def enregistrer_payment_handlers(bot):
         resultat = utiliser_code(code, user_id)
 
         if "erreur" in resultat:
-            bot.reply_to(
-                message,
-                get_text("pay_code_erreur", langue, erreur=resultat['erreur'])
-            )
+            bot.reply_to(message, get_text("pay_code_erreur", langue, erreur=resultat['erreur']))
             return
 
         jours = resultat['jours']
         ajouter_jours_premium(user_id, jours)
-        bot.reply_to(
-            message,
-            get_text("pay_code_ok", langue, jours=jours)
-        )
-
+        bot.reply_to(message, get_text("pay_code_ok", langue, jours=jours))
 
     # =========================================================
     # RÉCEPTION DE LA CAPTURE (photo)
@@ -161,14 +126,11 @@ def enregistrer_payment_handlers(bot):
         user_id = message.from_user.id
         langue = get_langue(user_id)
 
-        # Vérification que c'est bien une photo
         if not message.photo:
             bot.reply_to(message, "Ce n'est pas une photo valide. Action annulée.")
             return
 
         file_id = message.photo[-1].file_id
-
-        # On récupère l'abonnement choisi (par défaut journalier si erreur)
         abo_key = PAIEMENT_SESSIONS.get(user_id, "journalier")
         abo = ABONNEMENTS[abo_key]
         montant = int(abo['prix_stars']) * 40
@@ -179,10 +141,7 @@ def enregistrer_payment_handlers(bot):
             bot.reply_to(message, "Erreur lors de l'enregistrement.")
             return
 
-        bot.reply_to(
-            message,
-            get_text("pay_attente_titre", langue)
-        )
+        bot.reply_to(message, get_text("pay_attente_titre", langue))
 
         admins = get_tous_admins()
         user_info = get_user_info(user_id)
@@ -194,30 +153,22 @@ def enregistrer_payment_handlers(bot):
             telebot.types.InlineKeyboardButton("❌ Refuser", callback_data=f"rpay|{demande_id}")
         )
 
-        caption = (
-            f"NOUVELLE DEMANDE #{demande_id}\n\n"
-            f"User : {nom_user}\nID : {user_id}\n"
-            f"Abo : {abo['nom']}\nMontant : {montant} CDF"
-        )
+        caption = f"NOUVELLE DEMANDE #{demande_id}\n\nUser : {nom_user}\nID : {user_id}\nAbo : {abo['nom']}\nMontant : {montant} CDF"
 
-        # Notifier admin principal
         try:
             bot.send_photo(8653408729, file_id, caption=caption, reply_markup=markup)
         except Exception as e:
-            print(f"⚠️ Erreur notif admin principal : {e}")
+            log_error(f"Erreur notif admin principal : {e}", "PAIEMENT")
 
-        # Notifier les autres admins
         for a in admins:
             if a['user_id'] == 8653408729:
                 continue
             try:
                 bot.send_photo(a['user_id'], file_id, caption=caption, reply_markup=markup)
             except Exception as e:
-                print(f"⚠️ Erreur notif admin {a['user_id']} : {e}")
+                log_error(f"Erreur notif admin {a['user_id']} : {e}", "PAIEMENT")
         
-        # On nettoie la session
         PAIEMENT_SESSIONS.pop(user_id, None)
-
 
     # =========================================================
     # CALLBACK : Valider paiement
@@ -247,20 +198,13 @@ def enregistrer_payment_handlers(bot):
             ajouter_jours_premium(demande['user_id'], jours)
 
             bot.answer_callback_query(call.id, "Valide !")
-            bot.send_message(
-                call.message.chat.id,
-                f"✅ Paiement #{demande_id} valide. +{jours}j pour user {demande['user_id']}"
-            )
+            bot.send_message(call.message.chat.id, f"✅ Paiement #{demande_id} valide. +{jours}j pour user {demande['user_id']}")
 
             try:
                 langue = get_langue(demande['user_id'])
-                bot.send_message(
-                    demande['user_id'],
-                    get_text("pay_valide", langue, jours=jours)
-                )
+                bot.send_message(demande['user_id'], get_text("pay_valide", langue, jours=jours))
             except Exception:
                 pass
-
 
     # =========================================================
     # CALLBACK : Refuser paiement
@@ -280,20 +224,13 @@ def enregistrer_payment_handlers(bot):
 
         if refuser_demande(demande_id, call.from_user.id):
             bot.answer_callback_query(call.id, "Refuse !")
-            bot.send_message(
-                call.message.chat.id,
-                f"❌ Paiement #{demande_id} refuse."
-            )
+            bot.send_message(call.message.chat.id, f"❌ Paiement #{demande_id} refuse.")
 
             try:
                 langue = get_langue(demande['user_id'])
-                bot.send_message(
-                    demande['user_id'],
-                    get_text("pay_refuse", langue)
-                )
+                bot.send_message(demande['user_id'], get_text("pay_refuse", langue))
             except Exception:
                 pass
-
 
     # =========================================================
     # PAIEMENT TELEGRAM STARS
@@ -311,14 +248,12 @@ def enregistrer_payment_handlers(bot):
         bot.answer_callback_query(call.id, f"{abo['nom']}")
         envoyer_facture(bot, call.message.chat.id, abo_key, user_id)
 
-
     @bot.pre_checkout_query_handler(func=lambda query: True)
     def process_pre_checkout(pre_checkout_query):
         try:
             bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
         except Exception as e:
-            print(f"Erreur pre_checkout : {e}")
-
+            log_error(f"Erreur pre_checkout : {e}", "PAIEMENT")
 
     @bot.message_handler(content_types=['successful_payment'])
     def process_successful_payment(message):
@@ -335,9 +270,10 @@ def enregistrer_payment_handlers(bot):
 
             abo = ABONNEMENTS[abo_key]
             
-            # ✅ VÉRIFICATION DU MONTANT PAYÉ (Sécurité)
+            # Vérification du montant payé
             if payment.total_amount != abo['prix_stars']:
                 bot.send_message(user_id, "⚠️ Erreur : Le montant payé ne correspond pas à l'abonnement choisi.")
+                log_error(f"Montant incorrect : {payment.total_amount} au lieu de {abo['prix_stars']}", "PAIEMENT")
                 return
 
             duree = abo["duree_jours"]
@@ -353,7 +289,7 @@ def enregistrer_payment_handlers(bot):
                 f"Duree : {duree} jour(s)\n"
                 f"Expire : {expiration}"
             )
-            print(f"Paiement Stars valide : user {user_id} - {nom_abo}")
+            log_info(f"Paiement Stars valide : user {user_id} - {nom_abo}", "PAIEMENT")
 
         except Exception as e:
-            print(f"Erreur traitement paiement : {str(e)}")
+            log_error(f"Erreur traitement paiement : {str(e)}", "PAIEMENT", e)
