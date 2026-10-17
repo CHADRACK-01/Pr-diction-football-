@@ -1,6 +1,8 @@
 import os
 os.environ['LOKY_MAX_CPU_COUNT'] = '1'
 
+import io
+import joblib
 import time
 import threading
 import telebot
@@ -28,37 +30,56 @@ TZ_KINSHASA = timezone(timedelta(hours=1))
 
 
 # =========================================================
-# NOTIFICATIONS QUOTIDIENNES (FILTRÉES)
+# CHARGEMENT DU MODÈLE (UNIVERSEL)
+# =========================================================
+def charger_modele_universel():
+    """Charge le modèle (RF ou XGBoost) depuis PostgreSQL dans global_model_data."""
+    from core.ml_model import global_model_data
+    
+    if global_model_data.get('model') is not None:
+        return True # Déjà en mémoire
+
+    try:
+        from users import charger_modele_cache
+        cache = charger_modele_cache()
+        if not cache:
+            print("❌ Aucun modèle en cache.")
+            return False
+
+        modele_bytes, precision, nb_matchs = cache
+        buffer = io.BytesIO(modele_bytes)
+        donnees = joblib.load(buffer)
+
+        global_model_data['df'] = donnees.get('df')
+        global_model_data['teams'] = donnees.get('teams')
+        global_model_data['team_to_code'] = donnees.get('team_to_code')
+        global_model_data['team_global_stats'] = donnees.get('team_global_stats')
+        global_model_data['precision'] = precision
+        global_model_data['model'] = donnees.get('model')
+        global_model_data['features'] = donnees.get('features')
+        global_model_data['_tables_initialisees'] = True
+        
+        print(f"✅ Modèle chargé : {type(global_model_data['model']).__name__} (Précision : {round(precision*100, 2)}%)")
+        return True
+    except Exception as e:
+        print(f"⚠️ Erreur chargement modèle : {e}")
+        return False
+
+
+# =========================================================
+# NOTIFICATIONS QUOTIDIENNES (FILTRÉES VALUE BET)
 # =========================================================
 def _envoyer_notifications():
     try:
-        from core.ml_model import global_model_data, get_top_pronostics_du_jour
+        from core.ml_model import get_top_pronostics_du_jour
 
-        if not global_model_data.get('df'):
-            from users import charger_modele_cache
-            import io
-            import joblib
+        # 1. Chargement du modèle
+        if not charger_modele_universel():
+            print("Notifications : impossible de charger le modèle.")
+            return
 
-            cache = charger_modele_cache()
-            if not cache:
-                print("Notifications : pas de cache modele")
-                return
-
-            modele_bytes, precision, nb_matchs = cache
-            buffer = io.BytesIO(modele_bytes)
-            donnees = joblib.load(buffer)
-
-            global_model_data['df'] = donnees['df']
-            global_model_data['teams'] = donnees['teams']
-            global_model_data['team_to_code'] = donnees['team_to_code']
-            global_model_data['team_global_stats'] = donnees['team_global_stats']
-            global_model_data['precision'] = precision
-            global_model_data['model'] = donnees['model']
-            global_model_data['features'] = donnees['features']
-
-        # On demande plus de pronostics pour pouvoir filtrer
+        # 2. Récupération des top pronostics
         top = get_top_pronostics_du_jour(nb=15)
-
         if not top:
             print("Notifications : aucun pronostic disponible")
             return
@@ -132,6 +153,11 @@ def _envoyer_coupons_premium():
     from users.db import get_connection
 
     try:
+        # On s'assure que le modèle est chargé pour générer les coupons
+        if not charger_modele_universel():
+            print("Coupons : impossible de charger le modèle.")
+            return
+
         data = generer_coupons_du_jour()
         coupons = data['coupons']
 
