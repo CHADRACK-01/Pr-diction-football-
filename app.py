@@ -80,7 +80,8 @@ def _envoyer_notifications():
         for item in top:
             prono = item['prono']
             analyse = prono.get('analyse_pari')
-            if not analyse: continue
+            if not analyse: 
+                continue
                 
             if analyse['cote_bot'] >= 1.25 and analyse['proba'] >= 0.65:
                 compte += 1
@@ -96,7 +97,8 @@ def _envoyer_notifications():
                         texte += f"🔥 **VALUE BET !**\n"
                 texte += f"⚽ Score probable : {prono['best_score'][0]} - {prono['best_score'][1]}\n\n"
             
-            if compte >= 3: break
+            if compte >= 3: 
+                break
 
         if compte == 0:
             print("Notifications : Aucun Value Bet trouvé aujourd'hui.")
@@ -231,14 +233,11 @@ def _scheduler_notifications():
                 if derniere_date_coupons_semaine != date_du_jour:
                     print(f"Envoi des coupons du {date_du_jour}...")
                     _envoyer_coupons_premium()
-                    
-                    # ⚠️ NOUVEAU : Publication des coupons sur le canal
                     try:
                         from core.canal_manager import publier_coupons_sur_canal
                         publier_coupons_sur_canal(bot)
                     except Exception as e:
                         print(f"⚠️ Erreur publication coupons canal : {e}")
-                        
                     derniere_date_coupons_semaine = date_du_jour
 
             # 4. Teasing Canal (à 17h)
