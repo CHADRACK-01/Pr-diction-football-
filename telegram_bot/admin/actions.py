@@ -39,13 +39,11 @@ def _retirer_premium(user_id):
 def executer_action(bot, call, data, user_id):
     """Exécute l'action correspondant au bouton cliqué."""
     
-    # --- STATS ---
     if data == "admin_stats":
         stats = get_stats_globales()
         texte = f"📊 **STATISTIQUES**\n\nTotal : {stats.get('total', 0)}\nPremium : {stats.get('premium', 0)}\nFree : {stats.get('free', 0)}\n\nNouveaux (7j) : {stats.get('nouveaux_7j', 0)}\nBannis : {stats.get('bannis', 0)}"
         bot.send_message(call.message.chat.id, texte, parse_mode="Markdown")
     
-    # --- UTILISATEURS ---
     elif data == "admin_users":
         users = get_liste_utilisateurs(limite=20)
         texte = "👥 **UTILISATEURS**\n\n"
@@ -54,7 +52,6 @@ def executer_action(bot, call, data, user_id):
             texte += f"{statut} {u['first_name'] or '?'} : `{u['user_id']}`\n"
         bot.send_message(call.message.chat.id, texte, parse_mode="Markdown")
 
-    # --- PAIEMENTS ---
     elif data == "admin_payments":
         demandes = get_demandes_en_attente(limite=10)
         if not demandes:
@@ -68,7 +65,6 @@ def executer_action(bot, call, data, user_id):
             )
             bot.send_photo(call.message.chat.id, d['preuve_photo_id'], caption=f"#{d['id']} - User `{d['user_id']}`\nMontant: {d['montant']} CDF", reply_markup=markup, parse_mode="Markdown")
 
-    # --- BASE DE DONNÉES ---
     elif data == "admin_taille_bdd":
         bot.send_message(call.message.chat.id, f"🗄️ Taille totale : **{get_taille_base()}**", parse_mode="Markdown")
     
@@ -87,7 +83,6 @@ def executer_action(bot, call, data, user_id):
         paiements = nettoyer_paiements_anciens(jours=90)
         bot.send_message(call.message.chat.id, f"🧹 Nettoyage terminé\n\n• {logs} log(s)\n• {paiements} paiement(s)")
 
-    # --- ADMINS ---
     elif data == "admin_admins":
         admins = get_tous_admins()
         texte = "👑 **ADMINS**\n\nPrincipal : `8653408729`\n\n"
@@ -95,7 +90,6 @@ def executer_action(bot, call, data, user_id):
             texte += f"- `{a['user_id']}` : {a['nom'] or 'Sans nom'}\n"
         bot.send_message(call.message.chat.id, texte, parse_mode="Markdown")
 
-    # --- LOGS ---
     elif data == "admin_logs":
         logs = get_logs_admin(limite=15)
         texte = "📝 **LOGS ADMIN**\n\n"
@@ -103,7 +97,6 @@ def executer_action(bot, call, data, user_id):
             texte += f"- {log['action']}\n  Par : `{log['admin_id']}`\n"
         bot.send_message(call.message.chat.id, texte, parse_mode="Markdown")
 
-    # --- BANNIS ---
     elif data == "admin_bannis":
         bannis = get_liste_bannis()
         texte = "🚫 **BANNIS**\n\n"
@@ -111,7 +104,6 @@ def executer_action(bot, call, data, user_id):
             texte += f"- `{b['user_id']}` : {b['raison'] or 'Sans raison'}\n"
         bot.send_message(call.message.chat.id, texte, parse_mode="Markdown")
 
-    # --- BROADCAST ---
     elif data == "admin_broadcast":
         markup = telebot.types.InlineKeyboardMarkup(row_width=1)
         markup.add(
@@ -127,7 +119,6 @@ def executer_action(bot, call, data, user_id):
         msg = bot.send_message(call.message.chat.id, "Envoie le message à diffuser :\n\n/annuler pour annuler.")
         bot.register_next_step_handler(msg, lambda m: _traiter_broadcast(bot, m, ADMIN_SESSIONS))
 
-    # --- PREMIUM ---
     elif data == "admin_add_premium":
         ADMIN_SESSIONS[user_id] = {"action": "add_premium"}
         msg = bot.send_message(call.message.chat.id, "Format : `ID jours`\nExemple : `123456789 30`", parse_mode="Markdown")
@@ -138,7 +129,6 @@ def executer_action(bot, call, data, user_id):
         msg = bot.send_message(call.message.chat.id, "Envoie l'ID utilisateur :")
         bot.register_next_step_handler(msg, lambda m: _traiter_remove_premium(bot, m, ADMIN_SESSIONS))
 
-    # --- CODES ---
     elif data in ["admin_gen_10", "admin_gen_30", "admin_gen_90"]:
         jours = int(data.split("_")[-1])
         codes = generer_lot_codes(jours, 10)
@@ -160,7 +150,6 @@ def executer_action(bot, call, data, user_id):
             texte += f"`{c['code']}` ({c['jours']}j)\n"
         bot.send_message(call.message.chat.id, texte, parse_mode="Markdown")
 
-    # --- PARAMÈTRES ---
     elif data.startswith("param_"):
         cle = data.replace("param_", "")
         ADMIN_SESSIONS[user_id] = {"action": "param", "cle": cle}
@@ -180,7 +169,7 @@ def executer_action(bot, call, data, user_id):
 
 
 # =========================================================
-# FONCTIONS DE TRAITEMENT (complètes)
+# FONCTIONS DE TRAITEMENT
 # =========================================================
 
 def _traiter_broadcast(bot, message, sessions):
