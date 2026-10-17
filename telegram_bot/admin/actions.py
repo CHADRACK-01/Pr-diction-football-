@@ -19,6 +19,7 @@ from telegram_bot.admin.menus import (
 
 ADMIN_SESSIONS = {}
 
+
 def _retirer_premium(user_id):
     try:
         conn = get_connection()
@@ -33,18 +34,19 @@ def _retirer_premium(user_id):
         return False
 
 
+# =========================================================
+# GESTIONNAIRE POUR LES BOUTONS INLINE (Conservé)
+# =========================================================
 def executer_action(bot, call, data, user_id):
-    """Exécute l'action correspondant au bouton cliqué avec des logs de debug."""
+    """Exécute l'action correspondant au bouton Inline cliqué."""
     
-    log_info(f"EXECUTION ACTION : '{data}' demandée par {user_id}", "ADMIN")
+    log_info(f"EXECUTION ACTION INLINE : '{data}' demandée par {user_id}", "ADMIN")
 
-    # --- STATS ---
     if data == "admin_stats":
         stats = get_stats_globales()
         texte = f"📊 STATISTIQUES\n\nTotal : {stats.get('total', 0)}\nPremium : {stats.get('premium', 0)}\nFree : {stats.get('free', 0)}"
         bot.send_message(call.message.chat.id, texte)
     
-    # --- UTILISATEURS ---
     elif data == "admin_users":
         users = get_liste_utilisateurs(limite=20)
         texte = "👥 UTILISATEURS\n\n"
@@ -53,7 +55,6 @@ def executer_action(bot, call, data, user_id):
             texte += f"{statut} {u['first_name'] or '?'} : {u['user_id']}\n"
         bot.send_message(call.message.chat.id, texte)
 
-    # --- PAIEMENTS ---
     elif data == "admin_payments":
         demandes = get_demandes_en_attente(limite=10)
         if not demandes:
@@ -67,7 +68,6 @@ def executer_action(bot, call, data, user_id):
             )
             bot.send_photo(call.message.chat.id, d['preuve_photo_id'], caption=f"#{d['id']} - User {d['user_id']}\nMontant: {d['montant']} CDF", reply_markup=markup)
 
-    # --- BDD ---
     elif data == "admin_taille_bdd":
         bot.send_message(call.message.chat.id, f"🗄️ Taille totale : {get_taille_base()}")
     
@@ -86,7 +86,6 @@ def executer_action(bot, call, data, user_id):
         paiements = nettoyer_paiements_anciens(jours=90)
         bot.send_message(call.message.chat.id, f"🧹 Nettoyage terminé\n• {logs} log(s)\n• {paiements} paiement(s)")
 
-    # --- ADMINS ---
     elif data == "admin_admins":
         admins = get_tous_admins()
         texte = "👑 ADMINS\n\nPrincipal : 8653408729\n\n"
@@ -94,7 +93,6 @@ def executer_action(bot, call, data, user_id):
             texte += f"- {a['user_id']} : {a['nom'] or 'Sans nom'}\n"
         bot.send_message(call.message.chat.id, texte)
 
-    # --- LOGS ---
     elif data == "admin_logs":
         logs = get_logs_admin(limite=15)
         texte = "📝 LOGS ADMIN\n\n"
@@ -102,7 +100,6 @@ def executer_action(bot, call, data, user_id):
             texte += f"- {log['action']} (Par {log['admin_id']})\n"
         bot.send_message(call.message.chat.id, texte)
 
-    # --- BANNIS ---
     elif data == "admin_bannis":
         bannis = get_liste_bannis()
         texte = "🚫 BANNIS\n\n"
@@ -110,7 +107,6 @@ def executer_action(bot, call, data, user_id):
             texte += f"- {b['user_id']} : {b['raison'] or 'Sans raison'}\n"
         bot.send_message(call.message.chat.id, texte)
 
-    # --- PARAMÈTRES ---
     elif data == "admin_params_menu":
         bot.edit_message_text("⚙️ PARAMÈTRES\n\nChoisis un paramètre :", call.message.chat.id, call.message.message_id, reply_markup=menu_parametres())
 
@@ -131,7 +127,6 @@ def executer_action(bot, call, data, user_id):
             texte += f"- {p['cle']} = {p['valeur']}\n"
         bot.send_message(call.message.chat.id, texte)
 
-    # --- PREMIUM ---
     elif data == "admin_premium":
         ADMIN_SESSIONS.pop(user_id, None)
         bot.edit_message_text("💎 GESTION PREMIUM", call.message.chat.id, call.message.message_id, reply_markup=menu_premium())
@@ -146,7 +141,6 @@ def executer_action(bot, call, data, user_id):
         msg = bot.send_message(call.message.chat.id, "Envoie l'ID utilisateur :")
         bot.register_next_step_handler(msg, lambda m: _traiter_remove_premium(bot, m, ADMIN_SESSIONS))
 
-    # --- CODES ---
     elif data == "admin_codes":
         ADMIN_SESSIONS.pop(user_id, None)
         dispo = compter_codes_disponibles()
@@ -176,7 +170,6 @@ def executer_action(bot, call, data, user_id):
             texte += f"{c['code']} ({c['jours']}j)\n"
         bot.send_message(call.message.chat.id, texte)
 
-    # --- BROADCAST ---
     elif data == "admin_broadcast":
         markup = telebot.types.InlineKeyboardMarkup(row_width=1)
         markup.add(
@@ -192,7 +185,6 @@ def executer_action(bot, call, data, user_id):
         msg = bot.send_message(call.message.chat.id, "Envoie le message à diffuser :\n\n/annuler pour annuler.")
         bot.register_next_step_handler(msg, lambda m: _traiter_broadcast(bot, m, ADMIN_SESSIONS))
 
-    # --- BDD (raccourci) ---
     elif data == "admin_bdd":
         ADMIN_SESSIONS.pop(user_id, None)
         bot.edit_message_text("🗄️ BASE DE DONNÉES", call.message.chat.id, call.message.message_id, reply_markup=menu_bdd())
@@ -203,7 +195,139 @@ def executer_action(bot, call, data, user_id):
 
 
 # =========================================================
-# FONCTIONS DE TRAITEMENT
+# GESTIONNAIRE POUR LES BOUTONS EN BAS (Nouveau)
+# =========================================================
+def executer_action_bas(bot, message, text, user_id):
+    """Exécute l'action correspondant au bouton texte cliqué."""
+    
+    log_info(f"EXECUTION ACTION BAS : '{text}' demandée par {user_id}", "ADMIN")
+
+    if text == "📊 Stats":
+        stats = get_stats_globales()
+        texte = f"📊 STATISTIQUES\n\nTotal : {stats.get('total', 0)}\nPremium : {stats.get('premium', 0)}\nFree : {stats.get('free', 0)}"
+        bot.send_message(message.chat.id, texte)
+    
+    elif text == "👥 Utilisateurs":
+        users = get_liste_utilisateurs(limite=20)
+        texte = "👥 UTILISATEURS\n\n"
+        for u in users:
+            statut = "💎" if u['status'] == 'premium' else "🆓"
+            texte += f"{statut} {u['first_name'] or '?'} : {u['user_id']}\n"
+        bot.send_message(message.chat.id, texte)
+
+    elif text == "💳 Paiements":
+        demandes = get_demandes_en_attente(limite=10)
+        if not demandes:
+            bot.send_message(message.chat.id, "Aucun paiement en attente.")
+            return
+        for d in demandes:
+            markup = telebot.types.InlineKeyboardMarkup(row_width=2)
+            markup.add(
+                telebot.types.InlineKeyboardButton("✅ Valider", callback_data=f"vpay|{d['id']}"),
+                telebot.types.InlineKeyboardButton("❌ Refuser", callback_data=f"rpay|{d['id']}")
+            )
+            bot.send_photo(message.chat.id, d['preuve_photo_id'], caption=f"#{d['id']} - User {d['user_id']}\nMontant: {d['montant']} CDF", reply_markup=markup)
+
+    elif text == "Taille BDD":
+        bot.send_message(message.chat.id, f"🗄️ Taille totale : {get_taille_base()}")
+    elif text == "Detail tables":
+        tables = get_detail_tables()
+        if not tables:
+            bot.send_message(message.chat.id, "❌ Impossible de récupérer les détails.")
+            return
+        texte = "🗄️ DETAIL PAR TABLE\n\n"
+        for t in tables[:10]:
+            texte += f"• {t['table_name']} : {t['size']}\n"
+        bot.send_message(message.chat.id, texte)
+    elif text == "🧹 Nettoyer":
+        logs = nettoyer_logs_anciens(jours=30)
+        paiements = nettoyer_paiements_anciens(jours=90)
+        bot.send_message(message.chat.id, f"🧹 Nettoyage terminé\n• {logs} log(s)\n• {paiements} paiement(s)")
+
+    elif text == "👑 Admins":
+        admins = get_tous_admins()
+        texte = "👑 ADMINS\n\nPrincipal : 8653408729\n\n"
+        for a in admins:
+            texte += f"- {a['user_id']} : {a['nom'] or 'Sans nom'}\n"
+        bot.send_message(message.chat.id, texte)
+
+    elif text == "📝 Logs":
+        logs = get_logs_admin(limite=15)
+        texte = "📝 LOGS ADMIN\n\n"
+        for log in logs:
+            texte += f"- {log['action']} (Par {log['admin_id']})\n"
+        bot.send_message(message.chat.id, texte)
+
+    elif text == "🚫 Bannis":
+        bannis = get_liste_bannis()
+        texte = "🚫 BANNIS\n\n"
+        for b in bannis:
+            texte += f"- {b['user_id']} : {b['raison'] or 'Sans raison'}\n"
+        bot.send_message(message.chat.id, texte)
+
+    elif text.startswith("Heure notifs") or text.startswith("Limite Free") or text.startswith("Prix Stars") or text.startswith("Message accueil") or text.startswith("Mode maintenance"):
+        cle = text.lower().replace(" ", "_")
+        ADMIN_SESSIONS[user_id] = {"action": "param", "cle": cle}
+        msg = bot.send_message(message.chat.id, f"Envoie la nouvelle valeur pour {text} :\n\n/annuler pour annuler.")
+        bot.register_next_step_handler(msg, lambda m: _traiter_param(bot, m, ADMIN_SESSIONS))
+
+    elif text == "👁️ Voir parametres":
+        params = get_tous_parametres()
+        texte = "⚙️ PARAMETRES ACTUELS\n\n"
+        for p in params:
+            texte += f"- {p['cle']} = {p['valeur']}\n"
+        bot.send_message(message.chat.id, texte)
+
+    elif text == "➕ Ajouter Premium":
+        ADMIN_SESSIONS[user_id] = {"action": "add_premium"}
+        msg = bot.send_message(message.chat.id, "Format : ID jours\nExemple : 123456789 30")
+        bot.register_next_step_handler(msg, lambda m: _traiter_add_premium(bot, m, ADMIN_SESSIONS))
+
+    elif text == "➖ Retirer Premium":
+        ADMIN_SESSIONS[user_id] = {"action": "remove_premium"}
+        msg = bot.send_message(message.chat.id, "Envoie l'ID utilisateur :")
+        bot.register_next_step_handler(msg, lambda m: _traiter_remove_premium(bot, m, ADMIN_SESSIONS))
+
+    elif text in ["Gen 10 jours", "Gen 30 jours", "Gen 90 jours"]:
+        jours = int(text.split()[1])
+        codes = generer_lot_codes(jours, 10)
+        log_admin(user_id, "gen_codes", f"10 codes de {jours}j")
+        texte = f"🎟️ {len(codes)} code(s) généré(s) pour {jours} jours :\n\n"
+        for c in codes:
+            texte += f"{c}\n"
+        bot.send_message(message.chat.id, texte)
+
+    elif text == "Gen custom":
+        ADMIN_SESSIONS[user_id] = {"action": "gen_custom"}
+        msg = bot.send_message(message.chat.id, "Envoie : jours quantite\nExemple : 30 20")
+        bot.register_next_step_handler(msg, lambda m: _traiter_gen_custom(bot, m, ADMIN_SESSIONS))
+
+    elif text == "👁️ Voir codes dispo":
+        codes = get_codes_disponibles(limite=30)
+        if not codes:
+            bot.send_message(message.chat.id, "Aucun code disponible.")
+            return
+        texte = f"🎟️ CODES DISPO\n\n"
+        for c in codes:
+            texte += f"{c['code']} ({c['jours']}j)\n"
+        bot.send_message(message.chat.id, texte)
+
+    elif text == "📢 Broadcast":
+        markup = telebot.types.InlineKeyboardMarkup(row_width=1)
+        markup.add(
+            telebot.types.InlineKeyboardButton("📱 Utilisateurs + 📢 Canal", callback_data="bcast_all"),
+            telebot.types.InlineKeyboardButton("📱 Utilisateurs uniquement", callback_data="bcast_users"),
+            telebot.types.InlineKeyboardButton("📢 Canal uniquement", callback_data="bcast_canal")
+        )
+        bot.send_message(message.chat.id, "Où veux-tu envoyer l'annonce ?", reply_markup=markup)
+
+    else:
+        log_info(f"Aucune action trouvée pour '{text}'", "ADMIN")
+        bot.send_message(message.chat.id, f"⚠️ Action '{text}' non reconnue.")
+
+
+# =========================================================
+# FONCTIONS DE TRAITEMENT (Identiques)
 # =========================================================
 def _traiter_param(bot, message, sessions):
     user_id = message.from_user.id
@@ -256,32 +380,6 @@ def _traiter_gen_custom(bot, message, sessions):
     for c in codes:
         texte += f"{c}\n"
     bot.reply_to(message, texte)
-    sessions.pop(user_id, None)
-
-
-def _traiter_broadcast(bot, message, sessions):
-    user_id = message.from_user.id
-    texte = message.text
-
-    if texte == "/annuler":
-        sessions.pop(user_id, None)
-        bot.reply_to(message, "Annule.")
-        return
-
-    if not texte:
-        bot.reply_to(message, "Message vide.")
-        return
-
-    session = sessions.get(user_id, {})
-    cible = session.get("cible", "users")
-
-    users = get_tous_utilisateurs() if cible in ["users", "all"] else []
-    admins = get_tous_admins()
-    envoyer_canal = cible in ["canal", "all"]
-
-    bot.reply_to(message, "🚀 Diffusion lancée en arrière-plan. Tu recevras un récapitulatif à la fin.")
-    lancer_broadcast_async(bot, users, texte, admins, canal=envoyer_canal)
-    log_admin(user_id, "broadcast", f"Cible: {cible}")
     sessions.pop(user_id, None)
 
 
@@ -341,4 +439,30 @@ def _traiter_remove_premium(bot, message, sessions):
     else:
         bot.reply_to(message, "Utilisateur introuvable.")
 
+    sessions.pop(user_id, None)
+
+
+def _traiter_broadcast(bot, message, sessions):
+    user_id = message.from_user.id
+    texte = message.text
+
+    if texte == "/annuler":
+        sessions.pop(user_id, None)
+        bot.reply_to(message, "Annule.")
+        return
+
+    if not texte:
+        bot.reply_to(message, "Message vide.")
+        return
+
+    session = sessions.get(user_id, {})
+    cible = session.get("cible", "users")
+
+    users = get_tous_utilisateurs() if cible in ["users", "all"] else []
+    admins = get_tous_admins()
+    envoyer_canal = cible in ["canal", "all"]
+
+    bot.reply_to(message, "🚀 Diffusion lancée en arrière-plan. Tu recevras un récapitulatif à la fin.")
+    lancer_broadcast_async(bot, users, texte, admins, canal=envoyer_canal)
+    log_admin(user_id, "broadcast", f"Cible: {cible}")
     sessions.pop(user_id, None)
