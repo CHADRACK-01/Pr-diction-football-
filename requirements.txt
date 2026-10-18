@@ -11,3 +11,4 @@ scikit-learn==1.6.1
 soccerdata
 xgboost
 python-telegram-bot
+lightgbm
