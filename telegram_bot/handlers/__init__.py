@@ -9,12 +9,14 @@ from telegram_bot.handlers.notifications import enregistrer_notifications_handle
 from telegram_bot.handlers.historique import enregistrer_historique_handlers
 from telegram_bot.handlers.statistiques import enregistrer_statistiques_handlers
 from telegram_bot.handlers.parrainage import enregistrer_parrainage_handlers
-from telegram_bot.handlers.fallback import enregistrer_fallback_handlers
 
 # Importation des modules existants
 from telegram_bot.payment_handlers import enregistrer_payment_handlers
 from telegram_bot.premium_handlers import enregistrer_premium_handlers
 from telegram_bot.prediction_handlers import enregistrer_prediction_handlers
+
+# ⚠️ Le fallback est importé mais on l'enregistre EN DERNIER
+from telegram_bot.handlers.fallback import enregistrer_fallback_handlers
 
 
 def enregistrer_handlers(bot):
@@ -32,7 +34,7 @@ def enregistrer_handlers(bot):
         # 3. Premium (Coupons et Top affiches)
         ("Premium", enregistrer_premium_handlers),
         
-        # 4. Prédiction manuelle (PSG vs Marseille)
+        # 4. Prédiction manuelle (PSG vs Marseille) et boutons associés
         ("Prédiction", enregistrer_prediction_handlers),
         
         # 5. Utilisateurs - Start & Langue
