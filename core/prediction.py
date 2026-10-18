@@ -12,26 +12,31 @@ def trouver_nom_exact(nom_partiel, teams):
     """Recherche intelligente d'équipe : priorité aux initiales (PSG → Paris SG)."""
     recherche = nom_partiel.lower().strip()
 
+    # 1. Correspondance exacte
     for t in teams:
         if t.lower() == recherche:
             return t
 
+    # 2. Correspondance par initiales (PSG → Paris SG)
     initiales_recherche = recherche.replace(" ", "").replace(".", "")
     for t in teams:
         initiales_equipe = "".join(w[0] for w in t.lower().split() if w)
         if initiales_equipe == initiales_recherche:
             return t
 
+    # 3. Correspondance de mots-clés
     mots_recherche = set(recherche.split())
     for t in teams:
         mots_equipe = set(t.lower().split())
         if mots_recherche and mots_recherche.issubset(mots_equipe):
             return t
 
+    # 4. Préfixe
     for t in teams:
         if t.lower().startswith(recherche):
             return t
 
+    # 5. Fallback difflib
     lower_teams = {t.lower(): t for t in teams}
     matches = difflib.get_close_matches(recherche, lower_teams.keys(), n=1, cutoff=0.6)
     return lower_teams[matches[0]] if matches else nom_partiel
@@ -86,15 +91,38 @@ def _calculer_meilleur_pari(prono, cotes_book=None):
     return None
 
 
-def predire_match(home_input, away_input, cotes_book=None):
+def predire_match(home_input, away_input, competition="default", cotes_book=None):
+    """
+    Retourne un dict avec toutes les probabilités.
+    Utilise le modèle spécifique à la compétition si disponible.
+    """
     if not global_model_data:
-        return {"erreur": "Modèle non chargé. Réessaie plus tard."}
+        return {"erreur": "Modèle non chargé."}
 
-    teams = global_model_data['teams']
-    team_to_code = global_model_data['team_to_code']
+    teams = global_model_data.get('teams', [])
+    team_to_code = global_model_data.get('team_to_code', {})
     team_global_stats = global_model_data.get('team_global_stats', {})
     team_xg_stats = global_model_data.get('team_xg_stats', {})
-    df = global_model_data['df']
+    df = global_model_data.get('df')
+
+    # ⚠️ NOUVEAU : Sélection du modèle par compétition
+    modeles = global_model_data.get('modeles_par_competition', {})
+    
+    if competition in modeles:
+        model_choisi = modeles[competition]['model']
+        precision_modele = modeles[competition]['precision']
+    else:
+        # Fallback : on prend le premier modèle disponible
+        if modeles:
+            model_choisi = list(modeles.values())[0]['model']
+            precision_modele = list(modeles.values())[0]['precision']
+        else:
+            # Si pas de modèles par compétition, on utilise le modèle unique
+            model_choisi = global_model_data.get('model')
+            precision_modele = global_model_data.get('precision', 0.5)
+
+    if not model_choisi:
+        return {"erreur": "Aucun modèle disponible pour cette compétition."}
 
     home_team = trouver_nom_exact(home_input, teams)
     away_team = trouver_nom_exact(away_input, teams)
@@ -105,6 +133,9 @@ def predire_match(home_input, away_input, cotes_book=None):
     if away_team not in team_to_code:
         return {"erreur": f"⚠️ Équipe introuvable : **{away_input}**.\n\nLe bot prend en charge : Premier League, Championship, LaLiga, Ligue 1, Bundesliga, Serie A.\n\n(Note : les équipes reléguées dans les divisions inférieures ne sont plus analysées)."}
 
+    # =========================================================
+    # UTILISATION DES XG (avec fallback sur les buts si absents)
+    # =========================================================
     h_xg_hist = team_xg_stats.get(home_team, {}).get('xg_for', [])
     h_xga_hist = team_xg_stats.get(home_team, {}).get('xg_against', [])
     a_xg_hist = team_xg_stats.get(away_team, {}).get('xg_for', [])
@@ -132,6 +163,9 @@ def predire_match(home_input, away_input, cotes_book=None):
     lambda_home = max(0.2, (h_att * a_def) / league_avg_home)
     lambda_away = max(0.2, (a_att * h_def) / league_avg_away)
 
+    # =========================================================
+    # CALCUL DES PROBABILITÉS (Poisson)
+    # =========================================================
     max_goals = 5
     score_matrix = np.outer(
         [poisson.pmf(i, lambda_home) for i in range(max_goals + 1)],
@@ -183,7 +217,7 @@ def predire_match(home_input, away_input, cotes_book=None):
     dc_x2 = float(p_d + p_a)
     dc_12 = float(p_h + p_a)
 
-    # ⚠️ CORRECTION : Score cohérent avec la recommandation
+    # ⚠️ Correction : Score cohérent avec la recommandation
     options_dc = [("1X", dc_1x), ("X2", dc_x2), ("12", dc_12)]
     meilleure_dc = max(options_dc, key=lambda x: x[1])[0]
 
@@ -197,7 +231,6 @@ def predire_match(home_input, away_input, cotes_book=None):
         if best_i == best_j:
             best_i += 1
             
-    # On s'assure que le score modifié est en tête du top 3
     if (best_i, best_j) != (top_scores[0][0], top_scores[0][1]):
         top_scores.insert(0, (best_i, best_j, float(score_matrix[best_i, best_j])))
 
@@ -217,6 +250,7 @@ def predire_match(home_input, away_input, cotes_book=None):
         "best_score": (best_i, best_j),
         "top_scores": top_scores,
         "fiabilite": fiabilite,
+        "precision_modele": precision_modele # ⚠️ NOUVEAU
     }
     
     analyse_pari = _calculer_meilleur_pari(prono, cotes_book)
@@ -226,6 +260,7 @@ def predire_match(home_input, away_input, cotes_book=None):
 
 
 def sauvegarder_historique(home_team, away_team, p_h, p_d, p_a, best_i, best_j):
+    """Sauvegarde dans PostgreSQL et nettoie les données de + de 30 jours."""
     try:
         options = [("1X", p_h + p_d), ("X2", p_d + p_a), ("12", p_h + p_a)]
         meilleure = max(options, key=lambda x: x[1])[0]
