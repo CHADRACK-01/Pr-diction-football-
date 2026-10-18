@@ -223,7 +223,7 @@ def _scheduler_notifications():
                     if derniere_date_canal != date_du_jour:
                         try:
                             from core.canal_manager import publier_matchs_sur_canal
-                            publier_matchs_sur_canal(bot)  # ⚠️ Envoi réel sur le canal
+                            publier_matchs_sur_canal(bot)
                         except Exception as e:
                             print(f"⚠️ Erreur publication canal : {e}")
                         derniere_date_canal = date_du_jour
@@ -235,7 +235,7 @@ def _scheduler_notifications():
                     _envoyer_coupons_premium()
                     try:
                         from core.canal_manager import publier_coupons_sur_canal
-                        publier_coupons_sur_canal(bot)  # ⚠️ Envoi réel sur le canal
+                        publier_coupons_sur_canal(bot)
                     except Exception as e:
                         print(f"⚠️ Erreur publication coupons canal : {e}")
                     derniere_date_coupons_semaine = date_du_jour
@@ -300,6 +300,15 @@ def webhook():
 def index():
     return "Bot operationnel !", 200
 
+
+# =========================================================
+# CHARGEMENT INITIAL DU MODÈLE (au démarrage)
+# =========================================================
+print("🔄 Chargement initial du modèle IA...")
+if charger_modele_universel():
+    print("✅ Modèle IA chargé avec succès au démarrage !")
+else:
+    print("⚠️ Impossible de charger le modèle au démarrage. Il sera chargé à la première utilisation.")
 
 initialiser_tables()
 print("Bot pret (init differee + notifications + coupons + canal + maintenance).")
