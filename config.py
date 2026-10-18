@@ -60,12 +60,18 @@ UPSTASH_BUCKET_NAME = "PredictionFootball-csv"
 # =========================================================
 FOOTBALL_DATA_KEY = "5a7a6a3afcca4bc88400d73a0e394588"
 
+# =========================================================
+# API BZZOIRO
+# =========================================================
+BZZOIRO_API_KEY = "83e607ea69471dd01e82cba1457b2b67f0d7cfb5"
+
 # Debug
 print("=" * 60)
 print(f"🔧 DB_HOST = '{DB_HOST}' | DB_NAME = '{DB_NAME}'")
 print(f"🔧 DB_PASSWORD chargé : {'OUI' if DB_PASSWORD else 'NON'}")
 print(f"🔧 CANAL_ID = {CANAL_ID}")
 print(f"🔧 FOOTBALL_DATA_KEY chargé : {'OUI' if FOOTBALL_DATA_KEY else 'NON'}")
+print(f"🔧 BZZOIRO_API_KEY chargé : {'OUI' if BZZOIRO_API_KEY else 'NON'}")
 print("=" * 60)
 
 # =========================================================
