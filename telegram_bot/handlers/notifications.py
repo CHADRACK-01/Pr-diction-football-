@@ -4,6 +4,31 @@ from core.translations import get_text
 
 def enregistrer_notifications_handlers(bot):
 
+    @bot.message_handler(func=lambda m: m.from_user and m.text in [
+        "Notifications", "Nsango"
+    ])
+    def handle_notifications(message):
+        print(f"[NOTIFS] Bouton cliqué par {message.from_user.id}")
+        user_id = message.from_user.id
+        langue = get_langue(user_id)
+
+        markup = telebot.types.InlineKeyboardMarkup(row_width=1)
+        markup.add(
+            telebot.types.InlineKeyboardButton(
+                get_text("bouton_activer", langue),
+                callback_data="notif|on"
+            ),
+            telebot.types.InlineKeyboardButton(
+                get_text("bouton_desactiver", langue),
+                callback_data="notif|off"
+            ),
+        )
+        bot.reply_to(
+            message,
+            get_text("notifs_titre", langue),
+            reply_markup=markup
+        )
+
     @bot.message_handler(commands=['notif_on'])
     def cmd_notif_on(message):
         user_id = message.from_user.id
