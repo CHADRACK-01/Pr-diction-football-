@@ -4,7 +4,7 @@ from datetime import datetime, timezone, timedelta
 
 from core.ml_model import global_model_data
 from core.prediction import predire_match
-from core.api.football_data import recuperer_matchs_bruts
+from core.api.manager import get_matchs_du_jour as manager_get_matchs_du_jour
 from core.utils.logs import log_info, log_warning, log_error
 from core.utils.markdown import formater_proprement
 
@@ -14,8 +14,8 @@ TZ_KINSHASA = timezone(timedelta(hours=1))
 
 def _normaliser(nom):
     """
-    Dictionnaire de correspondance entre les noms de l'API 
-    et les noms du modèle (ex: 'Real Betis Balompié' -> 'Betis').
+    Dictionnaire de correspondance entre les noms des API 
+    et les noms du modèle.
     """
     special = {
         # Premier League / Championship
@@ -130,16 +130,16 @@ def _nom_competition(code):
 
 def get_matchs_du_jour():
     """
-    Orchestre la récupération des matchs, le calcul des pronostics, 
-    et renvoie une liste propre.
+    Orchestre la récupération via le manager (Bzzoiro -> OpenLigaDB -> Football-Data),
+    puis calcule les pronostics.
     """
     if not _charger_modele_si_necessaire():
         return []
 
-    # 1. Récupération des matchs bruts via l'API
-    matchs_bruts = recuperer_matchs_bruts()
+    # 1. Récupération via le manager
+    matchs_bruts = manager_get_matchs_du_jour()
     if not matchs_bruts:
-        log_warning("Aucun match renvoyé par l'API.", "MATCHS")
+        log_warning("Aucun match renvoyé par le manager.", "MATCHS")
         return []
 
     matchs_trouves = []
@@ -150,7 +150,6 @@ def get_matchs_du_jour():
         away = _normaliser(m["away"])
         
         try:
-            # On calcule la prédiction
             prono = predire_match(home, away, cotes_book=m.get("cotes_book"))
             
             if not isinstance(prono, dict) or 'erreur' in prono:
@@ -170,8 +169,8 @@ def get_matchs_du_jour():
                 continue
 
             matchs_trouves.append({
-                "competition": m["competition"],
-                "heure": m["heure"],
+                "competition": m.get("competition", "inconnu"),
+                "heure": m.get("heure"),
                 "home": home,
                 "away": away,
                 "p_h": float(prono['p_h']),
@@ -187,20 +186,18 @@ def get_matchs_du_jour():
             log_error(f"Exception pour {home} vs {away}: {e}", "MATCHS", e)
             continue
 
-    # 4. Logs de diagnostic
     if not matchs_trouves:
         log_warning("Aucun match ne passe le filtre de cote (≥ 1.30).", "MATCHS")
     else:
         log_info(f"{len(matchs_trouves)} matchs prêts à être publiés.", "MATCHS")
 
-    matchs_trouves.sort(key=lambda x: (x['heure'], -x['confiance']))
+    matchs_trouves.sort(key=lambda x: (x['heure'] or '', -x['confiance']))
     return matchs_trouves
 
 
 def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None):
     """
     Formate la liste des matchs pour Telegram.
-    Utilise formater_proprement() pour éviter les erreurs Markdown.
     """
     date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
 
@@ -256,7 +253,6 @@ def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None)
 
             nom_comp = _nom_competition(m['competition'])
 
-            # On sécurise chaque ligne avec formater_proprement
             texte += formater_proprement(f"⚽ {m['home']} vs {m['away']}\n")
             texte += formater_proprement(f"   🕐 {heure_local} | 🏆 {nom_comp}\n")
 
