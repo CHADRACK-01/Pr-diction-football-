@@ -9,6 +9,7 @@ from telegram_bot.handlers.notifications import enregistrer_notifications_handle
 from telegram_bot.handlers.historique import enregistrer_historique_handlers
 from telegram_bot.handlers.statistiques import enregistrer_statistiques_handlers
 from telegram_bot.handlers.parrainage import enregistrer_parrainage_handlers
+from telegram_bot.handlers.pronostic import enregistrer_pronostic_handlers  # ⚠️ NOUVEAU
 
 # Importation des modules existants
 from telegram_bot.payment_handlers import enregistrer_payment_handlers
@@ -34,25 +35,28 @@ def enregistrer_handlers(bot):
         # 3. Premium (Coupons et Top affiches)
         ("Premium", enregistrer_premium_handlers),
         
-        # 4. Prédiction manuelle (PSG vs Marseille) et boutons associés
+        # 4. Prédiction manuelle (PSG vs Marseille)
         ("Prédiction", enregistrer_prediction_handlers),
+
+        # 5. Le bouton "Faire un Pronostic" qui affiche les instructions
+        ("Pronostic", enregistrer_pronostic_handlers),  # ⚠️ NOUVEAU
         
-        # 5. Utilisateurs - Start & Langue
+        # 6. Utilisateurs - Start & Langue
         ("Start", enregistrer_start_handlers),
         
-        # 6. Utilisateurs - Notifications
+        # 7. Utilisateurs - Notifications
         ("Notifs", enregistrer_notifications_handlers),
         
-        # 7. Utilisateurs - Historique
+        # 8. Utilisateurs - Historique
         ("Historique", enregistrer_historique_handlers),
         
-        # 8. Utilisateurs - Statistiques
+        # 9. Utilisateurs - Statistiques
         ("Stats", enregistrer_statistiques_handlers),
         
-        # 9. Utilisateurs - Parrainage
+        # 10. Utilisateurs - Parrainage
         ("Parrainage", enregistrer_parrainage_handlers),
         
-        # 10. Fallback (EN DERNIER, attrape tout ce qui n'a pas matché)
+        # 11. Fallback (EN DERNIER, attrape tout ce qui n'a pas matché)
         ("Fallback", enregistrer_fallback_handlers),
     ]
 
