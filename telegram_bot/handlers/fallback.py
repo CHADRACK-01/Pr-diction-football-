@@ -13,11 +13,29 @@ def enregistrer_fallback_handlers(bot):
             bot.reply_to(message, get_text("banni", langue))
             return
 
-        # Vérifie si l'utilisateur est en session admin (pour ne pas interrompre)
+        # ⚠️ On ignore les boutons qui ont leur propre handler
+        textes_ignores = [
+            "Faire un Pronostic", "Make a Prediction", "Sala Bokano",
+            "Matchs du jour", "Today's matches", "Masano ya lelo",
+            "Coupons", "Coupons du jour", "Coupons ya lelo",
+            "Top affiches", "Affiches du jour", "Affiches ya lelo",
+            "Historique", "History", "Lisolo",
+            "Statistiques", "Statistics", "Mituya",
+            "Notifications", "Nsango",
+            "Passer Premium", "Go Premium", "Kende Premium",
+            "Parrainage", "Referral", "Bosangisi",
+            "Langue", "Language", "Monoko",
+            "Panneau Admin"
+        ]
+        
+        if message.text in textes_ignores:
+            return  # On laisse les autres handlers faire le travail
+
+        # On ignore si l'utilisateur est en session admin
         from telegram_bot.admin.actions import ADMIN_SESSIONS
         if user_id in ADMIN_SESSIONS:
             return
 
-        # Si c'est un message inconnu, on renvoie le menu
+        # Si c'est un vrai message inconnu, on affiche le fallback
         bot.reply_to(message, get_text("fallback", langue))
         envoyer_menu_principal(message.chat.id, user_id, bot)
