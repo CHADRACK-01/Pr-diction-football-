@@ -1,14 +1,12 @@
 import os
 
 # =========================================================
-# TELEGRAM
+# TELEGRAM (Sécurisé via variables d'environnement)
 # =========================================================
-TOKEN = "8443191637:AAGcCknBZDg1o0NBeL8czLt0SsQ4c2LEMvY"
-
-# Configuration du Canal Telegram
-CANAL_ID = -1003999473611
-CANAL_USERNAME = "@pronosticsfootball01"
-CANAL_LIEN = "https://t.me/pronosticsfootball01"
+TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
+CANAL_ID = int(os.environ.get("CANAL_ID", "-1003999473611"))
+CANAL_USERNAME = os.environ.get("CANAL_USERNAME", "@pronosticsfootball01")
+CANAL_LIEN = os.environ.get("CANAL_LIEN", "https://t.me/pronosticsfootball01")
 
 # =========================================================
 # DÉTECTION DE L'ENVIRONNEMENT
@@ -25,16 +23,12 @@ DOSSIER_PASSE = os.path.join(DOSSIER_BASE, "archives_passe")
 DOSSIER_ACTUEL = os.path.join(DOSSIER_BASE, "saison_actuelle")
 FICHIER_HISTORIQUE = os.path.join(DOSSIER_BASE, "historique_pronostics.csv")
 
-try:
-    os.makedirs(DOSSIER_PASSE, exist_ok=True)
-    os.makedirs(DOSSIER_ACTUEL, exist_ok=True)
-except Exception as e:
-    print(f"⚠️ Impossible de créer les dossiers : {e}")
+os.makedirs(DOSSIER_PASSE, exist_ok=True)
+os.makedirs(DOSSIER_ACTUEL, exist_ok=True)
 
 # =========================================================
 # CHAMPIONNATS & COMPÉTITIONS
 # =========================================================
-# Clé technique : Nom exact pour le modèle IA
 CHAMPIONNATS = {
     "premier_league": "Premier League", "laliga": "La Liga", "ligue_1": "Ligue 1",
     "bundesliga_1": "Bundesliga", "serie_a": "Serie A",
@@ -47,29 +41,22 @@ CHAMPIONNATS = {
     "super_league": "Super League", "premiership": "Premiership"
 }
 
-# ⚠️ NOUVEAU : Dictionnaire pour l'affichage (Pays/Zone + Emoji)
 INFOS_COMPETITIONS = {
     "Premier League": {"pays": "Angleterre", "emoji": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"},
     "Championship": {"pays": "Angleterre", "emoji": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"},
     "League One": {"pays": "Angleterre", "emoji": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"},
     "League Two": {"pays": "Angleterre", "emoji": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"},
-    
     "La Liga": {"pays": "Espagne", "emoji": "🇪🇸"},
     "Segunda Division": {"pays": "Espagne", "emoji": "🇪🇸"},
-    
     "Ligue 1": {"pays": "France", "emoji": "🇫🇷"},
     "Ligue 2": {"pays": "France", "emoji": "🇫🇷"},
-    
     "Bundesliga": {"pays": "Allemagne", "emoji": "🇩🇪"},
     "2. Bundesliga": {"pays": "Allemagne", "emoji": "🇩🇪"},
-    
     "Serie A": {"pays": "Italie", "emoji": "🇮🇹"},
     "Serie B": {"pays": "Italie", "emoji": "🇮🇹"},
-    
     "Champions League": {"pays": "Europe", "emoji": "🇪🇺"},
     "Europa League": {"pays": "Europe", "emoji": "🇪🇺"},
     "Conference League": {"pays": "Europe", "emoji": "🇪🇺"},
-    
     "Super Lig": {"pays": "Turquie", "emoji": "🇹🇷"},
     "Primeira Liga": {"pays": "Portugal", "emoji": "🇵🇹"},
     "Eredivisie": {"pays": "Pays-Bas", "emoji": "🇳🇱"},
@@ -94,22 +81,10 @@ UPSTASH_BLOB_TOKEN = os.environ.get("UPSTASH_BLOB_TOKEN", "").strip()
 UPSTASH_BUCKET_NAME = "PredictionFootball-csv"
 
 # =========================================================
-# API FOOTBALL-DATA & BZZOIRO
+# API FOOTBALL-DATA & BZZOIRO (Sécurisées)
 # =========================================================
-FOOTBALL_DATA_KEY = "5a7a6a3afcca4bc88400d73a0e394588"
-BZZOIRO_API_KEY = "83e607ea69471dd01e82cba1457b2b67f0d7cfb5"
-
-# =========================================================
-# DEBUG
-# =========================================================
-print("=" * 60)
-print(f"🔧 DB_HOST = '{DB_HOST}' | DB_NAME = '{DB_NAME}'")
-print(f"🔧 DB_PASSWORD chargé : {'OUI' if DB_PASSWORD else 'NON'}")
-print(f"🔧 CANAL_ID = {CANAL_ID}")
-print(f"🔧 FOOTBALL_DATA_KEY chargé : {'OUI' if FOOTBALL_DATA_KEY else 'NON'}")
-print(f"🔧 BZZOIRO_API_KEY chargé : {'OUI' if BZZOIRO_API_KEY else 'NON'}")
-print(f"🏆 {len(CHAMPIONNATS)} compétitions configurées dans le bot.")
-print("=" * 60)
+FOOTBALL_DATA_KEY = os.environ.get("FOOTBALL_DATA_KEY", "")
+BZZOIRO_API_KEY = os.environ.get("BZZOIRO_API_KEY", "")
 
 # =========================================================
 # LIMITES PAR DÉFAUT
