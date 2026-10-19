@@ -2,6 +2,7 @@ import telebot
 from users import get_langue, activer_notifications, desactiver_notifications
 from core.translations import get_text
 
+
 def enregistrer_notifications_handlers(bot):
 
     @bot.message_handler(func=lambda m: m.text == "#NOTIFS")
