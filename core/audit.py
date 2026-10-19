@@ -1,8 +1,9 @@
 import os
 import importlib
 import requests
-import psycopg2
+
 from core.utils.logs import log_info, log_error, log_warning
+
 
 # =========================================================
 # 1. AUDIT DES FICHIERS
@@ -45,6 +46,7 @@ def audit_fichiers():
     else:
         log_error(f"❌ {len(manquants)} fichier(s) manquant(s).", "AUDIT")
 
+
 # =========================================================
 # 2. AUDIT DES IMPORTS
 # =========================================================
@@ -63,12 +65,13 @@ def audit_imports():
     for module in modules_a_tester:
         try:
             importlib.import_module(module)
-        except Exception as e:
+        except ImportError as e:
             erreurs += 1
             log_error(f"Import FAILED : {module} - {e}", "AUDIT")
             
     if erreurs == 0:
         log_info("✅ Tous les imports critiques fonctionnent.", "AUDIT")
+
 
 # =========================================================
 # 3. AUDIT DES APIs (Bzzoiro, Telegram)
@@ -76,109 +79,97 @@ def audit_imports():
 def audit_apis():
     log_info("--- 📡 AUDIT DES APIs ---", "AUDIT")
     
+    import config
+    
     # Test Telegram
-    try:
-        import config
-        res = requests.get(f"https://api.telegram.org/bot{config.TOKEN}/getMe", timeout=10)
-        if res.status_code == 200 and res.json().get("ok"):
-            log_info("✅ API Telegram : Token valide.", "AUDIT")
-        else:
-            log_error("❌ API Telegram : Token invalide ou erreur.", "AUDIT")
-    except Exception as e:
-        log_error(f"❌ API Telegram injoignable : {e}", "AUDIT")
+    res = requests.get(f"https://api.telegram.org/bot{config.TOKEN}/getMe", timeout=10)
+    if res.status_code == 200 and res.json().get("ok"):
+        log_info("✅ API Telegram : Token valide.", "AUDIT")
+    else:
+        log_error("❌ API Telegram : Token invalide ou erreur.", "AUDIT")
 
     # Test Bzzoiro
-    try:
-        import config
-        headers = {"Authorization": f"Token {config.BZZOIRO_API_KEY}"}
-        res = requests.get("https://sports.bzzoiro.com/api/v2/coverage/", headers=headers, timeout=10)
-        if res.status_code == 200:
-            log_info("✅ API Bzzoiro : OK.", "AUDIT")
-        else:
-            log_warning(f"⚠️ API Bzzoiro : Statut {res.status_code}.", "AUDIT")
-    except Exception as e:
-        log_error(f"❌ API Bzzoiro injoignable : {e}", "AUDIT")
+    headers = {"Authorization": f"Token {config.BZZOIRO_API_KEY}"}
+    res = requests.get("https://sports.bzzoiro.com/api/v2/coverage/", headers=headers, timeout=10)
+    if res.status_code == 200:
+        log_info("✅ API Bzzoiro : OK.", "AUDIT")
+    else:
+        log_warning(f"⚠️ API Bzzoiro : Statut {res.status_code}.", "AUDIT")
+
 
 # =========================================================
 # 4. AUDIT DE LA BASE DE DONNÉES
 # =========================================================
 def audit_base_de_donnees():
     log_info("--- 🗄️ AUDIT DE LA BASE DE DONNÉES ---", "AUDIT")
-    try:
-        from users.db import get_connection
-        conn = get_connection()
-        cur = conn.cursor()
-        
-        # Test simple
-        cur.execute("SELECT 1")
-        cur.fetchone()
-        
-        # Vérification des tables critiques
-        cur.execute("""
-            SELECT table_name FROM information_schema.tables 
-            WHERE table_schema = 'public'
-        """)
-        tables = [row[0] for row in cur.fetchall()]
-        tables_requises = ["utilisateurs", "model_cache", "paiements_attente", "codes_premium"]
-        
-        manquantes = [t for t in tables_requises if t not in tables]
-        if manquantes:
-            log_error(f"❌ Tables manquantes en BDD : {manquantes}", "AUDIT")
-        else:
-            log_info("✅ Connexion BDD OK et tables critiques présentes.", "AUDIT")
+    
+    from users.db import get_connection
+    
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            # Test simple
+            cur.execute("SELECT 1")
+            cur.fetchone()
             
-        cur.close()
-        conn.close()
-    except Exception as e:
-        log_error(f"❌ Connexion à la base de données ÉCHEC : {e}", "AUDIT", e)
+            # Vérification des tables critiques
+            cur.execute("""
+                SELECT table_name FROM information_schema.tables 
+                WHERE table_schema = 'public'
+            """)
+            tables = [row[0] for row in cur.fetchall()]
+            tables_requises = ["utilisateurs", "model_cache", "paiements_attente", "codes_premium"]
+            
+            manquantes = [t for t in tables_requises if t not in tables]
+            if manquantes:
+                log_error(f"❌ Tables manquantes en BDD : {manquantes}", "AUDIT")
+            else:
+                log_info("✅ Connexion BDD OK et tables critiques présentes.", "AUDIT")
+
 
 # =========================================================
 # 5. AUDIT DU MODÈLE IA
 # =========================================================
 def audit_modele():
     log_info("--- 🧠 AUDIT DU MODÈLE IA ---", "AUDIT")
-    try:
-        from core.ml_model import global_model_data
-        
-        if global_model_data.get('model') is not None:
-            log_info(f"✅ Modèle unique chargé en mémoire ({type(global_model_data['model']).__name__}).", "AUDIT")
-        elif global_model_data.get('modeles_par_competition'):
-            log_info(f"✅ {len(global_model_data['modeles_par_competition'])} modèles par compétition chargés en mémoire.", "AUDIT")
+    
+    from core.ml_model import global_model_data
+    
+    if global_model_data.get('model') is not None:
+        log_info(f"✅ Modèle unique chargé en mémoire ({type(global_model_data['model']).__name__}).", "AUDIT")
+    elif global_model_data.get('modeles_par_competition'):
+        log_info(f"✅ {len(global_model_data['modeles_par_competition'])} modèles par compétition chargés en mémoire.", "AUDIT")
+    else:
+        log_warning("⚠️ Modèle non chargé en mémoire. Tentative de chargement depuis la BDD...", "AUDIT")
+        from users import charger_modele_cache
+        cache = charger_modele_cache()
+        if cache:
+            log_info("✅ Modèle trouvé dans le cache BDD (mais pas en mémoire).", "AUDIT")
         else:
-            log_warning("⚠️ Modèle non chargé en mémoire. Tentative de chargement depuis la BDD...", "AUDIT")
-            from users import charger_modele_cache
-            cache = charger_modele_cache()
-            if cache:
-                log_info("✅ Modèle trouvé dans le cache BDD (mais pas en mémoire).", "AUDIT")
-            else:
-                log_error("❌ Aucun modèle trouvé dans le cache BDD.", "AUDIT")
-                
-        # Vérification de la précision
-        prec = global_model_data.get('precision')
-        if prec:
-            log_info(f"📊 Précision du modèle : {round(prec*100, 2)}%.", "AUDIT")
+            log_error("❌ Aucun modèle trouvé dans le cache BDD.", "AUDIT")
             
-    except Exception as e:
-        log_error(f"❌ Erreur lors de la vérification du modèle : {e}", "AUDIT", e)
+    # Vérification de la précision
+    prec = global_model_data.get('precision')
+    if prec:
+        log_info(f"📊 Précision du modèle : {round(prec*100, 2)}%.", "AUDIT")
+
 
 # =========================================================
 # 6. AUDIT DE LA CONFIGURATION
 # =========================================================
 def audit_config():
     log_info("--- ⚙️ AUDIT DE LA CONFIGURATION ---", "AUDIT")
-    try:
-        import config
-        if config.CANAL_ID:
-            log_info(f"✅ CANAL_ID configuré : {config.CANAL_ID}", "AUDIT")
-        else:
-            log_error("❌ CANAL_ID manquant ou vide.", "AUDIT")
-            
-        if config.CANAL_LIEN:
-            log_info(f"✅ CANAL_LIEN configuré : {config.CANAL_LIEN}", "AUDIT")
-        else:
-            log_error("❌ CANAL_LIEN manquant ou vide.", "AUDIT")
-    except Exception as e:
-        log_error(f"❌ Erreur lors de la vérification de la config : {e}", "AUDIT", e)
+    
+    import config
+    if config.CANAL_ID:
+        log_info(f"✅ CANAL_ID configuré : {config.CANAL_ID}", "AUDIT")
+    else:
+        log_error("❌ CANAL_ID manquant ou vide.", "AUDIT")
+        
+    if config.CANAL_LIEN:
+        log_info(f"✅ CANAL_LIEN configuré : {config.CANAL_LIEN}", "AUDIT")
+    else:
+        log_error("❌ CANAL_LIEN manquant ou vide.", "AUDIT")
+
 
 # =========================================================
 # LANCEMENT DE L'AUDIT COMPLET
