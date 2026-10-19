@@ -15,11 +15,19 @@ def enregistrer_admin_handlers(bot):
     # =========================================================
     # COMMANDE /admin et bouton "Panneau Admin" (Texte)
     # =========================================================
+    # ⚠️ CORRECTION : On sépare les deux décorateurs pour éviter les conflits
     @bot.message_handler(commands=['admin'])
-    @bot.message_handler(func=lambda m: m.text == "Panneau Admin" and est_administrateur(m.from_user.id))
     def cmd_admin(message):
         if not est_administrateur(message.from_user.id):
             return
+        bot.send_message(
+            message.chat.id, 
+            "🎛️ PANNEAU ADMIN\n\nChoisis une action :", 
+            reply_markup=menu_admin_bas()
+        )
+
+    @bot.message_handler(func=lambda m: m.text == "Panneau Admin" and est_administrateur(m.from_user.id))
+    def btn_admin_panel(message):
         bot.send_message(
             message.chat.id, 
             "🎛️ PANNEAU ADMIN\n\nChoisis une action :", 
@@ -106,12 +114,22 @@ def enregistrer_admin_handlers(bot):
             bot.send_message(message.chat.id, "🎛️ PANNEAU ADMIN", reply_markup=menu_admin_bas())
             return
 
-        # --- Audit ---
+        # --- Audit (SÉCURISÉ) ---
         if text == "🔍 Lancer l'Audit":
-            from core.audit import lancer_audit_complet
-            bot.send_message(message.chat.id, "⏳ Lancement de l'audit... Regarde les logs Render.")
-            lancer_audit_complet()
-            bot.send_message(message.chat.id, "✅ Audit terminé ! Regarde les logs Render pour les détails.")
+            bot.send_message(message.chat.id, "⏳ Lancement de l'audit en arrière-plan... Regarde les logs Render.")
+            
+            # ⚠️ CORRECTION MAJEURE : On lance l'audit dans un THREAD séparé
+            # pour ne pas bloquer le bot principal.
+            import threading
+            def run_audit():
+                try:
+                    from core.audit import lancer_audit_complet
+                    lancer_audit_complet()
+                    bot.send_message(message.chat.id, "✅ Audit terminé ! Regarde les logs Render pour les détails.")
+                except Exception as e:
+                    bot.send_message(message.chat.id, f"❌ Erreur pendant l'audit : {e}")
+                    
+            threading.Thread(target=run_audit, daemon=True).start()
             return
 
         # --- Navigation vers les sous-menus (Bascule de clavier) ---
