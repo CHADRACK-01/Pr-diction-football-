@@ -53,16 +53,10 @@ def enregistrer_admin_handlers(bot):
 
         if data == "admin_back":
             ADMIN_SESSIONS.pop(user_id, None)
-            try:
-                bot.edit_message_text("🎛️ PANNEAU ADMIN\n\nChoisis une action :", call.message.chat.id, call.message.message_id, reply_markup=menu_principal_admin())
-            except Exception:
-                bot.send_message(call.message.chat.id, "🎛️ PANNEAU ADMIN", reply_markup=menu_principal_admin())
+            bot.edit_message_text("🎛️ PANNEAU ADMIN\n\nChoisis une action :", call.message.chat.id, call.message.message_id, reply_markup=menu_principal_admin())
         elif data == "admin_close":
             ADMIN_SESSIONS.pop(user_id, None)
-            try:
-                bot.delete_message(call.message.chat.id, call.message.message_id)
-            except Exception:
-                pass
+            bot.delete_message(call.message.chat.id, call.message.message_id)
         elif data == "admin_premium":
             ADMIN_SESSIONS.pop(user_id, None)
             bot.edit_message_text("💎 GESTION PREMIUM", call.message.chat.id, call.message.message_id, reply_markup=menu_premium())
@@ -113,12 +107,9 @@ def enregistrer_admin_handlers(bot):
             
             import threading
             def run_audit():
-                try:
-                    from core.audit import lancer_audit_complet
-                    lancer_audit_complet()
-                    bot.send_message(message.chat.id, "✅ Audit terminé ! Regarde les logs Render pour les détails.")
-                except Exception as e:
-                    bot.send_message(message.chat.id, f"❌ Erreur pendant l'audit : {e}")
+                from core.audit import lancer_audit_complet
+                lancer_audit_complet()
+                bot.send_message(message.chat.id, "✅ Audit terminé ! Regarde les logs Render pour les détails.")
                     
             threading.Thread(target=run_audit, daemon=True).start()
             return
