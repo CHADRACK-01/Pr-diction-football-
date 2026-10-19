@@ -27,38 +27,38 @@ def envoyer_menu_principal(chat_id, user_id, bot):
     user_info = get_user_info(user_id)
     nom = user_info['first_name'] if user_info else "Utilisateur"
 
-    # Message de présentation (après /start)
+    # Message de présentation
     presentation = (
         f"👋 Bienvenue {nom} sur Pronostic Football !\n\n"
-        f"🤖 Je suis un bot d'Intelligence Artificielle spécialisé dans les pronostics sportifs. "
-        f"J'analyse des milliers de matchs (xG, forme, Elo) pour te donner les meilleures prédictions.\n\n"
+        f"🤖 Je suis un bot d'Intelligence Artificielle spécialisé dans les pronostics sportifs.\n\n"
         f"📊 Statut : {statut_label}\n"
         f"🎯 Pronostics aujourd'hui : {compteur}/{limite}\n"
         f"⚙️ Précision du modèle : {prec*100:.2f}%\n\n"
         f"👇 Utilise les boutons ci-dessous pour commencer :"
     )
 
-    # Clavier normal (en bas)
+    # ⚠️ CLAVIER AVEC CLÉS UNIQUES (#)
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(
-        telebot.types.KeyboardButton(get_text("btn_pronostic", langue)),
-        telebot.types.KeyboardButton(get_text("btn_matchs_jour", langue)),
-        telebot.types.KeyboardButton(get_text("btn_coupons", langue)),
-        telebot.types.KeyboardButton(get_text("btn_top_affiches", langue)),
-        telebot.types.KeyboardButton(get_text("btn_historique", langue)),
-        telebot.types.KeyboardButton(get_text("btn_stats", langue)),
-        telebot.types.KeyboardButton(get_text("btn_notifs", langue)),
-        telebot.types.KeyboardButton(get_text("btn_premium", langue)),
-        telebot.types.KeyboardButton(get_text("btn_parrainage", langue)),
-        telebot.types.KeyboardButton(get_text("btn_langue", langue)),
+        telebot.types.KeyboardButton("#PRONO"),       # Au lieu de "Faire un Pronostic"
+        telebot.types.KeyboardButton("#MATCHS"),      # Au lieu de "Matchs du jour"
+        telebot.types.KeyboardButton("#COUPONS"),     # Au lieu de "Coupons"
+        telebot.types.KeyboardButton("#TOP"),         # Au lieu de "Top affiches"
+        telebot.types.KeyboardButton("#HISTO"),       # Au lieu de "Historique"
+        telebot.types.KeyboardButton("#STATS"),       # Au lieu de "Statistiques"
+        telebot.types.KeyboardButton("#NOTIFS"),      # Au lieu de "Notifications"
+        telebot.types.KeyboardButton("#PREMIUM"),     # Au lieu de "Passer Premium"
+        telebot.types.KeyboardButton("#PARRAINAGE"),  # Au lieu de "Parrainage"
+        telebot.types.KeyboardButton("#LANGUE"),      # Au lieu de "Langue"
     )
-    # ⚠️ Ajout du bouton Panneau Admin dans le clavier normal
+    
+    # Ajout du bouton Admin avec sa clé
     if est_administrateur(user_id):
-        markup.add(telebot.types.KeyboardButton("Panneau Admin"))
+        markup.add(telebot.types.KeyboardButton("#ADMIN"))
 
     bot.send_message(chat_id, presentation, reply_markup=markup)
 
-    # Boutons Inline (Canal uniquement, et seulement pour les non-membres)
+    # Boutons Inline (Canal)
     inline_markup = telebot.types.InlineKeyboardMarkup(row_width=1)
     
     try:
@@ -88,6 +88,7 @@ def enregistrer_start_handlers(bot):
         existe_avant = get_user_info(user.id) is not None
         enregistrer_utilisateur(user.id, user.username, user.first_name)
 
+        # Gestion du parrainage (garde ton code existant)
         if not existe_avant and get_user_info(user.id) is not None:
             parts = message.text.split()
             if len(parts) >= 2 and parts[1].startswith("REF"):
@@ -117,9 +118,9 @@ def enregistrer_start_handlers(bot):
 
         envoyer_menu_principal(message.chat.id, user.id, bot)
 
-    # ⚠️ CORRECTION : On gère la commande /langue ET le texte du bouton
+    # Gestion de la commande /langue et du bouton #LANGUE
     @bot.message_handler(commands=['langue', 'language'])
-    @bot.message_handler(func=lambda m: m.text in ["Langue", "Language", "Monoko"])
+    @bot.message_handler(func=lambda m: m.text == "#LANGUE")
     def cmd_langue(message):
         user_id = message.from_user.id
         langue = get_langue(user_id)
