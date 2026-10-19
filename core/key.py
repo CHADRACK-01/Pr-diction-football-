@@ -1,4 +1,4 @@
-# core/keys.py
+# core/key.py
 
 # =========================================================
 # CLÉS UNIQUES DU BOT (Ne jamais modifier une clé existante)
@@ -17,10 +17,10 @@ KEYS = {
     "MENU_LANGUE": "#LANGUE",
     "MENU_ADMIN": "#ADMIN",
     
-    # Sous-menus Pronostic
-    "PRONO_LIGUE1": "#PRONO_L1",
-    "PRONO_PREMIER_LEAGUE": "#PRONO_PL",
-    # ... (à compléter avec les 21 compétitions)
+    # Sous-menus Pronostic (Générés dynamiquement dans pronostic.py)
+    # "PRONO_LIGUE1": "#PRONO_LIGUE_1", 
+    # "PRONO_PREMIER_LEAGUE": "#PRONO_PREMIER_LEAGUE",
+    # ... (à compléter si tu ajoutes d'autres compétitions manuellement)
     
     # Actions Admin
     "ADMIN_STATS": "#ADMIN_STATS",
