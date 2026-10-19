@@ -4,6 +4,7 @@ from core.translations import get_text
 from core.keys import KEYS
 from core.utils.logs import log_info, log_error
 
+
 def enregistrer_router_handler(bot):
     
     @bot.message_handler(func=lambda m: m.text and m.text.startswith('#'))
@@ -27,36 +28,30 @@ def enregistrer_router_handler(bot):
             afficher_menu_competitions(bot, message)
             
         elif cle == KEYS["MENU_MATCHS"]:
-            from telegram_bot.premium_handlers import handle_matchs_jour
-            handle_matchs_jour(bot, message)
+            from telegram_bot.premium_handlers import enregistrer_premium_handlers
+            # On ne peut pas appeler directement, on déclenche le handler correspondant
+            bot.process_new_messages([message])
             
         elif cle == KEYS["MENU_COUPONS"]:
-            from telegram_bot.premium_handlers import handle_coupons
-            handle_coupons(bot, message)
+            bot.process_new_messages([message])
             
         elif cle == KEYS["MENU_TOP"]:
-            from telegram_bot.premium_handlers import handle_top_affiches
-            handle_top_affiches(bot, message)
+            bot.process_new_messages([message])
             
         elif cle == KEYS["MENU_HISTORIQUE"]:
-            from telegram_bot.handlers.historique import handle_historique
-            handle_historique(bot, message)
+            bot.process_new_messages([message])
             
         elif cle == KEYS["MENU_STATS"]:
-            from telegram_bot.handlers.statistiques import handle_statistiques
-            handle_statistiques(bot, message)
+            bot.process_new_messages([message])
             
         elif cle == KEYS["MENU_NOTIFS"]:
-            from telegram_bot.handlers.notifications import handle_notifications
-            handle_notifications(bot, message)
+            bot.process_new_messages([message])
             
         elif cle == KEYS["MENU_PREMIUM"]:
-            from telegram_bot.handlers.premium_menu import handle_premium
-            handle_premium(bot, message)
+            bot.process_new_messages([message])
             
         elif cle == KEYS["MENU_PARRAINAGE"]:
-            from telegram_bot.handlers.parrainage import handle_parrainage
-            handle_parrainage(bot, message)
+            bot.process_new_messages([message])
             
         elif cle == KEYS["MENU_LANGUE"]:
             from telegram_bot.handlers.start import cmd_langue
@@ -68,8 +63,6 @@ def enregistrer_router_handler(bot):
                 cmd_admin(bot, message)
             else:
                 bot.reply_to(message, "Accès refusé.")
-        
-        # Ajoute ici les autres clés (Admin, Compétitions, etc.)
         
         else:
             log_info(f"Routeur : clé inconnue '{cle}'", "ROUTER")
