@@ -22,9 +22,10 @@ def _envoyer_message_securise(bot, chat_id, texte):
 
 def enregistrer_premium_handlers(bot):
 
-    @bot.message_handler(func=lambda m: m.from_user and m.text and m.text.strip() in [
-        "Coupons", "Coupons du jour", "Coupons ya lelo"
-    ])
+    # =========================================================
+    # COUPONS (#COUPONS)
+    # =========================================================
+    @bot.message_handler(func=lambda m: m.text == "#COUPONS")
     def handle_coupons(message):
         print(f"[PREMIUM] Bouton Coupons cliqué par {message.from_user.id}")
         user_id = message.from_user.id
@@ -61,9 +62,10 @@ def enregistrer_premium_handlers(bot):
             bot.send_message(message.chat.id, f"Erreur : {str(e)[:200]}")
 
 
-    @bot.message_handler(func=lambda m: m.from_user and m.text and m.text.strip() in [
-        "Top affiches", "Affiches du jour", "Affiches ya lelo"
-    ])
+    # =========================================================
+    # TOP AFFICHES (#TOP)
+    # =========================================================
+    @bot.message_handler(func=lambda m: m.text == "#TOP")
     def handle_top_affiches(message):
         print(f"[PREMIUM] Bouton Top affiches cliqué par {message.from_user.id}")
         user_id = message.from_user.id
@@ -102,9 +104,10 @@ def enregistrer_premium_handlers(bot):
             bot.send_message(message.chat.id, f"Erreur : {str(e)[:200]}")
 
 
-    @bot.message_handler(func=lambda m: m.from_user and m.text and m.text.strip() in [
-        "Matchs du jour", "Today's matches", "Masano ya lelo"
-    ])
+    # =========================================================
+    # MATCHS DU JOUR (#MATCHS)
+    # =========================================================
+    @bot.message_handler(func=lambda m: m.text == "#MATCHS")
     def handle_matchs_jour(message):
         print(f"[PREMIUM] Bouton Matchs du jour cliqué par {message.from_user.id}")
         user_id = message.from_user.id
