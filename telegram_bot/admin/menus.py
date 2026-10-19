@@ -1,5 +1,6 @@
 import telebot
 
+
 # =========================================================
 # MENUS INLINE (Conservés pour compatibilité)
 # =========================================================
@@ -22,6 +23,7 @@ def menu_principal_admin():
     )
     return markup
 
+
 def menu_premium():
     markup = telebot.types.InlineKeyboardMarkup(row_width=1)
     markup.add(
@@ -30,6 +32,7 @@ def menu_premium():
         telebot.types.InlineKeyboardButton("🔙 Retour Admin", callback_data="admin_back")
     )
     return markup
+
 
 def menu_codes():
     markup = telebot.types.InlineKeyboardMarkup(row_width=2)
@@ -43,6 +46,7 @@ def menu_codes():
     )
     return markup
 
+
 def menu_parametres():
     markup = telebot.types.InlineKeyboardMarkup(row_width=2)
     markup.add(
@@ -55,6 +59,7 @@ def menu_parametres():
         telebot.types.InlineKeyboardButton("🔙 Retour Admin", callback_data="admin_back")
     )
     return markup
+
 
 def menu_bdd():
     markup = telebot.types.InlineKeyboardMarkup(row_width=2)
@@ -86,10 +91,11 @@ def menu_admin_bas():
         telebot.types.KeyboardButton("🚫 Bannis"),
         telebot.types.KeyboardButton("📢 Broadcast"),
         telebot.types.KeyboardButton("💎 Premium"),
-        telebot.types.KeyboardButton("🔍 Lancer l'Audit"), # ⚠️ NOUVEAU
+        telebot.types.KeyboardButton("🔍 Lancer l'Audit"),
         telebot.types.KeyboardButton("🔙 Quitter Admin")
     )
     return markup
+
 
 def menu_premium_bas():
     """Menu Premium en bas."""
@@ -100,6 +106,7 @@ def menu_premium_bas():
         telebot.types.KeyboardButton("🔙 Retour Admin")
     )
     return markup
+
 
 def menu_codes_bas():
     """Menu Codes en bas."""
@@ -114,6 +121,7 @@ def menu_codes_bas():
     )
     return markup
 
+
 def menu_parametres_bas():
     """Menu Paramètres en bas."""
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
@@ -127,6 +135,7 @@ def menu_parametres_bas():
         telebot.types.KeyboardButton("🔙 Retour Admin")
     )
     return markup
+
 
 def menu_bdd_bas():
     """Menu BDD en bas."""
