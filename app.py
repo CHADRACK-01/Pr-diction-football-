@@ -49,11 +49,9 @@ def charger_modele_universel():
     """
     from core.ml_model import global_model_data, charger_et_entrainer
     
-    # On vérifie si les données de base sont déjà chargées
     if global_model_data.get('df') is not None:
         return True
         
-    # On appelle la nouvelle fonction qui ne charge QUE les données de base
     charger_et_entrainer()
     
     if global_model_data.get('df') is not None:
@@ -184,7 +182,14 @@ def _scheduler_notifications():
             est_weekend = jour_semaine >= 5
             date_du_jour = now.strftime("%Y-%m-%d")
 
-            heure_notif = int(get_parametre("notif_heure", 8))
+            # ⚠️ SÉCURITÉ : Si la valeur en BDD est du texte, on utilise 8 par défaut
+            heure_notif_val = get_parametre("notif_heure", "8")
+            if isinstance(heure_notif_val, str) and heure_notif_val.isdigit():
+                heure_notif = int(heure_notif_val)
+            elif isinstance(heure_notif_val, int):
+                heure_notif = heure_notif_val
+            else:
+                heure_notif = 8
 
             # 1. Vérification des résultats de la veille (à 7h)
             if now.hour == 7 and now.minute < 5:
@@ -259,11 +264,9 @@ def webhook():
     if update.message:
         user_id = update.message.from_user.id
         
-        # Vérification des bannissements
         if est_banni(user_id) and not est_administrateur(user_id):
             return "OK", 200
             
-        # Vérification du mode maintenance
         mode_maintenance = get_parametre("mode_maintenance", "off")
         if mode_maintenance == "on" and not est_administrateur(user_id):
             bot.send_message(user_id, "🛠️ Le bot est actuellement en maintenance. Veuillez réessayer plus tard.")
