@@ -9,21 +9,24 @@ def log_warning(message, module="BOT"):
     """Log un avertissement."""
     print(f"[{module}] ⚠️ {message}")
 
-def log_error(message, module="BOT", exception=None, notifier_telegram=False):
+def log_error(message, module="BOT", exception=None):
     """
     Log une erreur avec la trace complète.
-    Si notifier_telegram=True, envoie aussi l'erreur sur ton Telegram.
+    Envoie TOUJOURS l'erreur sur Telegram via le gestionnaire global.
     """
     print(f"[{module}] ❌ {message}")
     
     trace = ""
     if exception:
+        # On récupère la trace complète de l'exception
         trace = traceback.format_exc()
         print(f"[{module}] 🔥 TRACEBACK:\n{trace}")
         
-    if notifier_telegram:
-        texte = f"{message}\n\n{trace}"
-        envoyer_erreur_admin(texte, context=module)
+    # On prépare le texte pour l'admin (on évite de dépasser la limite Telegram)
+    texte_alerte = f"{message}\n\n{trace}" if trace else message
+    
+    # On envoie l'alerte via le gestionnaire d'erreurs global
+    envoyer_erreur_admin(texte_alerte, context=module)
 
 def log_canal_action(action, succes, details=""):
     """Log spécifique pour les actions sur le canal."""
