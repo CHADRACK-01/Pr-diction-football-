@@ -2,7 +2,8 @@ import telebot
 from users import get_langue, est_banni, peut_faire_pronostic, get_limite_jour, est_administrateur
 from core.translations import get_text
 from config import CHAMPIONNATS, INFOS_COMPETITIONS
-from core.session import SESSIONS_PRONOSTIC # ⚠️ Import centralisé
+from core.session import SESSIONS_PRONOSTIC
+
 
 def creer_clavier_competitions(langue="fr"):
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
@@ -14,6 +15,7 @@ def creer_clavier_competitions(langue="fr"):
     markup.add(*boutons)
     markup.add(telebot.types.KeyboardButton("🔙 Retour Menu"))
     return markup
+
 
 def afficher_menu_competitions(bot, message):
     user_id = message.from_user.id
@@ -35,6 +37,7 @@ def afficher_menu_competitions(bot, message):
         parse_mode="Markdown"
     )
 
+
 def enregistrer_pronostic_handlers(bot):
 
     @bot.message_handler(func=lambda m: m.text == "#PRONO")
@@ -54,11 +57,8 @@ def enregistrer_pronostic_handlers(bot):
         langue = get_langue(user_id)
         texte_bouton = message.text
 
-        try:
-            cle = texte_bouton.split(" ")[0]
-            comp_code = cle.replace("#PRONO_", "").lower()
-        except Exception:
-            return
+        cle = texte_bouton.split(" ")[0]
+        comp_code = cle.replace("#PRONO_", "").lower()
 
         if comp_code not in CHAMPIONNATS:
             return
@@ -67,8 +67,6 @@ def enregistrer_pronostic_handlers(bot):
         
         # ⚠️ On sauvegarde dans le dictionnaire central
         SESSIONS_PRONOSTIC[user_id] = comp_code
-        
-        print(f"[SESSION] Utilisateur {user_id} a choisi : {comp_code}")
 
         # On remet le clavier principal
         markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
