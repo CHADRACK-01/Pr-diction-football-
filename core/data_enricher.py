@@ -1,7 +1,9 @@
 import pandas as pd
 import soccerdata as sd
 
-# Dictionnaire de correspondance pour lier les noms d'Understat avec ton bot
+from core.utils.logs import log_info, log_error
+
+
 MAP_EQUIPES_UNDERSTAT = {
     "Paris Saint Germain": "Paris SG", "Manchester City": "Man City", "Manchester United": "Man United",
     "Tottenham": "Tottenham", "Wolverhampton Wanderers": "Wolves", "West Ham": "West Ham",
@@ -30,28 +32,27 @@ MAP_EQUIPES_UNDERSTAT = {
     "Toulouse": "Toulouse", "Metz": "Metz", "Le Havre": "Le Havre", "Clermont Foot": "Clermont", "Lorient": "Lorient",
 }
 
+
 def recuperer_xg_understat(ligues=None):
     """Récupère les données xG d'Understat via soccerdata."""
     if ligues is None:
         ligues = ['ENG-Premier League', 'ESP-La Liga', 'GER-Bundesliga', 'ITA-Serie A', 'FRA-Ligue 1']
     
-    print(f"📥 Récupération des xG pour : {ligues}...")
-    try:
-        understat = sd.Understat(leagues=ligues, seasons=range(2019, 2025))
-        df_xg = understat.read_team_match_stats().reset_index()
-        
-        cols = ['date', 'home_team', 'away_team', 'home_xg', 'away_xg']
-        df_xg = df_xg[[c for c in cols if c in df_xg.columns]]
-        
-        df_xg['home_team'] = df_xg['home_team'].map(lambda x: MAP_EQUIPES_UNDERSTAT.get(x, x))
-        df_xg['away_team'] = df_xg['away_team'].map(lambda x: MAP_EQUIPES_UNDERSTAT.get(x, x))
-        df_xg['date'] = pd.to_datetime(df_xg['date']).dt.date
-        
-        print(f"✅ {len(df_xg)} matchs avec xG récupérés.")
-        return df_xg
-    except Exception as e:
-        print(f"❌ Erreur lors de la récupération des xG : {e}")
-        return pd.DataFrame()
+    log_info(f"📥 Récupération des xG pour : {ligues}...", "DATA_ENRICHER")
+    
+    understat = sd.Understat(leagues=ligues, seasons=range(2019, 2025))
+    df_xg = understat.read_team_match_stats().reset_index()
+    
+    cols = ['date', 'home_team', 'away_team', 'home_xg', 'away_xg']
+    df_xg = df_xg[[c for c in cols if c in df_xg.columns]]
+    
+    df_xg['home_team'] = df_xg['home_team'].map(lambda x: MAP_EQUIPES_UNDERSTAT.get(x, x))
+    df_xg['away_team'] = df_xg['away_team'].map(lambda x: MAP_EQUIPES_UNDERSTAT.get(x, x))
+    df_xg['date'] = pd.to_datetime(df_xg['date']).dt.date
+    
+    log_info(f"✅ {len(df_xg)} matchs avec xG récupérés.", "DATA_ENRICHER")
+    return df_xg
+
 
 def calculer_xg_moyens(df_matchs, df_xg, fenetre=5):
     """
@@ -87,7 +88,6 @@ def calculer_xg_moyens(df_matchs, df_xg, fenetre=5):
     historique['xGA_Avg'] = historique['xGA_Avg'].fillna(1.2)
 
     # 3. Fusion avec le dataset de matchs
-    # On fusionne pour l'équipe à domicile
     df_matchs = pd.merge(
         df_matchs, 
         historique[['date', 'Equipe', 'xG_Avg', 'xGA_Avg']], 
@@ -96,7 +96,6 @@ def calculer_xg_moyens(df_matchs, df_xg, fenetre=5):
         how='left'
     ).rename(columns={'xG_Avg': 'Home_xG_Avg', 'xGA_Avg': 'Home_xGA_Avg'}).drop(columns=['date', 'Equipe'])
 
-    # On fusionne pour l'équipe à l'extérieur
     df_matchs = pd.merge(
         df_matchs, 
         historique[['date', 'Equipe', 'xG_Avg', 'xGA_Avg']], 
@@ -109,5 +108,5 @@ def calculer_xg_moyens(df_matchs, df_xg, fenetre=5):
     for col in ['Home_xG_Avg', 'Home_xGA_Avg', 'Away_xG_Avg', 'Away_xGA_Avg']:
         df_matchs[col] = df_matchs[col].fillna(1.2)
 
-    print("✅ Calcul des xG terminé (optimisé).")
+    log_info("✅ Calcul des xG terminé (optimisé).", "DATA_ENRICHER")
     return df_matchs
