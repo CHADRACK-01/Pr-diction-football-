@@ -4,9 +4,7 @@ from core.translations import get_text
 
 def enregistrer_premium_menu_handlers(bot):
 
-    @bot.message_handler(func=lambda m: m.from_user and m.text in [
-        "Passer Premium", "Go Premium", "Kende Premium"
-    ])
+    @bot.message_handler(func=lambda m: m.text == "#PREMIUM")
     def handle_premium(message):
         print(f"[PREMIUM MENU] Bouton cliqué par {message.from_user.id}")
         user_id = message.from_user.id
