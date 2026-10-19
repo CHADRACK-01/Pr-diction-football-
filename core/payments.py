@@ -1,5 +1,5 @@
 import telebot
-from core.utils.logs import log_info, log_error
+from core.utils.logs import log_info
 
 
 # =========================================================
@@ -31,31 +31,26 @@ def envoyer_facture(bot, chat_id, abo_key, user_id):
     - currency doit être 'XTR'
     """
     if abo_key not in ABONNEMENTS:
-        log_error(f"Abonnement inconnu : {abo_key}", "PAYMENTS")
         bot.send_message(chat_id, "Formule inconnue.")
         return False
 
     abo = ABONNEMENTS[abo_key]
 
-    try:
-        bot.send_invoice(
-            chat_id=chat_id,
-            title=f"Abonnement {abo['nom']}",
-            description=f"Pronostics illimités pendant {abo['duree_jours']} jour(s)",
-            invoice_payload=f"abo_{abo_key}_{user_id}",
-            provider_token="",  # ⚠️ VIDE pour Telegram Stars
-            currency="XTR",     # ⚠️ Code des Stars
-            prices=[
-                telebot.types.LabeledPrice(
-                    label=abo['nom'],
-                    amount=abo['prix_stars']
-                )
-            ],
-            start_parameter=f"abo_{abo_key}",
-        )
-        log_info(f"Facture envoyée : {abo['nom']} - {abo['prix_stars']} Stars (user {user_id})", "PAYMENTS")
-        return True
-    except Exception as e:
-        log_error(f"Erreur envoi facture : {e}", "PAYMENTS", e)
-        bot.send_message(chat_id, f"Erreur : {str(e)[:200]}")
-        return False
+    bot.send_invoice(
+        chat_id=chat_id,
+        title=f"Abonnement {abo['nom']}",
+        description=f"Pronostics illimités pendant {abo['duree_jours']} jour(s)",
+        invoice_payload=f"abo_{abo_key}_{user_id}",
+        provider_token="",  # ⚠️ VIDE pour Telegram Stars
+        currency="XTR",     # ⚠️ Code des Stars
+        prices=[
+            telebot.types.LabeledPrice(
+                label=abo['nom'],
+                amount=abo['prix_stars']
+            )
+        ],
+        start_parameter=f"abo_{abo_key}",
+    )
+    
+    log_info(f"Facture envoyée : {abo['nom']} - {abo['prix_stars']} Stars (user {user_id})", "PAYMENTS")
+    return True
