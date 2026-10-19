@@ -13,12 +13,13 @@ from telegram_bot.admin.actions import executer_action, executer_action_bas, ADM
 def enregistrer_admin_handlers(bot):
 
     # =========================================================
-    # COMMANDE /admin et bouton "Panneau Admin" (Texte)
+    # OUVERTURE DU PANNEAU (Clé #ADMIN et commande /admin)
     # =========================================================
-    # ⚠️ CORRECTION : On sépare les deux décorateurs pour éviter les conflits
     @bot.message_handler(commands=['admin'])
+    @bot.message_handler(func=lambda m: m.text == "#ADMIN" and est_administrateur(m.from_user.id))
     def cmd_admin(message):
         if not est_administrateur(message.from_user.id):
+            bot.reply_to(message, "Accès refusé.")
             return
         bot.send_message(
             message.chat.id, 
@@ -26,16 +27,8 @@ def enregistrer_admin_handlers(bot):
             reply_markup=menu_admin_bas()
         )
 
-    @bot.message_handler(func=lambda m: m.text == "Panneau Admin" and est_administrateur(m.from_user.id))
-    def btn_admin_panel(message):
-        bot.send_message(
-            message.chat.id, 
-            "🎛️ PANNEAU ADMIN\n\nChoisis une action :", 
-            reply_markup=menu_admin_bas()
-        )
-
     # =========================================================
-    # OUVERTURE DU PANNEAU (Bouton Inline - si utilisé ailleurs)
+    # OUVERTURE DU PANNEAU (Bouton Inline)
     # =========================================================
     @bot.callback_query_handler(func=lambda call: call.data == "open_admin_panel")
     def open_admin_panel_callback(call):
@@ -46,7 +39,7 @@ def enregistrer_admin_handlers(bot):
         bot.send_message(call.message.chat.id, "🎛️ PANNEAU ADMIN\n\nChoisis une action :", reply_markup=menu_principal_admin())
 
     # =========================================================
-    # GESTIONNAIRE DES BOUTONS INLINE (Conservé)
+    # GESTIONNAIRE DES BOUTONS INLINE
     # =========================================================
     @bot.callback_query_handler(func=lambda call: call.data.startswith(("admin_", "param_", "bcast_")))
     def handle_admin_callbacks(call):
@@ -87,7 +80,7 @@ def enregistrer_admin_handlers(bot):
             executer_action(bot, call, data, user_id)
 
     # =========================================================
-    # GESTIONNAIRE DES BOUTONS EN BAS (ReplyKeyboard)
+    # GESTIONNAIRE DES BOUTONS DU CLAVIER ADMIN (Texte)
     # =========================================================
     @bot.message_handler(func=lambda m: est_administrateur(m.from_user.id) and m.text in [
         "📊 Stats", "👥 Utilisateurs", "💳 Paiements", "🎟️ Codes Premium",
@@ -118,8 +111,6 @@ def enregistrer_admin_handlers(bot):
         if text == "🔍 Lancer l'Audit":
             bot.send_message(message.chat.id, "⏳ Lancement de l'audit en arrière-plan... Regarde les logs Render.")
             
-            # ⚠️ CORRECTION MAJEURE : On lance l'audit dans un THREAD séparé
-            # pour ne pas bloquer le bot principal.
             import threading
             def run_audit():
                 try:
