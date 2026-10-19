@@ -22,8 +22,13 @@ from users import (
 )
 from core.utils.logs import log_info, log_error
 
-
+# Dictionnaire global : contiendra uniquement les données de base (léger)
 global_model_data = {}
+
+# ⚠️ CACHE LRU : Ne garde que les 3 derniers modèles utilisés en mémoire
+CACHE_MODELES = {}
+TAILLE_MAX_CACHE = 3
+
 HOME_ADVANTAGE = 100
 ELO_K = 32
 
@@ -87,8 +92,8 @@ def _extraire_matchs(df, nom_competition):
 
 def charger_et_entrainer(forcer_entrainement=False):
     """
-    Charge le modèle depuis le cache PostgreSQL.
-    Si forcer_entrainement=True, réentraîne le modèle (code d'entraînement).
+    Charge UNIQUEMENT les données de base depuis le cache PostgreSQL.
+    ⚠️ Ne charge PAS les modèles lourds (ils seront chargés à la demande).
     """
     global global_model_data
 
@@ -97,30 +102,75 @@ def charger_et_entrainer(forcer_entrainement=False):
         if cache:
             try:
                 modele_bytes, precision, nb_matchs = cache
-                log_info(f"Chargement du modèle depuis le cache ({nb_matchs} matchs, précision={round(precision*100, 2)}%)...", "ML_MODEL")
+                log_info(f"Chargement des données de base depuis le cache...", "ML_MODEL")
 
                 buffer = io.BytesIO(modele_bytes)
                 donnees = joblib.load(buffer)
 
-                # ⚠️ On charge TOUT, y compris les modèles par compétition
-                global_model_data.update(donnees)
+                # On ne charge que les infos utiles (léger)
+                global_model_data['df'] = donnees.get('df')
+                global_model_data['teams'] = donnees.get('teams')
+                global_model_data['team_to_code'] = donnees.get('team_to_code')
+                global_model_data['team_global_stats'] = donnees.get('team_global_stats')
+                global_model_data['team_xg_stats'] = donnees.get('team_xg_stats')
+                global_model_data['features'] = donnees.get('features')
                 global_model_data['precision'] = precision
                 global_model_data['_tables_initialisees'] = True
-
-                # Vérification : est-ce qu'on a bien les modèles par compétition ?
+                
+                # On garde juste la liste des noms de compétitions disponibles
                 if 'modeles_par_competition' in donnees:
-                    log_info(f"{len(donnees['modeles_par_competition'])} modèles par compétition chargés.", "ML_MODEL")
+                    global_model_data['competitions_disponibles'] = list(donnees['modeles_par_competition'].keys())
+                    log_info(f"{len(global_model_data['competitions_disponibles'])} compétitions disponibles.", "ML_MODEL")
                 else:
-                    log_info("Modèle unique chargé (pas de séparation par compétition).", "ML_MODEL")
+                    global_model_data['competitions_disponibles'] = []
 
-                log_info("Modèle chargé depuis le cache !", "ML_MODEL")
+                log_info("Données de base chargées ! (Les modèles restent en BDD pour économiser la RAM)", "ML_MODEL")
                 return
             except Exception as e:
-                log_error(f"Erreur chargement cache : {e}. Réentraînement...", "ML_MODEL")
+                log_error(f"Erreur chargement cache : {e}", "ML_MODEL")
 
-    # ⚠️ Si on doit réentraîner, on utilise le script d'entraînement complet
-    # (qui sera lancé depuis Colab, pas depuis Render)
     log_error("Réentraînement demandé. Lance le script d'entraînement sur Colab.", "ML_MODEL")
+
+
+def charger_modele_competition(competition):
+    """
+    Charge le modèle d'une compétition spécifique depuis la BDD.
+    Utilise un cache LRU pour ne garder que les 3 derniers modèles en RAM.
+    """
+    # 1. Si le modèle est déjà dans le cache, on le retourne
+    if competition in CACHE_MODELES:
+        return CACHE_MODELES[competition]
+
+    # 2. Sinon, on va le chercher dans la BDD
+    log_info(f"Chargement du modèle pour '{competition}' depuis la BDD...", "ML_MODEL")
+    try:
+        cache_bdd = charger_modele_cache()
+        if not cache_bdd:
+            return None
+        
+        modele_bytes, _, _ = cache_bdd
+        buffer = io.BytesIO(modele_bytes)
+        donnees = joblib.load(buffer)
+        
+        modeles = donnees.get('modeles_par_competition', {})
+        if competition not in modeles:
+            log_error(f"Modèle introuvable pour la compétition : {competition}", "ML_MODEL")
+            return None
+        
+        # 3. Gestion du cache LRU (si trop de modèles en RAM, on supprime le plus ancien)
+        if len(CACHE_MODELES) >= TAILLE_MAX_CACHE:
+            plus_ancien = next(iter(CACHE_MODELES))
+            del CACHE_MODELES[plus_ancien]
+            log_info(f"Cache plein. Suppression du modèle '{plus_ancien}' de la RAM.", "ML_MODEL")
+        
+        # 4. On ajoute le nouveau modèle au cache
+        CACHE_MODELES[competition] = modeles[competition]['model']
+        log_info(f"Modèle '{competition}' chargé en RAM (Précision: {round(modeles[competition]['precision']*100, 2)}%).", "ML_MODEL")
+        
+        return CACHE_MODELES[competition]
+    except Exception as e:
+        log_error(f"Erreur lors du chargement du modèle '{competition}' : {e}", "ML_MODEL")
+        return None
 
 
 def tache_arriere_plan_maj(chat_id, bot):
@@ -162,7 +212,6 @@ def tache_arriere_plan_maj(chat_id, bot):
 
         vider_modele_cache()
         
-        # ⚠️ On ne réentraîne plus ici, on demande à Colab
         bot.send_message(
             chat_id,
             f"✅ *Synchronisation réussie !*\n\n"
@@ -175,9 +224,6 @@ def tache_arriere_plan_maj(chat_id, bot):
         bot.send_message(chat_id, f"❌ Erreur critique : {str(e)}")
 
 
-# =========================================================
-# TOP PRONOSTICS DU JOUR (pour notifications)
-# =========================================================
 def get_top_pronostics_du_jour(nb=3):
     """Retourne les N meilleurs pronostics parmi les matchs les plus récents."""
     from core.prediction import predire_match
