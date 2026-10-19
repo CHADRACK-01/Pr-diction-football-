@@ -43,41 +43,27 @@ def _envoyer_message_securise(chat_id, texte, parse_mode=None):
 
 def charger_modele_universel():
     """
-    Charge le modèle IA depuis PostgreSQL (Aiven) vers la mémoire vive.
-    Gère à la fois les modèles uniques (ancien format) et les modèles 
-    par compétition (nouveau format).
+    Charge UNIQUEMENT les données de base (df, teams, etc.) depuis la BDD.
+    ⚠️ Les modèles lourds sont chargés à la demande dans prediction.py
     """
-    from core.ml_model import global_model_data
+    from core.ml_model import global_model_data, charger_et_entrainer
     
-    # ⚠️ CORRECTION : On vérifie si on a le modèle unique OU les modèles par compétition
-    if global_model_data.get('model') is not None or global_model_data.get('modeles_par_competition') is not None:
+    # On vérifie si les données de base sont déjà chargées
+    if global_model_data.get('df') is not None:
         return True
         
     try:
-        from users import charger_modele_cache
-        cache = charger_modele_cache()
-        if not cache:
-            print("❌ Aucun modèle en cache dans la base de données.")
+        # On appelle la nouvelle fonction qui ne charge QUE les données de base
+        charger_et_entrainer()
+        
+        if global_model_data.get('df') is not None:
+            print("✅ Données de base chargées avec succès ! (Les modèles seront chargés à la demande)")
+            return True
+        else:
+            print("⚠️ Impossible de charger les données de base.")
             return False
-            
-        modele_bytes, precision, nb_matchs = cache
-        buffer = io.BytesIO(modele_bytes)
-        donnees = joblib.load(buffer)
-        
-        # Mise à jour du dictionnaire global
-        global_model_data.update(donnees)
-        global_model_data['precision'] = precision
-        global_model_data['_tables_initialisees'] = True
-        
-        # Affichage clair de ce qui a été chargé
-        if 'model' in donnees:
-            print(f"✅ Modèle unique chargé : {type(global_model_data['model']).__name__} (Précision : {round(precision*100, 2)}%)")
-        elif 'modeles_par_competition' in donnees:
-            print(f"✅ {len(donnees['modeles_par_competition'])} modèles par compétition chargés (Précision moyenne : {round(precision*100, 2)}%)")
-            
-        return True
     except Exception as e:
-        print(f"⚠️ Erreur lors du chargement du modèle : {e}")
+        print(f"⚠️ Erreur chargement modèle : {e}")
         return False
 
 
@@ -332,11 +318,11 @@ def index():
 # =========================================================
 # INITIALISATION AU DÉMARRAGE
 # =========================================================
-print("🔄 Chargement initial du modèle IA...")
+print("🔄 Chargement initial des données de base...")
 if charger_modele_universel():
-    print("✅ Modèle IA chargé avec succès au démarrage !")
+    print("✅ Données de base chargées avec succès au démarrage !")
 else:
-    print("⚠️ Impossible de charger le modèle au démarrage. Il sera chargé à la première utilisation.")
+    print("⚠️ Impossible de charger les données de base au démarrage. Elles seront chargées à la première utilisation.")
 
 initialiser_tables()
 print("Bot pret (init differee + notifications + coupons + canal + maintenance).")
