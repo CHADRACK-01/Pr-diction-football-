@@ -1,1 +1,1 @@
-# Package telegram_bot - handlers Telegram
+# Package telegram_bot - Handlers et interface Telegram
