@@ -2,6 +2,7 @@ import telebot
 from users import get_langue, est_premium, est_banni
 from core.translations import get_text
 
+
 def enregistrer_premium_menu_handlers(bot):
 
     @bot.message_handler(func=lambda m: m.text == "#PREMIUM")
