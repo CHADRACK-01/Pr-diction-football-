@@ -9,6 +9,12 @@ import telebot
 from datetime import datetime, timezone, timedelta
 from flask import Flask, request
 
+# =========================================================
+# ⚠️ SÉCURITÉ GLOBALE : Activation AVANT tout le reste
+# =========================================================
+from core.utils.error_handler import activer_capture_globale
+activer_capture_globale()
+
 from config import TOKEN
 from users import (
     initialiser_tables, get_utilisateurs_notifies, est_banni, 
