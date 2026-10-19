@@ -22,7 +22,7 @@ def _envoyer_message_securise(bot, chat_id, texte):
 
 def enregistrer_premium_handlers(bot):
 
-    @bot.message_handler(func=lambda m: m.from_user and m.text in [
+    @bot.message_handler(func=lambda m: m.from_user and m.text and m.text.strip() in [
         "Coupons", "Coupons du jour", "Coupons ya lelo"
     ])
     def handle_coupons(message):
@@ -61,7 +61,7 @@ def enregistrer_premium_handlers(bot):
             bot.send_message(message.chat.id, f"Erreur : {str(e)[:200]}")
 
 
-    @bot.message_handler(func=lambda m: m.from_user and m.text in [
+    @bot.message_handler(func=lambda m: m.from_user and m.text and m.text.strip() in [
         "Top affiches", "Affiches du jour", "Affiches ya lelo"
     ])
     def handle_top_affiches(message):
@@ -102,7 +102,7 @@ def enregistrer_premium_handlers(bot):
             bot.send_message(message.chat.id, f"Erreur : {str(e)[:200]}")
 
 
-    @bot.message_handler(func=lambda m: m.from_user and m.text in [
+    @bot.message_handler(func=lambda m: m.from_user and m.text and m.text.strip() in [
         "Matchs du jour", "Today's matches", "Masano ya lelo"
     ])
     def handle_matchs_jour(message):
