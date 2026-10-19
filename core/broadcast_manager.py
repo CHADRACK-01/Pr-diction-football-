@@ -17,7 +17,8 @@ def lancer_broadcast_async(bot, users, texte, admins, canal=False):
                 bot.send_message(uid, f"📢 ANNONCE\n\n{texte}")
                 succes += 1
                 time.sleep(0.05)
-            except Exception as e:
+            except Exception:
+                # On ignore silencieusement les utilisateurs qui ont bloqué le bot
                 echecs += 1
 
         log_info(f"Broadcast utilisateurs terminé : {succes} succès, {echecs} échecs.", "BROADCAST")
@@ -25,18 +26,13 @@ def lancer_broadcast_async(bot, users, texte, admins, canal=False):
         # 2. Envoi au Canal si demandé
         erreur_canal = None
         if canal:
-            try:
-                from core.canal_manager import publier_message_custom
-                # On récupère le résultat de la fonction
-                resultat = publier_message_custom(bot, f"📢 ANNONCE\n\n{texte}")
-                if resultat:
-                    log_info("Message broadcast envoyé sur le canal.", "BROADCAST")
-                else:
-                    erreur_canal = "La fonction publier_message_custom a échoué (voir logs)."
-                    log_error(erreur_canal, "BROADCAST")
-            except Exception as e:
-                erreur_canal = str(e)
-                log_error(f"Erreur envoi broadcast canal : {e}", "BROADCAST")
+            from core.canal_manager import publier_message_custom
+            resultat = publier_message_custom(bot, f"📢 ANNONCE\n\n{texte}")
+            if resultat:
+                log_info("Message broadcast envoyé sur le canal.", "BROADCAST")
+            else:
+                erreur_canal = "La fonction publier_message_custom a échoué (voir logs)."
+                log_error(erreur_canal, "BROADCAST")
 
         # 3. Récapitulatif aux admins
         recap = f"📢 Récapitulatif broadcast :\n\n✅ Envoyés : {succes}\n❌ Échecs : {echecs}"
