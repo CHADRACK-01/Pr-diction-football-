@@ -3,6 +3,7 @@ from users import get_langue, est_banni
 from core.translations import get_text
 from telegram_bot.handlers.start import envoyer_menu_principal
 
+
 def enregistrer_fallback_handlers(bot):
     
     # ⚠️ Le fallback ne s'active que si le message n'est pas une commande (/)
