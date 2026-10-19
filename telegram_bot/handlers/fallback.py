@@ -4,7 +4,10 @@ from core.translations import get_text
 from telegram_bot.handlers.start import envoyer_menu_principal
 
 def enregistrer_fallback_handlers(bot):
-    @bot.message_handler(func=lambda message: not message.text.startswith('/'))
+    
+    # ⚠️ Le fallback ne s'active que si le message n'est pas une commande (/)
+    # et ne commence pas par une clé unique (#)
+    @bot.message_handler(func=lambda message: not message.text.startswith('/') and not message.text.startswith('#'))
     def handle_menu_fallback(message):
         user_id = message.from_user.id
         langue = get_langue(user_id)
@@ -13,25 +16,11 @@ def enregistrer_fallback_handlers(bot):
             bot.reply_to(message, get_text("banni", langue))
             return
 
-        # ⚠️ On ignore les boutons qui ont leur propre handler
-        textes_ignores = [
-            "Faire un Pronostic", "Make a Prediction", "Sala Bokano",
-            "Matchs du jour", "Today's matches", "Masano ya lelo",
-            "Coupons", "Coupons du jour", "Coupons ya lelo",
-            "Top affiches", "Affiches du jour", "Affiches ya lelo",
-            "Historique", "History", "Lisolo",
-            "Statistiques", "Statistics", "Mituya",
-            "Notifications", "Nsango",
-            "Passer Premium", "Go Premium", "Kende Premium",
-            "Parrainage", "Referral", "Bosangisi",
-            "Langue", "Language", "Monoko",
-            "Panneau Admin"
-        ]
-        
-        if message.text in textes_ignores:
-            print(f"[FALLBACK] Texte ignoré : {message.text}")
+        # On ignore le bouton "Retour Menu" car il a son propre handler dans pronostic.py
+        if message.text == "🔙 Retour Menu":
             return
 
+        # On ignore si l'utilisateur est en session admin (pour ne pas interrompre)
         from telegram_bot.admin.actions import ADMIN_SESSIONS
         if user_id in ADMIN_SESSIONS:
             return
