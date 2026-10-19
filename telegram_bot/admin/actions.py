@@ -21,21 +21,15 @@ ADMIN_SESSIONS = {}
 
 
 def _retirer_premium(user_id):
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute("UPDATE utilisateurs SET status = 'free', date_expiration = NULL WHERE user_id = %s", (user_id,))
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE utilisateurs SET status = 'free', date_expiration = NULL WHERE user_id = %s", (user_id,))
         conn.commit()
-        cur.close()
-        conn.close()
-        return True
-    except Exception as e:
-        log_error(f"Erreur _retirer_premium : {e}", "ADMIN")
-        return False
+    return True
 
 
 # =========================================================
-# GESTIONNAIRE POUR LES BOUTONS INLINE (Conservé)
+# GESTIONNAIRE POUR LES BOUTONS INLINE
 # =========================================================
 def executer_action(bot, call, data, user_id):
     """Exécute l'action correspondant au bouton Inline cliqué."""
@@ -113,10 +107,7 @@ def executer_action(bot, call, data, user_id):
     elif data.startswith("param_"):
         cle = data.replace("param_", "")
         ADMIN_SESSIONS[user_id] = {"action": "param", "cle": cle}
-        try:
-            bot.delete_message(call.message.chat.id, call.message.message_id)
-        except Exception: 
-            pass
+        bot.delete_message(call.message.chat.id, call.message.message_id)
         msg = bot.send_message(call.message.chat.id, f"Envoie la nouvelle valeur pour {cle} :\n\n/annuler pour annuler.")
         bot.register_next_step_handler(msg, lambda m: _traiter_param(bot, m, ADMIN_SESSIONS))
 
@@ -195,7 +186,7 @@ def executer_action(bot, call, data, user_id):
 
 
 # =========================================================
-# GESTIONNAIRE POUR LES BOUTONS EN BAS (Nouveau)
+# GESTIONNAIRE POUR LES BOUTONS EN BAS
 # =========================================================
 def executer_action_bas(bot, message, text, user_id):
     """Exécute l'action correspondant au bouton texte cliqué."""
@@ -327,7 +318,7 @@ def executer_action_bas(bot, message, text, user_id):
 
 
 # =========================================================
-# FONCTIONS DE TRAITEMENT (Identiques)
+# FONCTIONS DE TRAITEMENT
 # =========================================================
 def _traiter_param(bot, message, sessions):
     user_id = message.from_user.id
@@ -404,10 +395,7 @@ def _traiter_add_premium(bot, message, sessions):
     if set_premium(target, expiration):
         log_admin(user_id, "add_premium", f"ID: {target} - {jours}j")
         bot.reply_to(message, f"✅ Utilisateur {target} PREMIUM pour {jours} jours\nExpire : {expiration}")
-        try:
-            bot.send_message(target, f"💎 Ton compte a été passé en PREMIUM !\n\nDurée : {jours} jours\nExpire : {expiration}")
-        except Exception: 
-            pass
+        bot.send_message(target, f"💎 Ton compte a été passé en PREMIUM !\n\nDurée : {jours} jours\nExpire : {expiration}")
     else:
         bot.reply_to(message, "Utilisateur introuvable.")
 
@@ -432,10 +420,7 @@ def _traiter_remove_premium(bot, message, sessions):
     if _retirer_premium(target):
         log_admin(user_id, "remove_premium", f"ID: {target}")
         bot.reply_to(message, f"✅ Utilisateur {target} est repassé en FREE.")
-        try:
-            bot.send_message(target, "Ton abonnement Premium a été retiré.")
-        except Exception: 
-            pass
+        bot.send_message(target, "Ton abonnement Premium a été retiré.")
     else:
         bot.reply_to(message, "Utilisateur introuvable.")
 
