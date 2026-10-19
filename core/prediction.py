@@ -6,6 +6,7 @@ from scipy.stats import poisson
 
 from core.ml_model import global_model_data, charger_modele_competition
 from users.db import get_connection
+from core.utils.logs import log_info
 
 
 def trouver_nom_exact(nom_partiel, teams):
@@ -105,13 +106,11 @@ def predire_match(home_input, away_input, competition="default", cotes_book=None
     team_xg_stats = global_model_data.get('team_xg_stats', {})
     df = global_model_data.get('df')
 
-    # ⚠️ NOUVEAU : On charge le modèle de la compétition à la demande
     model_choisi = charger_modele_competition(competition)
     
     if not model_choisi:
         return {"erreur": f"⚠️ Le modèle pour la compétition '{competition}' n'est pas disponible."}
 
-    # On récupère la précision globale (ou par défaut)
     precision_modele = global_model_data.get('precision', 0.5)
 
     home_team = trouver_nom_exact(home_input, teams)
@@ -207,7 +206,6 @@ def predire_match(home_input, away_input, competition="default", cotes_book=None
     dc_x2 = float(p_d + p_a)
     dc_12 = float(p_h + p_a)
 
-    # Score cohérent avec la recommandation
     options_dc = [("1X", dc_1x), ("X2", dc_x2), ("12", dc_12)]
     meilleure_dc = max(options_dc, key=lambda x: x[1])[0]
 
@@ -251,26 +249,19 @@ def predire_match(home_input, away_input, competition="default", cotes_book=None
 
 def sauvegarder_historique(home_team, away_team, p_h, p_d, p_a, best_i, best_j):
     """Sauvegarde dans PostgreSQL et nettoie les données de + de 30 jours."""
-    try:
-        options = [("1X", p_h + p_d), ("X2", p_d + p_a), ("12", p_h + p_a)]
-        meilleure = max(options, key=lambda x: x[1])[0]
-        score_exact = f"{best_i}-{best_j}"
-        
-        conn = get_connection()
-        cur = conn.cursor()
-        
-        cur.execute("""
-            INSERT INTO resultats_pronostics (date_match, home_team, away_team, pronostic_reco, score_reel)
-            VALUES (CURRENT_DATE, %s, %s, %s, %s)
-        """, (home_team, away_team, meilleure, score_exact))
-        
-        cur.execute("""
-            DELETE FROM resultats_pronostics 
-            WHERE date_match < CURRENT_DATE - INTERVAL '30 days'
-        """)
-        
+    options = [("1X", p_h + p_d), ("X2", p_d + p_a), ("12", p_h + p_a)]
+    meilleure = max(options, key=lambda x: x[1])[0]
+    score_exact = f"{best_i}-{best_j}"
+    
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO resultats_pronostics (date_match, home_team, away_team, pronostic_reco, score_reel)
+                VALUES (CURRENT_DATE, %s, %s, %s, %s)
+            """, (home_team, away_team, meilleure, score_exact))
+            
+            cur.execute("""
+                DELETE FROM resultats_pronostics 
+                WHERE date_match < CURRENT_DATE - INTERVAL '30 days'
+            """)
         conn.commit()
-        cur.close()
-        conn.close()
-    except Exception as e:
-        print(f"⚠️ Erreur sauvegarde historique BDD : {e}")
