@@ -16,15 +16,18 @@ from users import (
 )
 from telegram_bot.handlers import enregistrer_handlers
 
+# Initialisation du bot et de l'application Flask
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
+# Enregistrement de tous les handlers (commandes, messages, callbacks)
 enregistrer_handlers(bot)
 
 TZ_KINSHASA = timezone(timedelta(hours=1))
 
 
 def _envoyer_message_securise(chat_id, texte, parse_mode=None):
+    """Envoie un message en gérant la limite de 4096 caractères de Telegram."""
     limite = 4000
     try:
         if len(texte) <= limite:
@@ -39,29 +42,47 @@ def _envoyer_message_securise(chat_id, texte, parse_mode=None):
 
 
 def charger_modele_universel():
+    """
+    Charge le modèle IA depuis PostgreSQL (Aiven) vers la mémoire vive.
+    Gère à la fois les modèles uniques (ancien format) et les modèles 
+    par compétition (nouveau format).
+    """
     from core.ml_model import global_model_data
-    if global_model_data.get('model') is not None:
+    
+    # ⚠️ CORRECTION : On vérifie si on a le modèle unique OU les modèles par compétition
+    if global_model_data.get('model') is not None or global_model_data.get('modeles_par_competition') is not None:
         return True
+        
     try:
         from users import charger_modele_cache
         cache = charger_modele_cache()
         if not cache:
-            print("❌ Aucun modèle en cache.")
+            print("❌ Aucun modèle en cache dans la base de données.")
             return False
+            
         modele_bytes, precision, nb_matchs = cache
         buffer = io.BytesIO(modele_bytes)
         donnees = joblib.load(buffer)
+        
+        # Mise à jour du dictionnaire global
         global_model_data.update(donnees)
         global_model_data['precision'] = precision
         global_model_data['_tables_initialisees'] = True
-        print(f"✅ Modèle chargé : {type(global_model_data['model']).__name__} (Précision : {round(precision*100, 2)}%)")
+        
+        # Affichage clair de ce qui a été chargé
+        if 'model' in donnees:
+            print(f"✅ Modèle unique chargé : {type(global_model_data['model']).__name__} (Précision : {round(precision*100, 2)}%)")
+        elif 'modeles_par_competition' in donnees:
+            print(f"✅ {len(donnees['modeles_par_competition'])} modèles par compétition chargés (Précision moyenne : {round(precision*100, 2)}%)")
+            
         return True
     except Exception as e:
-        print(f"⚠️ Erreur chargement modèle : {e}")
+        print(f"⚠️ Erreur lors du chargement du modèle : {e}")
         return False
 
 
 def _envoyer_notifications():
+    """Envoie les meilleurs pronostics du jour aux utilisateurs abonnés."""
     try:
         from core.ml_model import get_top_pronostics_du_jour
         if not charger_modele_universel():
@@ -70,7 +91,7 @@ def _envoyer_notifications():
 
         top = get_top_pronostics_du_jour(nb=15)
         if not top:
-            print("Notifications : aucun pronostic disponible")
+            print("Notifications : aucun pronostic disponible.")
             return
 
         date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
@@ -128,6 +149,7 @@ def _envoyer_notifications():
 
 
 def _envoyer_coupons_premium():
+    """Génère et envoie les coupons du jour uniquement aux utilisateurs Premium."""
     from core.paris_builder import generer_coupons_du_jour, formater_coupon
     from users import get_langue
     from users.db import get_connection
@@ -140,7 +162,7 @@ def _envoyer_coupons_premium():
         data = generer_coupons_du_jour()
         coupons = data['coupons']
         if not coupons:
-            print("Aucun coupon à envoyer")
+            print("Aucun coupon à envoyer.")
             return
 
         conn = get_connection()
@@ -173,6 +195,7 @@ def _envoyer_coupons_premium():
 
 
 def _scheduler_notifications():
+    """Tâche de fond qui gère les envois automatiques (notifications, canal, nettoyage)."""
     print("Scheduler demarre...")
     derniere_date_envoi = None
     derniere_date_coupons_semaine = None
@@ -269,11 +292,13 @@ def _scheduler_notifications():
             time.sleep(60)
 
 
+# Lancement du scheduler en arrière-plan
 threading.Thread(target=_scheduler_notifications, daemon=True).start()
 
 
 @app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
+    """Point d'entrée pour les mises à jour Telegram."""
     try:
         json_str = request.get_data().decode('UTF-8')
         update = telebot.types.Update.de_json(json_str)
@@ -281,9 +306,11 @@ def webhook():
         if update.message:
             user_id = update.message.from_user.id
             
+            # Vérification des bannissements
             if est_banni(user_id) and not est_administrateur(user_id):
                 return "OK", 200
                 
+            # Vérification du mode maintenance
             mode_maintenance = get_parametre("mode_maintenance", "off")
             if mode_maintenance == "on" and not est_administrateur(user_id):
                 bot.send_message(user_id, "🛠️ Le bot est actuellement en maintenance. Veuillez réessayer plus tard.")
@@ -298,11 +325,12 @@ def webhook():
 
 @app.route('/')
 def index():
+    """Route de santé pour Render/UptimeRobot."""
     return "Bot operationnel !", 200
 
 
 # =========================================================
-# CHARGEMENT INITIAL DU MODÈLE (au démarrage)
+# INITIALISATION AU DÉMARRAGE
 # =========================================================
 print("🔄 Chargement initial du modèle IA...")
 if charger_modele_universel():
