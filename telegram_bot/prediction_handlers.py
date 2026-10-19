@@ -5,28 +5,21 @@ from users import (
     incrementer_compteur, est_premium
 )
 from core.translations import get_text
-from core.ml_model import global_model_data, charger_modele_cache
+from core.ml_model import global_model_data
 from core.prediction import predire_match, sauvegarder_historique
-from core.utils.logs import log_info, log_warning, log_error
+from core.utils.logs import log_info, log_error
 
+# On importe la session de pronostic
+from telegram_bot.handlers.pronostic import SESSIONS_PRONOSTIC
 
 def _charger_modele():
-    if global_model_data.get('model') is not None:
+    if global_model_data.get('df') is not None:
         return True
-    log_info("Chargement du modèle depuis la BDD...", "PREDICTION")
+    log_info("Chargement des données de base depuis la BDD...", "PREDICTION")
     try:
-        cache = charger_modele_cache()
-        if not cache:
-            log_error("Aucun modèle en cache.", "PREDICTION")
-            return False
-        modele_bytes, precision, nb_matchs = cache
-        import io, joblib
-        buffer = io.BytesIO(modele_bytes)
-        donnees = joblib.load(buffer)
-        global_model_data.update(donnees)
-        global_model_data['precision'] = precision
-        log_info(f"Modèle chargé avec succès (Précision: {round(precision*100, 2)}%)", "PREDICTION")
-        return True
+        from core.ml_model import charger_et_entrainer
+        charger_et_entrainer()
+        return global_model_data.get('df') is not None
     except Exception as e:
         log_error(f"Erreur chargement cache : {e}", "PREDICTION", e)
         return False
@@ -139,8 +132,15 @@ def enregistrer_prediction_handlers(bot):
             bot.reply_to(message, "Format invalide. N'oublie pas les noms des deux équipes.")
             return
 
+        # ⚠️ On récupère la compétition choisie par l'utilisateur
+        competition = SESSIONS_PRONOSTIC.get(user_id, "default")
+        
+        if competition == "default":
+            bot.reply_to(message, "⚠️ Veuillez d'abord choisir une compétition en cliquant sur 'Faire un Pronostic'.")
+            return
+
         try:
-            resultat = predire_match(equipe_dom, equipe_ext)
+            resultat = predire_match(equipe_dom, equipe_ext, competition=competition)
         except Exception as e:
             log_error(f"Erreur lors de la prédiction de {equipe_dom} vs {equipe_ext}: {e}", "PREDICTION", e)
             bot.reply_to(message, "⚠️ Une erreur est survenue lors de l'analyse. Vérifie le nom des équipes.")
@@ -149,6 +149,9 @@ def enregistrer_prediction_handlers(bot):
         if "erreur" in resultat:
             bot.reply_to(message, resultat['erreur'])
             return
+
+        # On supprime la session pour que le prochain pronostic redemande une compétition
+        SESSIONS_PRONOSTIC.pop(user_id, None)
 
         is_prem = est_premium(user_id)
         bulletin = _formater_bulletin_premium(resultat, langue) if is_prem else _formater_bulletin_free(resultat, langue)
