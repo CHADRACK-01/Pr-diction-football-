@@ -32,38 +32,50 @@ except Exception as e:
     print(f"⚠️ Impossible de créer les dossiers : {e}")
 
 # =========================================================
-# CHAMPIONNATS (Les 21 compétitions entraînées)
+# CHAMPIONNATS & COMPÉTITIONS
 # =========================================================
-# ⚠️ Les clés (ex: "premier_league") servent au code.
-# Les valeurs (ex: "Premier League") doivent correspondre EXACTEMENT 
-# aux noms utilisés dans le modèle pour que la prédiction fonctionne.
+# Clé technique : Nom exact pour le modèle IA
 CHAMPIONNATS = {
-    # Top 5 Championnats
-    "premier_league": "Premier League",
-    "laliga": "La Liga",
-    "ligue_1": "Ligue 1",
-    "bundesliga_1": "Bundesliga",
-    "serie_a": "Serie A",
-    
-    # Coupes d'Europe
-    "champions_league": "Champions League",
-    "europa_league": "Europa League",
+    "premier_league": "Premier League", "laliga": "La Liga", "ligue_1": "Ligue 1",
+    "bundesliga_1": "Bundesliga", "serie_a": "Serie A",
+    "champions_league": "Champions League", "europa_league": "Europa League",
     "conference_league": "Conference League",
+    "championship": "Championship", "league_one": "League One", "league_two": "League Two",
+    "segunda_division": "Segunda Division", "serie_b": "Serie B", "ligue_2": "Ligue 2",
+    "bundesliga_2": "2. Bundesliga", "super_lig": "Super Lig", "primeira_liga": "Primeira Liga",
+    "eredivisie": "Eredivisie", "first_division_a": "First Division A",
+    "super_league": "Super League", "premiership": "Premiership"
+}
+
+# ⚠️ NOUVEAU : Dictionnaire pour l'affichage (Pays/Zone + Emoji)
+INFOS_COMPETITIONS = {
+    "Premier League": {"pays": "Angleterre", "emoji": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"},
+    "Championship": {"pays": "Angleterre", "emoji": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"},
+    "League One": {"pays": "Angleterre", "emoji": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"},
+    "League Two": {"pays": "Angleterre", "emoji": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"},
     
-    # Championnats Secondaires & Autres Pays
-    "championship": "Championship",
-    "league_one": "League One",
-    "league_two": "League Two",
-    "segunda_division": "Segunda Division",
-    "serie_b": "Serie B",
-    "ligue_2": "Ligue 2",
-    "bundesliga_2": "2. Bundesliga",
-    "super_lig": "Super Lig",
-    "primeira_liga": "Primeira Liga",
-    "eredivisie": "Eredivisie",
-    "first_division_a": "First Division A",
-    "super_league": "Super League",
-    "premiership": "Premiership"
+    "La Liga": {"pays": "Espagne", "emoji": "🇪🇸"},
+    "Segunda Division": {"pays": "Espagne", "emoji": "🇪🇸"},
+    
+    "Ligue 1": {"pays": "France", "emoji": "🇫🇷"},
+    "Ligue 2": {"pays": "France", "emoji": "🇫🇷"},
+    
+    "Bundesliga": {"pays": "Allemagne", "emoji": "🇩🇪"},
+    "2. Bundesliga": {"pays": "Allemagne", "emoji": "🇩🇪"},
+    
+    "Serie A": {"pays": "Italie", "emoji": "🇮🇹"},
+    "Serie B": {"pays": "Italie", "emoji": "🇮🇹"},
+    
+    "Champions League": {"pays": "Europe", "emoji": "🇪🇺"},
+    "Europa League": {"pays": "Europe", "emoji": "🇪🇺"},
+    "Conference League": {"pays": "Europe", "emoji": "🇪🇺"},
+    
+    "Super Lig": {"pays": "Turquie", "emoji": "🇹🇷"},
+    "Primeira Liga": {"pays": "Portugal", "emoji": "🇵🇹"},
+    "Eredivisie": {"pays": "Pays-Bas", "emoji": "🇳🇱"},
+    "First Division A": {"pays": "Belgique", "emoji": "🇧🇪"},
+    "Super League": {"pays": "Grèce", "emoji": "🇬🇷"},
+    "Premiership": {"pays": "Écosse", "emoji": "🏴󠁧󠁢󠁳󠁣󠁴󠁿"},
 }
 
 # =========================================================
@@ -82,16 +94,14 @@ UPSTASH_BLOB_TOKEN = os.environ.get("UPSTASH_BLOB_TOKEN", "").strip()
 UPSTASH_BUCKET_NAME = "PredictionFootball-csv"
 
 # =========================================================
-# API FOOTBALL-DATA
+# API FOOTBALL-DATA & BZZOIRO
 # =========================================================
 FOOTBALL_DATA_KEY = "5a7a6a3afcca4bc88400d73a0e394588"
-
-# =========================================================
-# API BZZOIRO
-# =========================================================
 BZZOIRO_API_KEY = "83e607ea69471dd01e82cba1457b2b67f0d7cfb5"
 
-# Debug
+# =========================================================
+# DEBUG
+# =========================================================
 print("=" * 60)
 print(f"🔧 DB_HOST = '{DB_HOST}' | DB_NAME = '{DB_NAME}'")
 print(f"🔧 DB_PASSWORD chargé : {'OUI' if DB_PASSWORD else 'NON'}")
