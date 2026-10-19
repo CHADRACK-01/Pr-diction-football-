@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from scipy.stats import poisson
 
-from core.ml_model import global_model_data
+from core.ml_model import global_model_data, charger_modele_competition
 from users.db import get_connection
 
 
@@ -94,7 +94,7 @@ def _calculer_meilleur_pari(prono, cotes_book=None):
 def predire_match(home_input, away_input, competition="default", cotes_book=None):
     """
     Retourne un dict avec toutes les probabilités.
-    Utilise le modèle spécifique à la compétition si disponible.
+    ⚠️ Charge le modèle de la compétition à la demande (Lazy Loading).
     """
     if not global_model_data:
         return {"erreur": "Modèle non chargé."}
@@ -105,33 +105,23 @@ def predire_match(home_input, away_input, competition="default", cotes_book=None
     team_xg_stats = global_model_data.get('team_xg_stats', {})
     df = global_model_data.get('df')
 
-    # ⚠️ NOUVEAU : Sélection du modèle par compétition
-    modeles = global_model_data.get('modeles_par_competition', {})
+    # ⚠️ NOUVEAU : On charge le modèle de la compétition à la demande
+    model_choisi = charger_modele_competition(competition)
     
-    if competition in modeles:
-        model_choisi = modeles[competition]['model']
-        precision_modele = modeles[competition]['precision']
-    else:
-        # Fallback : on prend le premier modèle disponible
-        if modeles:
-            model_choisi = list(modeles.values())[0]['model']
-            precision_modele = list(modeles.values())[0]['precision']
-        else:
-            # Si pas de modèles par compétition, on utilise le modèle unique
-            model_choisi = global_model_data.get('model')
-            precision_modele = global_model_data.get('precision', 0.5)
-
     if not model_choisi:
-        return {"erreur": "Aucun modèle disponible pour cette compétition."}
+        return {"erreur": f"⚠️ Le modèle pour la compétition '{competition}' n'est pas disponible."}
+
+    # On récupère la précision globale (ou par défaut)
+    precision_modele = global_model_data.get('precision', 0.5)
 
     home_team = trouver_nom_exact(home_input, teams)
     away_team = trouver_nom_exact(away_input, teams)
 
     if home_team not in team_to_code:
-        return {"erreur": f"⚠️ Équipe introuvable : **{home_input}**.\n\nLe bot prend en charge : Premier League, Championship, LaLiga, Ligue 1, Bundesliga, Serie A.\n\n(Note : les équipes reléguées dans les divisions inférieures ne sont plus analysées)."}
+        return {"erreur": f"⚠️ Équipe introuvable : **{home_input}**.\n\nLe bot prend en charge 21 compétitions (Premier League, Ligue 1, Champions League, etc.).\n\n(Note : vérifie l'orthographe du nom de l'équipe)."}
         
     if away_team not in team_to_code:
-        return {"erreur": f"⚠️ Équipe introuvable : **{away_input}**.\n\nLe bot prend en charge : Premier League, Championship, LaLiga, Ligue 1, Bundesliga, Serie A.\n\n(Note : les équipes reléguées dans les divisions inférieures ne sont plus analysées)."}
+        return {"erreur": f"⚠️ Équipe introuvable : **{away_input}**.\n\nLe bot prend en charge 21 compétitions (Premier League, Ligue 1, Champions League, etc.).\n\n(Note : vérifie l'orthographe du nom de l'équipe)."}
 
     # =========================================================
     # UTILISATION DES XG (avec fallback sur les buts si absents)
@@ -217,7 +207,7 @@ def predire_match(home_input, away_input, competition="default", cotes_book=None
     dc_x2 = float(p_d + p_a)
     dc_12 = float(p_h + p_a)
 
-    # ⚠️ Correction : Score cohérent avec la recommandation
+    # Score cohérent avec la recommandation
     options_dc = [("1X", dc_1x), ("X2", dc_x2), ("12", dc_12)]
     meilleure_dc = max(options_dc, key=lambda x: x[1])[0]
 
@@ -250,7 +240,7 @@ def predire_match(home_input, away_input, competition="default", cotes_book=None
         "best_score": (best_i, best_j),
         "top_scores": top_scores,
         "fiabilite": fiabilite,
-        "precision_modele": precision_modele # ⚠️ NOUVEAU
+        "precision_modele": precision_modele
     }
     
     analyse_pari = _calculer_meilleur_pari(prono, cotes_book)
