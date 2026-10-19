@@ -1,8 +1,6 @@
 import os
 os.environ['LOKY_MAX_CPU_COUNT'] = '1'
 
-import io
-import joblib
 import time
 import threading
 import telebot
@@ -35,16 +33,13 @@ TZ_KINSHASA = timezone(timedelta(hours=1))
 def _envoyer_message_securise(chat_id, texte, parse_mode=None):
     """Envoie un message en gérant la limite de 4096 caractères de Telegram."""
     limite = 4000
-    try:
-        if len(texte) <= limite:
-            bot.send_message(chat_id, texte, parse_mode=parse_mode)
-        else:
-            morceaux = [texte[i:i+limite] for i in range(0, len(texte), limite)]
-            for morceau in morceaux:
-                bot.send_message(chat_id, morceau, parse_mode=parse_mode)
-                time.sleep(0.3)
-    except Exception as e:
-        print(f"⚠️ Erreur envoi message sécurisé à {chat_id} : {e}")
+    if len(texte) <= limite:
+        bot.send_message(chat_id, texte, parse_mode=parse_mode)
+    else:
+        morceaux = [texte[i:i+limite] for i in range(0, len(texte), limite)]
+        for morceau in morceaux:
+            bot.send_message(chat_id, morceau, parse_mode=parse_mode)
+            time.sleep(0.3)
 
 
 def charger_modele_universel():
@@ -58,86 +53,78 @@ def charger_modele_universel():
     if global_model_data.get('df') is not None:
         return True
         
-    try:
-        # On appelle la nouvelle fonction qui ne charge QUE les données de base
-        charger_et_entrainer()
-        
-        if global_model_data.get('df') is not None:
-            print("✅ Données de base chargées avec succès ! (Les modèles seront chargés à la demande)")
-            return True
-        else:
-            print("⚠️ Impossible de charger les données de base.")
-            return False
-    except Exception as e:
-        print(f"⚠️ Erreur chargement modèle : {e}")
+    # On appelle la nouvelle fonction qui ne charge QUE les données de base
+    charger_et_entrainer()
+    
+    if global_model_data.get('df') is not None:
+        print("✅ Données de base chargées avec succès ! (Les modèles seront chargés à la demande)")
+        return True
+    else:
+        print("⚠️ Impossible de charger les données de base.")
         return False
 
 
 def _envoyer_notifications():
     """Envoie les meilleurs pronostics du jour aux utilisateurs abonnés."""
-    try:
-        from core.ml_model import get_top_pronostics_du_jour
-        if not charger_modele_universel():
-            print("Notifications : impossible de charger le modèle.")
-            return
+    from core.ml_model import get_top_pronostics_du_jour
+    if not charger_modele_universel():
+        print("Notifications : impossible de charger le modèle.")
+        return
 
-        top = get_top_pronostics_du_jour(nb=15)
-        if not top:
-            print("Notifications : aucun pronostic disponible.")
-            return
+    top = get_top_pronostics_du_jour(nb=15)
+    if not top:
+        print("Notifications : aucun pronostic disponible.")
+        return
 
-        date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
-        texte = f"🔥 PRONOSTICS VALUE BET DU JOUR 🔥\nDate : {date_str}\n\n"
+    date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
+    texte = f"🔥 PRONOSTICS VALUE BET DU JOUR 🔥\nDate : {date_str}\n\n"
+    
+    compte = 0
+    for item in top:
+        prono = item['prono']
+        analyse = prono.get('analyse_pari')
+        if not analyse: 
+            continue
+            
+        if analyse['cote_bot'] >= 1.25 and analyse['proba'] >= 0.65:
+            compte += 1
+            texte += (
+                f"------------------------\n"
+                f"{compte}. {item['home']} vs {item['away']}\n"
+                f"✅ Reco : {analyse['label']} ({round(analyse['proba']*100, 1)}%)\n"
+                f"💰 Cote Bot : {analyse['cote_bot']}\n"
+            )
+            if analyse['cote_book']:
+                texte += f"🏢 Cote Book : {analyse['cote_book']}\n"
+                if analyse['is_value']:
+                    texte += f"🔥 VALUE BET !\n"
+            texte += f"⚽ Score probable : {prono['best_score'][0]} - {prono['best_score'][1]}\n\n"
         
-        compte = 0
-        for item in top:
-            prono = item['prono']
-            analyse = prono.get('analyse_pari')
-            if not analyse: 
-                continue
-                
-            if analyse['cote_bot'] >= 1.25 and analyse['proba'] >= 0.65:
-                compte += 1
-                texte += (
-                    f"------------------------\n"
-                    f"{compte}. {item['home']} vs {item['away']}\n"
-                    f"✅ Reco : {analyse['label']} ({round(analyse['proba']*100, 1)}%)\n"
-                    f"💰 Cote Bot : {analyse['cote_bot']}\n"
-                )
-                if analyse['cote_book']:
-                    texte += f"🏢 Cote Book : {analyse['cote_book']}\n"
-                    if analyse['is_value']:
-                        texte += f"🔥 VALUE BET !\n"
-                texte += f"⚽ Score probable : {prono['best_score'][0]} - {prono['best_score'][1]}\n\n"
-            
-            if compte >= 3: 
-                break
+        if compte >= 3: 
+            break
 
-        if compte == 0:
-            print("Notifications : Aucun Value Bet trouvé aujourd'hui.")
-            return
-            
-        texte += (
-            f"------------------------\n"
-            f"Tape une affiche pour plus de details\n"
-            f"Pour desactiver : /notif_off"
-        )
+    if compte == 0:
+        print("Notifications : Aucun Value Bet trouvé aujourd'hui.")
+        return
+        
+    texte += (
+        f"------------------------\n"
+        f"Tape une affiche pour plus de details\n"
+        f"Pour desactiver : /notif_off"
+    )
 
-        users = get_utilisateurs_notifies()
-        succes = 0
-        echecs = 0
-        for uid in users:
-            try:
-                bot.send_message(uid, texte)
-                succes += 1
-                time.sleep(0.1)
-            except Exception:
-                echecs += 1
+    users = get_utilisateurs_notifies()
+    succes = 0
+    echecs = 0
+    for uid in users:
+        try:
+            bot.send_message(uid, texte)
+            succes += 1
+            time.sleep(0.1)
+        except Exception:
+            echecs += 1
 
-        print(f"Notifications envoyees : {succes} succes, {echecs} echecs")
-
-    except Exception as e:
-        print(f"Erreur envoi notifications : {e}")
+    print(f"Notifications envoyees : {succes} succes, {echecs} echecs")
 
 
 def _envoyer_coupons_premium():
@@ -146,44 +133,37 @@ def _envoyer_coupons_premium():
     from users import get_langue
     from users.db import get_connection
 
-    try:
-        if not charger_modele_universel():
-            print("Coupons : impossible de charger le modèle.")
-            return
+    if not charger_modele_universel():
+        print("Coupons : impossible de charger le modèle.")
+        return
 
-        data = generer_coupons_du_jour()
-        coupons = data['coupons']
-        if not coupons:
-            print("Aucun coupon à envoyer.")
-            return
+    data = generer_coupons_du_jour()
+    coupons = data['coupons']
+    if not coupons:
+        print("Aucun coupon à envoyer.")
+        return
 
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT user_id FROM utilisateurs
-            WHERE status = 'premium'
-            AND (date_expiration IS NULL OR date_expiration > NOW())
-        """)
-        premiums = [row[0] for row in cur.fetchall()]
-        cur.close()
-        conn.close()
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT user_id FROM utilisateurs
+        WHERE status = 'premium'
+        AND (date_expiration IS NULL OR date_expiration > NOW())
+    """)
+    premiums = [row[0] for row in cur.fetchall()]
+    cur.close()
+    conn.close()
 
-        succes = 0
-        for uid in premiums:
-            try:
-                langue = get_langue(uid)
-                for coupon in coupons:
-                    texte = formater_coupon(coupon, langue, montrer_details=True)
-                    _envoyer_message_securise(uid, texte)
-                    time.sleep(0.1)
-                succes += 1
-            except Exception as e:
-                print(f"Erreur envoi coupons à {uid} : {e}")
+    succes = 0
+    for uid in premiums:
+        langue = get_langue(uid)
+        for coupon in coupons:
+            texte = formater_coupon(coupon, langue, montrer_details=True)
+            _envoyer_message_securise(uid, texte)
+            time.sleep(0.1)
+        succes += 1
 
-        print(f"📤 Coupons envoyés à {succes} Premium(s)")
-
-    except Exception as e:
-        print(f"Erreur envoi coupons : {e}")
+    print(f"📤 Coupons envoyés à {succes} Premium(s)")
 
 
 def _scheduler_notifications():
@@ -204,23 +184,17 @@ def _scheduler_notifications():
             est_weekend = jour_semaine >= 5
             date_du_jour = now.strftime("%Y-%m-%d")
 
-            try:
-                heure_notif = int(get_parametre("notif_heure", 8))
-            except:
-                heure_notif = 8
+            heure_notif = int(get_parametre("notif_heure", 8))
 
             # 1. Vérification des résultats de la veille (à 7h)
             if now.hour == 7 and now.minute < 5:
                 if derniere_verif_resultats != date_du_jour:
                     print(f"Vérification des résultats du {date_du_jour}...")
-                    try:
-                        from core.results_checker import verifier_resultats_veille
-                        from core.canal_manager import publier_bilan_veille
-                        bilan = verifier_resultats_veille()
-                        if bilan.get('total', 0) > 0:
-                            publier_bilan_veille(bot, bilan['texte'])
-                    except Exception as e:
-                        print(f"⚠️ Erreur vérif résultats : {e}")
+                    from core.results_checker import verifier_resultats_veille
+                    from core.canal_manager import publier_bilan_veille
+                    bilan = verifier_resultats_veille()
+                    if bilan.get('total', 0) > 0:
+                        publier_bilan_veille(bot, bilan['texte'])
                     derniere_verif_resultats = date_du_jour
 
             # 2. Notifications et Canal (à 8h)
@@ -236,11 +210,8 @@ def _scheduler_notifications():
                         derniere_date_coupons_weekend = date_du_jour
                         
                     if derniere_date_canal != date_du_jour:
-                        try:
-                            from core.canal_manager import publier_matchs_sur_canal
-                            publier_matchs_sur_canal(bot)
-                        except Exception as e:
-                            print(f"⚠️ Erreur publication canal : {e}")
+                        from core.canal_manager import publier_matchs_sur_canal
+                        publier_matchs_sur_canal(bot)
                         derniere_date_canal = date_du_jour
 
             # 3. Coupons Semaine (à 10h)
@@ -248,34 +219,25 @@ def _scheduler_notifications():
                 if derniere_date_coupons_semaine != date_du_jour:
                     print(f"Envoi des coupons du {date_du_jour}...")
                     _envoyer_coupons_premium()
-                    try:
-                        from core.canal_manager import publier_coupons_sur_canal
-                        publier_coupons_sur_canal(bot)
-                    except Exception as e:
-                        print(f"⚠️ Erreur publication coupons canal : {e}")
+                    from core.canal_manager import publier_coupons_sur_canal
+                    publier_coupons_sur_canal(bot)
                     derniere_date_coupons_semaine = date_du_jour
 
             # 4. Teasing Canal (à 17h)
             if now.hour == 17 and now.minute < 5:
                 if derniere_date_teasing != date_du_jour:
                     print(f"Publication du teasing sur le canal...")
-                    try:
-                        from core.canal_manager import publier_teasing
-                        publier_teasing(bot)
-                    except Exception as e:
-                        print(f"⚠️ Erreur teasing canal : {e}")
+                    from core.canal_manager import publier_teasing
+                    publier_teasing(bot)
                     derniere_date_teasing = date_du_jour
 
             # 5. Nettoyage automatique (à 3h)
             if now.hour == 3 and now.minute < 5:
                 if dernier_nettoyage != date_du_jour:
                     print(f"Nettoyage auto du {date_du_jour}...")
-                    try:
-                        from users import nettoyer_logs_anciens, nettoyer_paiements_anciens
-                        nettoyer_logs_anciens(jours=30)
-                        nettoyer_paiements_anciens(jours=90)
-                    except Exception as e:
-                        print(f"Erreur nettoyage : {e}")
+                    from users import nettoyer_logs_anciens, nettoyer_paiements_anciens
+                    nettoyer_logs_anciens(jours=30)
+                    nettoyer_paiements_anciens(jours=90)
                     dernier_nettoyage = date_du_jour
 
             time.sleep(60)
@@ -291,28 +253,24 @@ threading.Thread(target=_scheduler_notifications, daemon=True).start()
 @app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
     """Point d'entrée pour les mises à jour Telegram."""
-    try:
-        json_str = request.get_data().decode('UTF-8')
-        update = telebot.types.Update.de_json(json_str)
+    json_str = request.get_data().decode('UTF-8')
+    update = telebot.types.Update.de_json(json_str)
 
-        if update.message:
-            user_id = update.message.from_user.id
+    if update.message:
+        user_id = update.message.from_user.id
+        
+        # Vérification des bannissements
+        if est_banni(user_id) and not est_administrateur(user_id):
+            return "OK", 200
             
-            # Vérification des bannissements
-            if est_banni(user_id) and not est_administrateur(user_id):
-                return "OK", 200
-                
-            # Vérification du mode maintenance
-            mode_maintenance = get_parametre("mode_maintenance", "off")
-            if mode_maintenance == "on" and not est_administrateur(user_id):
-                bot.send_message(user_id, "🛠️ Le bot est actuellement en maintenance. Veuillez réessayer plus tard.")
-                return "OK", 200
+        # Vérification du mode maintenance
+        mode_maintenance = get_parametre("mode_maintenance", "off")
+        if mode_maintenance == "on" and not est_administrateur(user_id):
+            bot.send_message(user_id, "🛠️ Le bot est actuellement en maintenance. Veuillez réessayer plus tard.")
+            return "OK", 200
 
-        bot.process_new_updates([update])
-        return "OK", 200
-    except Exception as e:
-        print(f"⚠️ Erreur webhook : {e}")
-        return "OK", 200
+    bot.process_new_updates([update])
+    return "OK", 200
 
 
 @app.route('/')
