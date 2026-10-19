@@ -117,7 +117,9 @@ def enregistrer_start_handlers(bot):
 
         envoyer_menu_principal(message.chat.id, user.id, bot)
 
+    # ⚠️ CORRECTION : On gère la commande /langue ET le texte du bouton
     @bot.message_handler(commands=['langue', 'language'])
+    @bot.message_handler(func=lambda m: m.text in ["Langue", "Language", "Monoko"])
     def cmd_langue(message):
         user_id = message.from_user.id
         langue = get_langue(user_id)
