@@ -32,12 +32,38 @@ except Exception as e:
     print(f"⚠️ Impossible de créer les dossiers : {e}")
 
 # =========================================================
-# CHAMPIONNATS
+# CHAMPIONNATS (Les 21 compétitions entraînées)
 # =========================================================
+# ⚠️ Les clés (ex: "premier_league") servent au code.
+# Les valeurs (ex: "Premier League") doivent correspondre EXACTEMENT 
+# aux noms utilisés dans le modèle pour que la prédiction fonctionne.
 CHAMPIONNATS = {
-    "premier_league": "E0", "championship": "E1", "laliga": "SP1",
-    "laliga_2": "SP2", "ligue_1": "F1", "ligue_2": "F2",
-    "bundesliga_1": "D1", "bundesliga_2": "D2", "serie_a": "I1", "serie_b": "I2"
+    # Top 5 Championnats
+    "premier_league": "Premier League",
+    "laliga": "La Liga",
+    "ligue_1": "Ligue 1",
+    "bundesliga_1": "Bundesliga",
+    "serie_a": "Serie A",
+    
+    # Coupes d'Europe
+    "champions_league": "Champions League",
+    "europa_league": "Europa League",
+    "conference_league": "Conference League",
+    
+    # Championnats Secondaires & Autres Pays
+    "championship": "Championship",
+    "league_one": "League One",
+    "league_two": "League Two",
+    "segunda_division": "Segunda Division",
+    "serie_b": "Serie B",
+    "ligue_2": "Ligue 2",
+    "bundesliga_2": "2. Bundesliga",
+    "super_lig": "Super Lig",
+    "primeira_liga": "Primeira Liga",
+    "eredivisie": "Eredivisie",
+    "first_division_a": "First Division A",
+    "super_league": "Super League",
+    "premiership": "Premiership"
 }
 
 # =========================================================
@@ -72,6 +98,7 @@ print(f"🔧 DB_PASSWORD chargé : {'OUI' if DB_PASSWORD else 'NON'}")
 print(f"🔧 CANAL_ID = {CANAL_ID}")
 print(f"🔧 FOOTBALL_DATA_KEY chargé : {'OUI' if FOOTBALL_DATA_KEY else 'NON'}")
 print(f"🔧 BZZOIRO_API_KEY chargé : {'OUI' if BZZOIRO_API_KEY else 'NON'}")
+print(f"🏆 {len(CHAMPIONNATS)} compétitions configurées dans le bot.")
 print("=" * 60)
 
 # =========================================================
