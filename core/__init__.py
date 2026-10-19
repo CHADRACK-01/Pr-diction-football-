@@ -1,1 +1,1 @@
-# Package core - logique métier
+# Package core - Logique métier (IA, prédictions, gestion des matchs et API)
