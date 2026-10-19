@@ -1,5 +1,3 @@
-import io
-import joblib
 import telebot
 import config
 
@@ -11,10 +9,10 @@ from users import (
 )
 from core.translations import get_text, LANGUES_DISPONIBLES
 from core.ml_model import global_model_data
-from users import charger_modele_cache
-from core.utils.logs import log_error
+from core.utils.logs import log_info
 
 BOT_USERNAME = "MonPronosticFootball_bot"
+
 
 def envoyer_menu_principal(chat_id, user_id, bot):
     langue = get_langue(user_id)
@@ -40,16 +38,16 @@ def envoyer_menu_principal(chat_id, user_id, bot):
     # ⚠️ CLAVIER AVEC CLÉS UNIQUES (#)
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(
-        telebot.types.KeyboardButton("#PRONO"),       # Au lieu de "Faire un Pronostic"
-        telebot.types.KeyboardButton("#MATCHS"),      # Au lieu de "Matchs du jour"
-        telebot.types.KeyboardButton("#COUPONS"),     # Au lieu de "Coupons"
-        telebot.types.KeyboardButton("#TOP"),         # Au lieu de "Top affiches"
-        telebot.types.KeyboardButton("#HISTO"),       # Au lieu de "Historique"
-        telebot.types.KeyboardButton("#STATS"),       # Au lieu de "Statistiques"
-        telebot.types.KeyboardButton("#NOTIFS"),      # Au lieu de "Notifications"
-        telebot.types.KeyboardButton("#PREMIUM"),     # Au lieu de "Passer Premium"
-        telebot.types.KeyboardButton("#PARRAINAGE"),  # Au lieu de "Parrainage"
-        telebot.types.KeyboardButton("#LANGUE"),      # Au lieu de "Langue"
+        telebot.types.KeyboardButton("#PRONO"),
+        telebot.types.KeyboardButton("#MATCHS"),
+        telebot.types.KeyboardButton("#COUPONS"),
+        telebot.types.KeyboardButton("#TOP"),
+        telebot.types.KeyboardButton("#HISTO"),
+        telebot.types.KeyboardButton("#STATS"),
+        telebot.types.KeyboardButton("#NOTIFS"),
+        telebot.types.KeyboardButton("#PREMIUM"),
+        telebot.types.KeyboardButton("#PARRAINAGE"),
+        telebot.types.KeyboardButton("#LANGUE"),
     )
     
     # Ajout du bouton Admin avec sa clé
@@ -61,11 +59,8 @@ def envoyer_menu_principal(chat_id, user_id, bot):
     # Boutons Inline (Canal)
     inline_markup = telebot.types.InlineKeyboardMarkup(row_width=1)
     
-    try:
-        member = bot.get_chat_member(config.CANAL_ID, user_id)
-        is_member = member.status in ['member', 'administrator', 'creator']
-    except Exception:
-        is_member = False
+    member = bot.get_chat_member(config.CANAL_ID, user_id)
+    is_member = member.status in ['member', 'administrator', 'creator']
 
     if not is_member:
         inline_markup.add(
@@ -88,33 +83,26 @@ def enregistrer_start_handlers(bot):
         existe_avant = get_user_info(user.id) is not None
         enregistrer_utilisateur(user.id, user.username, user.first_name)
 
-        # Gestion du parrainage (garde ton code existant)
-        if not existe_avant and get_user_info(user.id) is not None:
+        # Gestion du parrainage
+        if not existe_avant:
             parts = message.text.split()
             if len(parts) >= 2 and parts[1].startswith("REF"):
-                try:
-                    parrain_id = int(parts[1].replace("REF", ""))
-                    if parrain_id != user.id and get_user_info(parrain_id):
-                        if set_parrain(user.id, parrain_id):
-                            ajouter_jours_premium(user.id, 1)
-                            ajouter_jours_premium(parrain_id, 1)
-                            langue = get_langue(user.id)
-                            try:
-                                bot.send_message(user.id, get_text("parrainage_bienvenue", langue))
-                            except Exception: 
-                                pass
-                            nb_filleuls = compter_filleuls(parrain_id)
-                            palier = get_palier_atteint(nb_filleuls)
-                            bonus_palier = ""
-                            if palier and nb_filleuls in [5, 10, 20, 50]:
-                                ajouter_jours_premium(parrain_id, palier['bonus'])
-                                bonus_palier = f"\n\n🏆 Palier {palier['nom']} atteint ! +{palier['bonus']} jours bonus"
-                            try:
-                                bot.send_message(parrain_id, f"🎉 Nouveau filleul : {user.first_name}\n\n+1 jour Premium offert !\n📊 Total : {nb_filleuls} filleul(s){bonus_palier}")
-                            except Exception: 
-                                pass
-                except Exception as e:
-                    log_error(f"Erreur parrainage : {e}", "START")
+                parrain_id = int(parts[1].replace("REF", ""))
+                if parrain_id != user.id and get_user_info(parrain_id):
+                    if set_parrain(user.id, parrain_id):
+                        ajouter_jours_premium(user.id, 1)
+                        ajouter_jours_premium(parrain_id, 1)
+                        langue = get_langue(user.id)
+                        bot.send_message(user.id, get_text("parrainage_bienvenue", langue))
+                        
+                        nb_filleuls = compter_filleuls(parrain_id)
+                        palier = get_palier_atteint(nb_filleuls)
+                        bonus_palier = ""
+                        if palier and nb_filleuls in [5, 10, 20, 50]:
+                            ajouter_jours_premium(parrain_id, palier['bonus'])
+                            bonus_palier = f"\n\n🏆 Palier {palier['nom']} atteint ! +{palier['bonus']} jours bonus"
+                        
+                        bot.send_message(parrain_id, f"🎉 Nouveau filleul : {user.first_name}\n\n+1 jour Premium offert !\n📊 Total : {nb_filleuls} filleul(s){bonus_palier}")
 
         envoyer_menu_principal(message.chat.id, user.id, bot)
 
