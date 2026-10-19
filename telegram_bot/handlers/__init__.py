@@ -3,7 +3,7 @@ Point d'entrée des handlers Telegram.
 Ce fichier est le "cerveau" qui orchestre tous les modules.
 """
 
-# 1. Le Start en PREMIER
+# 1. Le Start TOUT EN PREMIER
 from telegram_bot.handlers.start import enregistrer_start_handlers
 
 # 2. L'Admin ensuite
@@ -46,3 +46,6 @@ def enregistrer_handlers(bot):
             print(f"✅ Module {nom} enregistré.")
         except Exception as e:
             print(f"❌ Erreur d'enregistrement du module {nom} : {e}")
+
+    noms = " -> ".join([nom for nom, _ in handlers_modules])
+    print(f"✅ Handlers enregistrés dans l'ordre : {noms}")
