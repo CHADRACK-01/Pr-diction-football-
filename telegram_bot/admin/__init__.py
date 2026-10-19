@@ -1,1 +1,1 @@
-# Package admin - Panneau d'administration modulaire
+# Package admin - Panneau d'administration modulaire (menus, actions, callbacks)
