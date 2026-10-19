@@ -7,6 +7,7 @@ from core.translations import get_text
 
 BOT_USERNAME = "MonPronosticFootball_bot"
 
+
 def enregistrer_parrainage_handlers(bot):
 
     @bot.message_handler(func=lambda m: m.text == "#PARRAINAGE")
