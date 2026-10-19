@@ -30,28 +30,28 @@ def get_tous_pronostics_disponibles():
     for m in matchs:
         home = m['home']
         away = m['away']
-        try:
-            prono = predire_match(home, away)
-            if not isinstance(prono, dict) or 'erreur' in prono:
-                continue
-
-            reco_label, reco_pct = _meilleure_reco(prono)
-            cote = round(1 / reco_pct, 2) if reco_pct > 0 else 999
-
-            if cote < 1.30:
-                continue
-
-            resultats.append({
-                'home': home, 'away': away, 'competition': m['competition'],
-                'heure': m['heure'], 'reco_label': reco_label,
-                'reco_pct': float(reco_pct),
-                'score_exact': prono.get('best_score', (0, 0)),
-                'top_scores': prono.get('top_scores', []),
-                'over_25': float(prono.get('over_25', 0.5)),
-                'btts_yes': float(prono.get('btts_yes', 0.5)),
-            })
-        except Exception:
+        competition = m.get('competition', 'default')
+        
+        prono = predire_match(home, away, competition=competition)
+        
+        if not isinstance(prono, dict) or 'erreur' in prono:
             continue
+
+        reco_label, reco_pct = _meilleure_reco(prono)
+        cote = round(1 / reco_pct, 2) if reco_pct > 0 else 999
+
+        if cote < 1.30:
+            continue
+
+        resultats.append({
+            'home': home, 'away': away, 'competition': m['competition'],
+            'heure': m['heure'], 'reco_label': reco_label,
+            'reco_pct': float(reco_pct),
+            'score_exact': prono.get('best_score', (0, 0)),
+            'top_scores': prono.get('top_scores', []),
+            'over_25': float(prono.get('over_25', 0.5)),
+            'btts_yes': float(prono.get('btts_yes', 0.5)),
+        })
     return resultats
 
 
@@ -129,12 +129,9 @@ def generer_coupons_du_jour():
         for inter in intervalles:
             matchs_inter = []
             for m in matchs:
-                try:
-                    dt = datetime.fromisoformat(m['heure'].replace("Z", "+00:00")).astimezone(TZ_KINSHASA)
-                    if inter['min_h'] <= dt.hour < inter['max_h']:
-                        matchs_inter.append(m)
-                except Exception: 
-                    continue
+                dt = datetime.fromisoformat(m['heure'].replace("Z", "+00:00")).astimezone(TZ_KINSHASA)
+                if inter['min_h'] <= dt.hour < inter['max_h']:
+                    matchs_inter.append(m)
 
             if len(matchs_inter) < 3: 
                 continue
@@ -173,7 +170,6 @@ def formater_coupon(coupon, langue="fr", montrer_details=True):
             texte += f"   🎯 Reco : {m['reco_label']}\n"
             texte += f"   📊 Confiance : {round(m['reco_pct']*100, 1)}%\n"
             
-            # ⚠️ CORRECTION : On convertit explicitement le tuple en chaîne
             if m.get('score_exact'):
                 score_str = f"{m['score_exact'][0]}-{m['score_exact'][1]}"
                 texte += f"   ⚽ Score : {score_str}\n"
