@@ -9,9 +9,7 @@ BOT_USERNAME = "MonPronosticFootball_bot"
 
 def enregistrer_parrainage_handlers(bot):
 
-    @bot.message_handler(func=lambda m: m.from_user and m.text in [
-        "Parrainage", "Referral", "Bosangisi"
-    ])
+    @bot.message_handler(func=lambda m: m.text == "#PARRAINAGE")
     def handle_parrainage(message):
         user_id = message.from_user.id
         langue = get_langue(user_id)
