@@ -8,17 +8,11 @@ from core.api.manager import get_matchs_du_jour as manager_get_matchs_du_jour
 from core.utils.logs import log_info, log_warning, log_error
 from core.utils.markdown import formater_proprement
 
-
 TZ_KINSHASA = timezone(timedelta(hours=1))
 
-
 def _normaliser(nom):
-    """
-    Dictionnaire de correspondance entre les noms des API 
-    et les noms du modèle.
-    """
+    """Dictionnaire de correspondance entre les noms des API et les noms du modèle."""
     special = {
-        # Premier League / Championship
         "Manchester City FC": "Man City", "Manchester United FC": "Man United",
         "Newcastle United FC": "Newcastle", "Nottingham Forest FC": "Nott'm Forest",
         "Tottenham Hotspur FC": "Tottenham", "Wolverhampton Wanderers FC": "Wolves",
@@ -36,7 +30,6 @@ def _normaliser(nom):
         "Rotherham United FC": "Rotherham", "Huddersfield Town AFC": "Huddersfield",
         "Blackburn Rovers FC": "Blackburn", "Watford FC": "Watford",
         "Burnley FC": "Burnley", "Luton Town FC": "Luton",
-        # LaLiga
         "Real Madrid CF": "Real Madrid", "FC Barcelona": "Barcelona",
         "Atletico de Madrid": "Ath Madrid", "Athletic Club": "Ath Bilbao",
         "Real Sociedad de Futbol": "Sociedad", "Real Betis Balompie": "Betis",
@@ -55,7 +48,6 @@ def _normaliser(nom):
         "Albacete Balompie": "Albacete", "Burgos CF": "Burgos",
         "FC Andorra": "Andorra", "SD Huesca": "Huesca",
         "CD Mirandes": "Mirandes", "UD Ibiza": "Ibiza",
-        # Bundesliga
         "FC Bayern München": "Bayern Munich", "Borussia Dortmund": "Dortmund",
         "Bayer 04 Leverkusen": "Leverkusen", "Eintracht Frankfurt": "Ein Frankfurt",
         "VfB Stuttgart": "Stuttgart", "VfL Wolfsburg": "Wolfsburg",
@@ -66,7 +58,6 @@ def _normaliser(nom):
         "1. FC Köln": "FC Koln", "SV Darmstadt 98": "Darmstadt",
         "1. FC Heidenheim 1846": "Heidenheim", "FC St. Pauli": "St Pauli",
         "Holstein Kiel": "Holstein Kiel", 
-        # Ligue 1
         "Paris Saint-Germain FC": "Paris SG", "Olympique de Marseille": "Marseille",
         "Olympique Lyonnais": "Lyon", "AS Monaco FC": "Monaco", "LOSC Lille": "Lille",
         "OGC Nice": "Nice", "Stade Rennais FC 1901": "Rennes", "Racing Club de Lens": "Lens",
@@ -75,7 +66,6 @@ def _normaliser(nom):
         "FC Metz": "Metz", "Le Havre AC": "Le Havre", "Clermont Foot 63": "Clermont",
         "FC Lorient": "Lorient", "Angers SCO": "Angers", "AS Saint-Etienne": "St Etienne",
         "AJ Auxerre": "Auxerre",
-        # Serie A
         "AS Roma": "Roma", "SS Lazio": "Lazio", "Juventus FC": "Juventus", "AC Milan": "Milan",
         "FC Internazionale Milano": "Inter", "SSC Napoli": "Napoli", "ACF Fiorentina": "Fiorentina",
         "Atalanta BC": "Atalanta", "Bologna FC 1909": "Bologna", "Torino FC": "Torino",
@@ -91,10 +81,10 @@ def _normaliser(nom):
             return nom[:-len(suf)]
     return nom
 
-
 def _charger_modele_si_necessaire():
     """Charge le modèle IA depuis PostgreSQL si la mémoire est vide."""
-    if global_model_data and 'model' in global_model_data and global_model_data.get('model') is not None:
+    if global_model_data and ('model' in global_model_data and global_model_data.get('model') is not None or 
+                              'modeles_par_competition' in global_model_data):
         return True
     
     log_info("Modèle absent en mémoire. Tentative de chargement depuis la BDD...", "MATCHS")
@@ -118,7 +108,6 @@ def _charger_modele_si_necessaire():
         log_error(f"Erreur lors du chargement du modèle : {e}", "MATCHS", e)
         return False
 
-
 def _nom_competition(code):
     noms = {
         "premier_league": "Premier League", "championship": "Championship",
@@ -127,11 +116,9 @@ def _nom_competition(code):
     }
     return noms.get(code, code)
 
-
 def get_matchs_du_jour():
     """
-    Orchestre la récupération via le manager (Bzzoiro -> OpenLigaDB -> Football-Data),
-    puis calcule les pronostics.
+    Orchestre la récupération via le manager, puis calcule les pronostics.
     """
     if not _charger_modele_si_necessaire():
         return []
@@ -149,8 +136,12 @@ def get_matchs_du_jour():
         home = _normaliser(m["home"])
         away = _normaliser(m["away"])
         
+        # ⚠️ CORRECTION MAJEURE : On récupère la compétition
+        competition = m.get("competition", "default")
+        
         try:
-            prono = predire_match(home, away, cotes_book=m.get("cotes_book"))
+            # ⚠️ CORRECTION MAJEURE : On passe la compétition au modèle
+            prono = predire_match(home, away, competition=competition, cotes_book=m.get("cotes_book"))
             
             if not isinstance(prono, dict) or 'erreur' in prono:
                 log_warning(f"Skip {home} vs {away} : équipe inconnue du modèle.", "MATCHS")
@@ -169,7 +160,7 @@ def get_matchs_du_jour():
                 continue
 
             matchs_trouves.append({
-                "competition": m.get("competition", "inconnu"),
+                "competition": competition,
                 "heure": m.get("heure"),
                 "home": home,
                 "away": away,
@@ -194,11 +185,8 @@ def get_matchs_du_jour():
     matchs_trouves.sort(key=lambda x: (x['heure'] or '', -x['confiance']))
     return matchs_trouves
 
-
 def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None):
-    """
-    Formate la liste des matchs pour Telegram.
-    """
+    """Formate la liste des matchs pour Telegram."""
     date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
 
     if matchs is None or len(matchs) == 0:
