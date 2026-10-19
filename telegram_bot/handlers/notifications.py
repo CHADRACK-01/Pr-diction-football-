@@ -4,9 +4,7 @@ from core.translations import get_text
 
 def enregistrer_notifications_handlers(bot):
 
-    @bot.message_handler(func=lambda m: m.from_user and m.text in [
-        "Notifications", "Nsango"
-    ])
+    @bot.message_handler(func=lambda m: m.text == "#NOTIFS")
     def handle_notifications(message):
         print(f"[NOTIFS] Bouton cliqué par {message.from_user.id}")
         user_id = message.from_user.id
