@@ -7,22 +7,17 @@ from users import (
 from core.translations import get_text
 from core.ml_model import global_model_data
 from core.prediction import predire_match, sauvegarder_historique
-from core.utils.logs import log_info, log_error
-
-# ⚠️ CORRECTION : On importe la session depuis le fichier central
+from core.utils.logs import log_info
 from core.session import SESSIONS_PRONOSTIC
+
 
 def _charger_modele():
     if global_model_data.get('df') is not None:
         return True
     log_info("Chargement des données de base depuis la BDD...", "PREDICTION")
-    try:
-        from core.ml_model import charger_et_entrainer
-        charger_et_entrainer()
-        return global_model_data.get('df') is not None
-    except Exception as e:
-        log_error(f"Erreur chargement cache : {e}", "PREDICTION", e)
-        return False
+    from core.ml_model import charger_et_entrainer
+    charger_et_entrainer()
+    return global_model_data.get('df') is not None
 
 
 def _formater_bulletin_free(resultat, langue="fr"):
@@ -142,12 +137,7 @@ def enregistrer_prediction_handlers(bot):
             bot.reply_to(message, "⚠️ Veuillez d'abord choisir une compétition en cliquant sur 'Faire un Pronostic'.")
             return
 
-        try:
-            resultat = predire_match(equipe_dom, equipe_ext, competition=competition)
-        except Exception as e:
-            log_error(f"Erreur lors de la prédiction de {equipe_dom} vs {equipe_ext}: {e}", "PREDICTION", e)
-            bot.reply_to(message, "⚠️ Une erreur est survenue lors de l'analyse. Vérifie le nom des équipes.")
-            return
+        resultat = predire_match(equipe_dom, equipe_ext, competition=competition)
 
         if "erreur" in resultat:
             bot.reply_to(message, resultat['erreur'])
@@ -161,12 +151,9 @@ def enregistrer_prediction_handlers(bot):
 
         bot.reply_to(message, bulletin)
 
-        try:
-            sauvegarder_historique(
-                resultat['home_team'], resultat['away_team'],
-                resultat['p_h'], resultat['p_d'], resultat['p_a'],
-                resultat['best_score'][0], resultat['best_score'][1]
-            )
-            incrementer_compteur(user_id)
-        except Exception as e:
-            log_error(f"Erreur sauvegarde historique: {e}", "PREDICTION")
+        sauvegarder_historique(
+            resultat['home_team'], resultat['away_team'],
+            resultat['p_h'], resultat['p_d'], resultat['p_a'],
+            resultat['best_score'][0], resultat['best_score'][1]
+        )
+        incrementer_compteur(user_id)
