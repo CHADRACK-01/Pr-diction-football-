@@ -1,9 +1,9 @@
 import telebot
-import pandas as pd
-from config import FICHIER_HISTORIQUE
 from users import get_langue
+from users.db import get_connection
 from core.translations import get_text
-from core.utils.logs import log_error
+from core.utils.logs import log_info
+
 
 def enregistrer_historique_handlers(bot):
     
@@ -12,23 +12,42 @@ def enregistrer_historique_handlers(bot):
         user_id = message.from_user.id
         langue = get_langue(user_id)
         
-        try:
-            hist = pd.read_csv(FICHIER_HISTORIQUE)
-            last_5 = hist.tail(5)
-            texte = get_text("historique_titre", langue)
-            
-            for i, (_, row) in enumerate(last_5.iterrows(), 1):
-                texte += (
-                    f"{i}. {row['Match']}\n"
-                    f"   {row['Date_Consultation']}\n"
-                    f"   {row['Pronostic_1N2']}\n"
-                    f"   Score : {row['Score_Exact']}\n\n"
-                )
-                
-            bot.reply_to(message, texte)
-            
-        except FileNotFoundError:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT date_match, home_team, away_team, pronostic_reco, score_reel, est_gagnant
+                    FROM resultats_pronostics
+                    ORDER BY date_creation DESC
+                    LIMIT 5
+                """)
+                rows = cur.fetchall()
+        
+        if not rows:
             bot.reply_to(message, get_text("historique_vide", langue))
-        except Exception as e:
-            log_error(f"Erreur historique : {e}", "HISTORIQUE", e)
-            bot.reply_to(message, "Erreur lors de la récupération de l'historique.")
+            return
+            
+        texte = get_text("historique_titre", langue)
+        
+        for i, row in enumerate(rows, 1):
+            date_match, home, away, reco, score, est_gagnant = row
+            
+            # Format de la date
+            date_str = date_match.strftime("%d/%m/%Y") if date_match else "?"
+            
+            # Statut du pronostic
+            if est_gagnant is True:
+                statut = "✅ GAGNÉ"
+            elif est_gagnant is False:
+                statut = "❌ PERDU"
+            else:
+                statut = "⏳ En attente"
+            
+            texte += (
+                f"{i}. {home} vs {away}\n"
+                f"   📅 {date_str}\n"
+                f"   🎯 {reco}\n"
+                f"   ⚽ Score : {score}\n"
+                f"   {statut}\n\n"
+            )
+            
+        bot.reply_to(message, texte)
