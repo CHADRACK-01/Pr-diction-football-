@@ -3,6 +3,7 @@ from users import get_langue
 from core.translations import get_text
 from core.ml_model import global_model_data
 
+
 def enregistrer_statistiques_handlers(bot):
     
     @bot.message_handler(func=lambda m: m.text == "#STATS")
