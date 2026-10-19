@@ -9,8 +9,8 @@ from core.ml_model import global_model_data
 from core.prediction import predire_match, sauvegarder_historique
 from core.utils.logs import log_info, log_error
 
-# On importe la session de pronostic
-from telegram_bot.handlers.pronostic import SESSIONS_PRONOSTIC
+# ⚠️ CORRECTION : On importe la session depuis le fichier central
+from core.session import SESSIONS_PRONOSTIC
 
 def _charger_modele():
     if global_model_data.get('df') is not None:
@@ -132,8 +132,11 @@ def enregistrer_prediction_handlers(bot):
             bot.reply_to(message, "Format invalide. N'oublie pas les noms des deux équipes.")
             return
 
-        # ⚠️ On récupère la compétition choisie par l'utilisateur
+        # ⚠️ On récupère la compétition choisie par l'utilisateur depuis la session centralisée
         competition = SESSIONS_PRONOSTIC.get(user_id, "default")
+        
+        # ⚠️ LOG DE VÉRIFICATION : Affiche la compétition récupérée dans les logs Render
+        print(f"[PREDICTION] Compétition pour {user_id} : '{competition}'")
         
         if competition == "default":
             bot.reply_to(message, "⚠️ Veuillez d'abord choisir une compétition en cliquant sur 'Faire un Pronostic'.")
