@@ -9,7 +9,8 @@ from users import (
 )
 from core.payments import ABONNEMENTS, envoyer_facture
 from core.translations import get_text
-from core.utils.logs import log_info, log_error
+from core.utils.logs import log_info
+
 
 # Coordonnées Mobile Money
 COORDONNEES_MOBILE = {
@@ -20,6 +21,7 @@ COORDONNEES_MOBILE = {
 
 # Stockage temporaire de l'abonnement choisi pour Mobile Money
 PAIEMENT_SESSIONS = {}
+
 
 def enregistrer_payment_handlers(bot):
 
@@ -155,18 +157,12 @@ def enregistrer_payment_handlers(bot):
 
         caption = f"NOUVELLE DEMANDE #{demande_id}\n\nUser : {nom_user}\nID : {user_id}\nAbo : {abo['nom']}\nMontant : {montant} CDF"
 
-        try:
-            bot.send_photo(8653408729, file_id, caption=caption, reply_markup=markup)
-        except Exception as e:
-            log_error(f"Erreur notif admin principal : {e}", "PAIEMENT")
+        bot.send_photo(8653408729, file_id, caption=caption, reply_markup=markup)
 
         for a in admins:
             if a['user_id'] == 8653408729:
                 continue
-            try:
-                bot.send_photo(a['user_id'], file_id, caption=caption, reply_markup=markup)
-            except Exception as e:
-                log_error(f"Erreur notif admin {a['user_id']} : {e}", "PAIEMENT")
+            bot.send_photo(a['user_id'], file_id, caption=caption, reply_markup=markup)
         
         PAIEMENT_SESSIONS.pop(user_id, None)
 
@@ -200,11 +196,8 @@ def enregistrer_payment_handlers(bot):
             bot.answer_callback_query(call.id, "Valide !")
             bot.send_message(call.message.chat.id, f"✅ Paiement #{demande_id} valide. +{jours}j pour user {demande['user_id']}")
 
-            try:
-                langue = get_langue(demande['user_id'])
-                bot.send_message(demande['user_id'], get_text("pay_valide", langue, jours=jours))
-            except Exception:
-                pass
+            langue = get_langue(demande['user_id'])
+            bot.send_message(demande['user_id'], get_text("pay_valide", langue, jours=jours))
 
     # =========================================================
     # CALLBACK : Refuser paiement
@@ -226,11 +219,8 @@ def enregistrer_payment_handlers(bot):
             bot.answer_callback_query(call.id, "Refuse !")
             bot.send_message(call.message.chat.id, f"❌ Paiement #{demande_id} refuse.")
 
-            try:
-                langue = get_langue(demande['user_id'])
-                bot.send_message(demande['user_id'], get_text("pay_refuse", langue))
-            except Exception:
-                pass
+            langue = get_langue(demande['user_id'])
+            bot.send_message(demande['user_id'], get_text("pay_refuse", langue))
 
     # =========================================================
     # PAIEMENT TELEGRAM STARS
@@ -250,46 +240,39 @@ def enregistrer_payment_handlers(bot):
 
     @bot.pre_checkout_query_handler(func=lambda query: True)
     def process_pre_checkout(pre_checkout_query):
-        try:
-            bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
-        except Exception as e:
-            log_error(f"Erreur pre_checkout : {e}", "PAIEMENT")
+        bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
 
     @bot.message_handler(content_types=['successful_payment'])
     def process_successful_payment(message):
-        try:
-            payment = message.successful_payment
-            user_id = message.from_user.id
-            payload = payment.invoice_payload
+        payment = message.successful_payment
+        user_id = message.from_user.id
+        payload = payment.invoice_payload
 
-            parts = payload.split("_")
-            abo_key = parts[1] if len(parts) >= 2 else "mensuel"
+        parts = payload.split("_")
+        abo_key = parts[1] if len(parts) >= 2 else "mensuel"
 
-            if abo_key not in ABONNEMENTS:
-                abo_key = "mensuel"
+        if abo_key not in ABONNEMENTS:
+            abo_key = "mensuel"
 
-            abo = ABONNEMENTS[abo_key]
-            
-            # Vérification du montant payé
-            if payment.total_amount != abo['prix_stars']:
-                bot.send_message(user_id, "⚠️ Erreur : Le montant payé ne correspond pas à l'abonnement choisi.")
-                log_error(f"Montant incorrect : {payment.total_amount} au lieu de {abo['prix_stars']}", "PAIEMENT")
-                return
+        abo = ABONNEMENTS[abo_key]
+        
+        # Vérification du montant payé
+        if payment.total_amount != abo['prix_stars']:
+            bot.send_message(user_id, "⚠️ Erreur : Le montant payé ne correspond pas à l'abonnement choisi.")
+            log_info(f"Montant incorrect : {payment.total_amount} au lieu de {abo['prix_stars']}", "PAIEMENT")
+            return
 
-            duree = abo["duree_jours"]
-            nom_abo = abo["nom"]
+        duree = abo["duree_jours"]
+        nom_abo = abo["nom"]
 
-            expiration = (datetime.now() + timedelta(days=duree)).strftime("%Y-%m-%d %H:%M")
-            set_premium(user_id, expiration)
+        expiration = (datetime.now() + timedelta(days=duree)).strftime("%Y-%m-%d %H:%M")
+        set_premium(user_id, expiration)
 
-            bot.send_message(
-                user_id,
-                f"PAIEMENT CONFIRME\n\n"
-                f"Formule : {nom_abo}\n"
-                f"Duree : {duree} jour(s)\n"
-                f"Expire : {expiration}"
-            )
-            log_info(f"Paiement Stars valide : user {user_id} - {nom_abo}", "PAIEMENT")
-
-        except Exception as e:
-            log_error(f"Erreur traitement paiement : {str(e)}", "PAIEMENT", e)
+        bot.send_message(
+            user_id,
+            f"PAIEMENT CONFIRME\n\n"
+            f"Formule : {nom_abo}\n"
+            f"Duree : {duree} jour(s)\n"
+            f"Expire : {expiration}"
+        )
+        log_info(f"Paiement Stars valide : user {user_id} - {nom_abo}", "PAIEMENT")
