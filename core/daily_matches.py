@@ -7,12 +7,14 @@ from core.prediction import predire_match
 from core.api.manager import get_matchs_du_jour as manager_get_matchs_du_jour
 from core.utils.logs import log_info, log_warning, log_error
 from core.utils.markdown import formater_proprement
+from config import CHAMPIONNATS, INFOS_COMPETITIONS # ⚠️ NOUVEAU
 
 TZ_KINSHASA = timezone(timedelta(hours=1))
 
 def _normaliser(nom):
     """Dictionnaire de correspondance entre les noms des API et les noms du modèle."""
     special = {
+        # (Ton dictionnaire existant reste inchangé ici)
         "Manchester City FC": "Man City", "Manchester United FC": "Man United",
         "Newcastle United FC": "Newcastle", "Nottingham Forest FC": "Nott'm Forest",
         "Tottenham Hotspur FC": "Tottenham", "Wolverhampton Wanderers FC": "Wolves",
@@ -109,21 +111,21 @@ def _charger_modele_si_necessaire():
         return False
 
 def _nom_competition(code):
-    noms = {
-        "premier_league": "Premier League", "championship": "Championship",
-        "laliga": "LaLiga", "ligue_1": "Ligue 1",
-        "bundesliga_1": "Bundesliga", "serie_a": "Serie A",
-    }
-    return noms.get(code, code)
+    """Renvoie le nom propre de la compétition à partir de son code."""
+    return CHAMPIONNATS.get(code, code)
+
+def _get_info_competition(nom_comp):
+    """Renvoie l'emoji et le pays de la compétition."""
+    infos = INFOS_COMPETITIONS.get(nom_comp)
+    if infos:
+        return f"{infos['emoji']} {infos['pays']}"
+    return ""
 
 def get_matchs_du_jour():
-    """
-    Orchestre la récupération via le manager, puis calcule les pronostics.
-    """
+    """Orchestre la récupération via le manager, puis calcule les pronostics."""
     if not _charger_modele_si_necessaire():
         return []
 
-    # 1. Récupération via le manager
     matchs_bruts = manager_get_matchs_du_jour()
     if not matchs_bruts:
         log_warning("Aucun match renvoyé par le manager.", "MATCHS")
@@ -131,16 +133,12 @@ def get_matchs_du_jour():
 
     matchs_trouves = []
     
-    # 2. Analyse de chaque match avec le modèle IA
     for m in matchs_bruts:
         home = _normaliser(m["home"])
         away = _normaliser(m["away"])
-        
-        # ⚠️ CORRECTION MAJEURE : On récupère la compétition
         competition = m.get("competition", "default")
         
         try:
-            # ⚠️ CORRECTION MAJEURE : On passe la compétition au modèle
             prono = predire_match(home, away, competition=competition, cotes_book=m.get("cotes_book"))
             
             if not isinstance(prono, dict) or 'erreur' in prono:
@@ -154,7 +152,6 @@ def get_matchs_du_jour():
             options = [("1X", dc_1x), ("X2", dc_x2), ("12", dc_12)]
             meilleure = max(options, key=lambda x: x[1])
 
-            # 3. Filtrage des cotes < 1.30
             cote_bot = round(1 / meilleure[1], 2) if meilleure[1] > 0 else 999
             if cote_bot < 1.30:
                 continue
@@ -177,16 +174,11 @@ def get_matchs_du_jour():
             log_error(f"Exception pour {home} vs {away}: {e}", "MATCHS", e)
             continue
 
-    if not matchs_trouves:
-        log_warning("Aucun match ne passe le filtre de cote (≥ 1.30).", "MATCHS")
-    else:
-        log_info(f"{len(matchs_trouves)} matchs prêts à être publiés.", "MATCHS")
-
     matchs_trouves.sort(key=lambda x: (x['heure'] or '', -x['confiance']))
     return matchs_trouves
 
 def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None):
-    """Formate la liste des matchs pour Telegram."""
+    """Formate la liste des matchs pour Telegram avec le pays et l'emoji."""
     date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
 
     if matchs is None or len(matchs) == 0:
@@ -239,10 +231,16 @@ def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None)
             except Exception:
                 heure_local = "?"
 
+            # ⚠️ ICI : Récupération du nom propre, du pays et de l'emoji
             nom_comp = _nom_competition(m['competition'])
+            info_pays = _get_info_competition(nom_comp)
 
             texte += formater_proprement(f"⚽ {m['home']} vs {m['away']}\n")
             texte += formater_proprement(f"   🕐 {heure_local} | 🏆 {nom_comp}\n")
+            
+            # Affichage du pays et de l'emoji si disponibles
+            if info_pays:
+                texte += formater_proprement(f"   📍 {info_pays}\n")
 
             if est_premium:
                 analyse = m.get('analyse_pari')
