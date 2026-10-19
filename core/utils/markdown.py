@@ -13,6 +13,7 @@ def echapper_markdown(texte):
     
     return texte
 
+
 def formater_proprement(texte):
     """
     Nettoie un texte pour qu'il soit sûr à envoyer sur Telegram.
