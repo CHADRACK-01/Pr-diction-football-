@@ -1,6 +1,7 @@
 import io
 import joblib
-from core.ml_model import global_model_data
+import zlib
+from core.ml_model import global_model_data, _optimiser_dataframe
 from core.utils.logs import log_info, log_error
 
 
@@ -22,7 +23,10 @@ def charger_modele_universel():
     buffer = io.BytesIO(modele_bytes)
     donnees = joblib.load(buffer)
 
-    global_model_data['df'] = donnees.get('df')
+    # ⚠️ OPTIMISATION : On optimise le DataFrame dès son chargement pour économiser la RAM
+    df_brut = donnees.get('df')
+    global_model_data['df'] = _optimiser_dataframe(df_brut)
+    
     global_model_data['teams'] = donnees.get('teams')
     global_model_data['team_to_code'] = donnees.get('team_to_code')
     global_model_data['team_global_stats'] = donnees.get('team_global_stats')
