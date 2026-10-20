@@ -8,7 +8,7 @@ from core.translations import get_text
 from core.ml_model import global_model_data
 from core.prediction import predire_match, sauvegarder_historique
 from core.utils.logs import log_info
-from core.session import SESSIONS_PRONOSTIC
+from core.session import get_session_competition, clear_session_competition
 
 
 def _charger_modele():
@@ -127,10 +127,9 @@ def enregistrer_prediction_handlers(bot):
             bot.reply_to(message, "Format invalide. N'oublie pas les noms des deux équipes.")
             return
 
-        # ⚠️ On récupère la compétition choisie par l'utilisateur depuis la session centralisée
-        competition = SESSIONS_PRONOSTIC.get(user_id, "default")
+        # ⚠️ On récupère la compétition depuis la BDD
+        competition = get_session_competition(user_id)
         
-        # ⚠️ LOG DE VÉRIFICATION : Affiche la compétition récupérée dans les logs Render
         print(f"[PREDICTION] Compétition pour {user_id} : '{competition}'")
         
         if competition == "default":
@@ -143,8 +142,8 @@ def enregistrer_prediction_handlers(bot):
             bot.reply_to(message, resultat['erreur'])
             return
 
-        # On supprime la session pour que le prochain pronostic redemande une compétition
-        SESSIONS_PRONOSTIC.pop(user_id, None)
+        # On supprime la session en BDD pour que le prochain pronostic redemande une compétition
+        clear_session_competition(user_id)
 
         is_prem = est_premium(user_id)
         bulletin = _formater_bulletin_premium(resultat, langue) if is_prem else _formater_bulletin_free(resultat, langue)
