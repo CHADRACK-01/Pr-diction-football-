@@ -1,4 +1,5 @@
 import difflib
+import gc  # ⚠️ NOUVEAU : Garbage Collector pour libérer la RAM
 from datetime import datetime
 import pandas as pd
 import numpy as np
@@ -13,31 +14,26 @@ def trouver_nom_exact(nom_partiel, teams):
     """Recherche intelligente d'équipe : priorité aux initiales (PSG → Paris SG)."""
     recherche = nom_partiel.lower().strip()
 
-    # 1. Correspondance exacte
     for t in teams:
         if t.lower() == recherche:
             return t
 
-    # 2. Correspondance par initiales (PSG → Paris SG)
     initiales_recherche = recherche.replace(" ", "").replace(".", "")
     for t in teams:
         initiales_equipe = "".join(w[0] for w in t.lower().split() if w)
         if initiales_equipe == initiales_recherche:
             return t
 
-    # 3. Correspondance de mots-clés
     mots_recherche = set(recherche.split())
     for t in teams:
         mots_equipe = set(t.lower().split())
         if mots_recherche and mots_recherche.issubset(mots_equipe):
             return t
 
-    # 4. Préfixe
     for t in teams:
         if t.lower().startswith(recherche):
             return t
 
-    # 5. Fallback difflib
     lower_teams = {t.lower(): t for t in teams}
     matches = difflib.get_close_matches(recherche, lower_teams.keys(), n=1, cutoff=0.6)
     return lower_teams[matches[0]] if matches else nom_partiel
@@ -122,9 +118,6 @@ def predire_match(home_input, away_input, competition="default", cotes_book=None
     if away_team not in team_to_code:
         return {"erreur": f"⚠️ Équipe introuvable : **{away_input}**.\n\nLe bot prend en charge 21 compétitions (Premier League, Ligue 1, Champions League, etc.).\n\n(Note : vérifie l'orthographe du nom de l'équipe)."}
 
-    # =========================================================
-    # UTILISATION DES XG (avec fallback sur les buts si absents)
-    # =========================================================
     h_xg_hist = team_xg_stats.get(home_team, {}).get('xg_for', [])
     h_xga_hist = team_xg_stats.get(home_team, {}).get('xg_against', [])
     a_xg_hist = team_xg_stats.get(away_team, {}).get('xg_for', [])
@@ -152,9 +145,6 @@ def predire_match(home_input, away_input, competition="default", cotes_book=None
     lambda_home = max(0.2, (h_att * a_def) / league_avg_home)
     lambda_away = max(0.2, (a_att * h_def) / league_avg_away)
 
-    # =========================================================
-    # CALCUL DES PROBABILITÉS (Poisson)
-    # =========================================================
     max_goals = 5
     score_matrix = np.outer(
         [poisson.pmf(i, lambda_home) for i in range(max_goals + 1)],
@@ -243,6 +233,10 @@ def predire_match(home_input, away_input, competition="default", cotes_book=None
     
     analyse_pari = _calculer_meilleur_pari(prono, cotes_book)
     prono["analyse_pari"] = analyse_pari
+
+    # ⚠️ LIBÉRATION DE LA RAM APRÈS LE CALCUL
+    del score_matrix
+    gc.collect()
 
     return prono
 
