@@ -65,6 +65,8 @@ def charger_modele_universel():
 def _envoyer_notifications():
     """Envoie les meilleurs pronostics du jour aux utilisateurs abonnés."""
     from core.ml_model import get_top_pronostics_du_jour
+    
+    # ⚠️ Pour les notifications, on charge le modèle à la demande
     if not charger_modele_universel():
         print("Notifications : impossible de charger le modèle.")
         return
@@ -285,11 +287,8 @@ def index():
 # =========================================================
 # INITIALISATION AU DÉMARRAGE
 # =========================================================
-print("🔄 Chargement initial des données de base...")
-if charger_modele_universel():
-    print("✅ Données de base chargées avec succès au démarrage !")
-else:
-    print("⚠️ Impossible de charger les données de base au démarrage. Elles seront chargées à la première utilisation.")
-
+print("🔄 Initialisation de la base de données...")
 initialiser_tables()
-print("Bot pret (init differee + notifications + coupons + canal + maintenance).")
+
+# ⚠️ ON NE CHARGE PLUS LE MODÈLE AU DÉMARRAGE POUR ÉVITER LE CRASH RAM
+print("✅ Bot prêt (chargement du modèle différé pour économiser la RAM).")
