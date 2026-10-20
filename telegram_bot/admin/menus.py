@@ -2,7 +2,7 @@ import telebot
 
 
 # =========================================================
-# MENUS INLINE (Conservés pour compatibilité)
+# MENUS INLINE
 # =========================================================
 
 def menu_principal_admin():
@@ -73,7 +73,7 @@ def menu_bdd():
 
 
 # =========================================================
-# MENUS EN BAS (ReplyKeyboardMarkup) - Pour le système imbriqué
+# MENUS EN BAS (ReplyKeyboardMarkup)
 # =========================================================
 
 def menu_admin_bas():
@@ -82,6 +82,7 @@ def menu_admin_bas():
     markup.add(
         telebot.types.KeyboardButton("📊 Stats"),
         telebot.types.KeyboardButton("👥 Utilisateurs"),
+        telebot.types.KeyboardButton("📋 Exporter la liste"), # ⚠️ NOUVEAU
         telebot.types.KeyboardButton("💳 Paiements"),
         telebot.types.KeyboardButton("🎟️ Codes Premium"),
         telebot.types.KeyboardButton("🗄️ Base de données"),
@@ -89,7 +90,7 @@ def menu_admin_bas():
         telebot.types.KeyboardButton("⚙️ Paramètres"),
         telebot.types.KeyboardButton("📝 Logs"),
         telebot.types.KeyboardButton("🚫 Bannis"),
-        telebot.types.KeyboardButton("📢 Broadcast"),
+        telebot.types.KeyboardButton("📢 Broadcast"), # ⚠️ LE BOUTON EST ICI
         telebot.types.KeyboardButton("💎 Premium"),
         telebot.types.KeyboardButton("🔍 Lancer l'Audit"),
         telebot.types.KeyboardButton("🔙 Quitter Admin")
@@ -98,7 +99,6 @@ def menu_admin_bas():
 
 
 def menu_premium_bas():
-    """Menu Premium en bas."""
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(
         telebot.types.KeyboardButton("➕ Ajouter Premium"),
@@ -109,7 +109,6 @@ def menu_premium_bas():
 
 
 def menu_codes_bas():
-    """Menu Codes en bas."""
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(
         telebot.types.KeyboardButton("Gen 10 jours"),
@@ -123,7 +122,6 @@ def menu_codes_bas():
 
 
 def menu_parametres_bas():
-    """Menu Paramètres en bas."""
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(
         telebot.types.KeyboardButton("Heure notifs"),
@@ -138,7 +136,6 @@ def menu_parametres_bas():
 
 
 def menu_bdd_bas():
-    """Menu BDD en bas."""
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(
         telebot.types.KeyboardButton("Taille BDD"),
