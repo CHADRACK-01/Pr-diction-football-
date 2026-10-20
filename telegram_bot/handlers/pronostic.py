@@ -2,7 +2,7 @@ import telebot
 from users import get_langue, est_banni, peut_faire_pronostic, get_limite_jour, est_administrateur
 from core.translations import get_text
 from config import CHAMPIONNATS, INFOS_COMPETITIONS
-from core.session import SESSIONS_PRONOSTIC
+from core.session import set_session_competition, clear_session_competition
 
 
 def creer_clavier_competitions(langue="fr"):
@@ -47,7 +47,7 @@ def enregistrer_pronostic_handlers(bot):
     @bot.message_handler(func=lambda m: m.text == "🔙 Retour Menu")
     def retour_menu(message):
         user_id = message.from_user.id
-        SESSIONS_PRONOSTIC.pop(user_id, None)
+        clear_session_competition(user_id)
         from telegram_bot.handlers.start import envoyer_menu_principal
         envoyer_menu_principal(message.chat.id, user_id, bot)
 
@@ -65,8 +65,8 @@ def enregistrer_pronostic_handlers(bot):
 
         nom_propre = CHAMPIONNATS[comp_code]
         
-        # ⚠️ On sauvegarde dans le dictionnaire central
-        SESSIONS_PRONOSTIC[user_id] = comp_code
+        # ⚠️ On sauvegarde dans la BDD maintenant
+        set_session_competition(user_id, comp_code)
 
         # On remet le clavier principal
         markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
