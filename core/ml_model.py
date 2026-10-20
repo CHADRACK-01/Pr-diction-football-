@@ -80,6 +80,32 @@ def _extraire_matchs(df, nom_competition):
     return matchs
 
 
+def _optimiser_dataframe(df):
+    """
+    Optimise le DataFrame pour réduire la consommation de RAM.
+    Convertit les colonnes texte en 'category' et les nombres en plus petits types.
+    """
+    if df is None or df.empty:
+        return df
+
+    # 1. Conversion des colonnes texte en 'category' (gain énorme)
+    for col in ['HomeTeam', 'AwayTeam', 'Competition', 'FTR', 'HTR']:
+        if col in df.columns:
+            df[col] = df[col].astype('category')
+
+    # 2. Conversion des nombres flottants en float32 (gain 50% sur ces colonnes)
+    for col in ['B365H', 'B365D', 'B365A']:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce').astype('float32')
+
+    # 3. Conversion des entiers en int32 (ou int8/int16 selon les valeurs)
+    for col in ['FTHG', 'FTAG', 'HTHG', 'HTAG', 'HS', 'AS', 'HST', 'AST', 'HC', 'AC', 'HF', 'AF', 'HY', 'AY', 'HR', 'AR']:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype('int32')
+
+    return df
+
+
 def charger_et_entrainer(forcer_entrainement=False):
     """
     Charge UNIQUEMENT les données de base depuis le cache PostgreSQL.
@@ -96,7 +122,10 @@ def charger_et_entrainer(forcer_entrainement=False):
             buffer = io.BytesIO(modele_bytes)
             donnees = joblib.load(buffer)
 
-            global_model_data['df'] = donnees.get('df')
+            # ⚠️ OPTIMISATION ICI : On optimise le dataframe dès son chargement
+            df = donnees.get('df')
+            global_model_data['df'] = _optimiser_dataframe(df)
+            
             global_model_data['teams'] = donnees.get('teams')
             global_model_data['team_to_code'] = donnees.get('team_to_code')
             global_model_data['team_global_stats'] = donnees.get('team_global_stats')
@@ -111,7 +140,7 @@ def charger_et_entrainer(forcer_entrainement=False):
             else:
                 global_model_data['competitions_disponibles'] = []
 
-            log_info("Données de base chargées ! (Les modèles restent en BDD pour économiser la RAM)", "ML_MODEL")
+            log_info("Données de base chargées et optimisées ! (Les modèles restent en BDD pour économiser la RAM)", "ML_MODEL")
             return
 
     log_error("Réentraînement demandé. Lance le script d'entraînement sur Colab.", "ML_MODEL")
@@ -215,6 +244,11 @@ def get_top_pronostics_du_jour(nb=3):
         home = row['HomeTeam']
         away = row['AwayTeam']
         competition = row.get('Competition', 'default')
+        
+        # Si c'est une catégorie, on la convertit en string pour predire_match
+        if isinstance(competition, pd.Categorical):
+            competition = str(competition)
+
         prono = predire_match(home, away, competition=competition)
         
         if "erreur" in prono:
