@@ -16,16 +16,40 @@ BOT_USERNAME = "MonPronosticFootball_bot"
 
 def envoyer_menu_principal(chat_id, user_id, bot):
     langue = get_langue(user_id)
-    statut_label = get_statut_label(user_id)
-    prec = global_model_data.get('precision', 0.5)
-    nb_matchs = len(global_model_data.get('df', []))
-    compteur = get_compteur_jour(user_id)
-    limite = get_limite_jour(user_id)
-
     user_info = get_user_info(user_id)
     nom = user_info['first_name'] if user_info else "Utilisateur"
 
-    # Message de présentation
+    # ⚠️ SI LE MODE VITRINE EST ACTIVÉ
+    if config.MODE_VITRINE:
+        presentation = (
+            f"👋 Bienvenue {nom} sur Pronostic Football !\n\n"
+            f"🛠️ **Le bot est actuellement en cours d'amélioration technique.**\n\n"
+            f"📢 En attendant, toutes les analyses, pronostics et coupons sont publiés **gratuitement** sur notre canal Telegram.\n\n"
+            f"👇 Clique sur le bouton ci-dessous pour rejoindre le canal et ne rien rater :"
+        )
+        
+        # On garde uniquement les boutons essentiels
+        markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
+        markup.add(
+            telebot.types.KeyboardButton("#LANGUE"),
+        )
+        
+        bot.send_message(chat_id, presentation, reply_markup=markup, parse_mode="Markdown")
+
+        # Bouton pour rejoindre le canal
+        inline_markup = telebot.types.InlineKeyboardMarkup(row_width=1)
+        inline_markup.add(
+            telebot.types.InlineKeyboardButton("📢 REJOINDRE LE CANAL (Pronostics Gratuits)", url=config.CANAL_LIEN)
+        )
+        bot.send_message(chat_id, "👇 Clique ici pour rejoindre :", reply_markup=inline_markup)
+        return
+
+    # ⚠️ SINON (MODE NORMAL - ton code habituel)
+    statut_label = get_statut_label(user_id)
+    prec = global_model_data.get('precision', 0.5)
+    compteur = get_compteur_jour(user_id)
+    limite = get_limite_jour(user_id)
+
     presentation = (
         f"👋 Bienvenue {nom} sur Pronostic Football !\n\n"
         f"🤖 Je suis un bot d'Intelligence Artificielle spécialisé dans les pronostics sportifs.\n\n"
@@ -35,7 +59,6 @@ def envoyer_menu_principal(chat_id, user_id, bot):
         f"👇 Utilise les boutons ci-dessous pour commencer :"
     )
 
-    # ⚠️ CLAVIER AVEC CLÉS UNIQUES (#)
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(
         telebot.types.KeyboardButton("#PRONO"),
@@ -50,15 +73,12 @@ def envoyer_menu_principal(chat_id, user_id, bot):
         telebot.types.KeyboardButton("#LANGUE"),
     )
     
-    # Ajout du bouton Admin avec sa clé
     if est_administrateur(user_id):
         markup.add(telebot.types.KeyboardButton("#ADMIN"))
 
     bot.send_message(chat_id, presentation, reply_markup=markup)
 
-    # Boutons Inline (Canal)
     inline_markup = telebot.types.InlineKeyboardMarkup(row_width=1)
-    
     member = bot.get_chat_member(config.CANAL_ID, user_id)
     is_member = member.status in ['member', 'administrator', 'creator']
 
@@ -83,7 +103,6 @@ def enregistrer_start_handlers(bot):
         existe_avant = get_user_info(user.id) is not None
         enregistrer_utilisateur(user.id, user.username, user.first_name)
 
-        # Gestion du parrainage
         if not existe_avant:
             parts = message.text.split()
             if len(parts) >= 2 and parts[1].startswith("REF"):
@@ -92,21 +111,9 @@ def enregistrer_start_handlers(bot):
                     if set_parrain(user.id, parrain_id):
                         ajouter_jours_premium(user.id, 1)
                         ajouter_jours_premium(parrain_id, 1)
-                        langue = get_langue(user.id)
-                        bot.send_message(user.id, get_text("parrainage_bienvenue", langue))
-                        
-                        nb_filleuls = compter_filleuls(parrain_id)
-                        palier = get_palier_atteint(nb_filleuls)
-                        bonus_palier = ""
-                        if palier and nb_filleuls in [5, 10, 20, 50]:
-                            ajouter_jours_premium(parrain_id, palier['bonus'])
-                            bonus_palier = f"\n\n🏆 Palier {palier['nom']} atteint ! +{palier['bonus']} jours bonus"
-                        
-                        bot.send_message(parrain_id, f"🎉 Nouveau filleul : {user.first_name}\n\n+1 jour Premium offert !\n📊 Total : {nb_filleuls} filleul(s){bonus_palier}")
 
         envoyer_menu_principal(message.chat.id, user.id, bot)
 
-    # Gestion de la commande /langue et du bouton #LANGUE
     @bot.message_handler(commands=['langue', 'language'])
     @bot.message_handler(func=lambda m: m.text == "#LANGUE")
     def cmd_langue(message):
