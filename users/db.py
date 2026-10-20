@@ -7,12 +7,14 @@ from config import (
 )
 from core.utils.logs import log_info, log_error
 
+
 def get_connection():
     """Retourne une connexion à la base de données PostgreSQL."""
     return psycopg2.connect(
         host=DB_HOST, port=DB_PORT, user=DB_USER,
         password=DB_PASSWORD, dbname=DB_NAME, sslmode="require"
     )
+
 
 def initialiser_tables():
     """Initialise toutes les tables de la base de données au démarrage."""
@@ -179,8 +181,17 @@ def initialiser_tables():
             
             cur.execute("CREATE INDEX IF NOT EXISTS idx_resultats_date ON resultats_pronostics(date_match)")
 
+            # ⚠️ NOUVEAU : Sessions de pronostic (pour survivre aux redémarrages)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS sessions_pronostic (
+                    user_id BIGINT PRIMARY KEY,
+                    competition TEXT
+                )
+            """)
+
         conn.commit()
-        log_info("Tables PostgreSQL prêtes (avec paiements + codes + resultats).", "DATABASE")
+        log_info("Tables PostgreSQL prêtes (avec paiements + codes + resultats + sessions).", "DATABASE")
+
 
 def get_taille_base():
     """Retourne la taille de la base en MB."""
@@ -189,6 +200,7 @@ def get_taille_base():
             cur.execute("SELECT pg_size_pretty(pg_database_size(current_database()))")
             taille = cur.fetchone()[0]
             return taille
+
 
 def get_detail_tables():
     """Retourne la taille de chaque table."""
@@ -205,6 +217,7 @@ def get_detail_tables():
             rows = cur.fetchall()
             return [dict(r) for r in rows]
 
+
 def nettoyer_logs_anciens(jours=30):
     """Supprime les logs admin de plus de X jours."""
     with get_connection() as conn:
@@ -217,6 +230,7 @@ def nettoyer_logs_anciens(jours=30):
         conn.commit()
         log_info(f"{rows} ancien(s) log(s) supprimé(s)", "DATABASE")
         return rows
+
 
 def nettoyer_paiements_anciens(jours=90):
     """Supprime les paiements traités de plus de X jours."""
