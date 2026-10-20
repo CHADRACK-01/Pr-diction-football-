@@ -91,3 +91,8 @@ BZZOIRO_API_KEY = os.environ.get("BZZOIRO_API_KEY", "")
 # =========================================================
 LIMITE_FREE_JOUR = 3
 LIMITE_PREMIUM_JOUR = 100
+
+# =========================================================
+# MODE VITRINE (True = Bot bloqué sauf inscription, False = Bot complet)
+# =========================================================
+MODE_VITRINE = True
