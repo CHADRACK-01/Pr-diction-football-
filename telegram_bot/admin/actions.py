@@ -32,8 +32,6 @@ def _retirer_premium(user_id):
 # GESTIONNAIRE POUR LES BOUTONS INLINE
 # =========================================================
 def executer_action(bot, call, data, user_id):
-    """Exécute l'action correspondant au bouton Inline cliqué."""
-    
     log_info(f"EXECUTION ACTION INLINE : '{data}' demandée par {user_id}", "ADMIN")
 
     if data == "admin_stats":
@@ -189,8 +187,6 @@ def executer_action(bot, call, data, user_id):
 # GESTIONNAIRE POUR LES BOUTONS EN BAS
 # =========================================================
 def executer_action_bas(bot, message, text, user_id):
-    """Exécute l'action correspondant au bouton texte cliqué."""
-    
     log_info(f"EXECUTION ACTION BAS : '{text}' demandée par {user_id}", "ADMIN")
 
     if text == "📊 Stats":
