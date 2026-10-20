@@ -7,6 +7,7 @@ import joblib
 import requests
 import pandas as pd
 import numpy as np
+import tracemalloc  # ⚠️ NOUVEAU : Pour mesurer la RAM
 from datetime import datetime
 from io import BytesIO
 
@@ -83,22 +84,18 @@ def _extraire_matchs(df, nom_competition):
 def _optimiser_dataframe(df):
     """
     Optimise le DataFrame pour réduire la consommation de RAM.
-    Convertit les colonnes texte en 'category' et les nombres en plus petits types.
     """
     if df is None or df.empty:
         return df
 
-    # 1. Conversion des colonnes texte en 'category' (gain énorme)
     for col in ['HomeTeam', 'AwayTeam', 'Competition', 'FTR', 'HTR']:
         if col in df.columns:
             df[col] = df[col].astype('category')
 
-    # 2. Conversion des nombres flottants en float32 (gain 50% sur ces colonnes)
     for col in ['B365H', 'B365D', 'B365A']:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce').astype('float32')
 
-    # 3. Conversion des entiers en int32 (ou int8/int16 selon les valeurs)
     for col in ['FTHG', 'FTAG', 'HTHG', 'HTAG', 'HS', 'AS', 'HST', 'AST', 'HC', 'AC', 'HF', 'AF', 'HY', 'AY', 'HR', 'AR']:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype('int32')
@@ -109,7 +106,6 @@ def _optimiser_dataframe(df):
 def charger_et_entrainer(forcer_entrainement=False):
     """
     Charge UNIQUEMENT les données de base depuis le cache PostgreSQL.
-    ⚠️ Ne charge PAS les modèles lourds (ils seront chargés à la demande).
     """
     global global_model_data
 
@@ -119,10 +115,17 @@ def charger_et_entrainer(forcer_entrainement=False):
             modele_bytes, precision, nb_matchs = cache
             log_info(f"Chargement des données de base depuis le cache...", "ML_MODEL")
 
+            # ⚠️ MESURE DE LA RAM AVANT CHARGEMENT
+            tracemalloc.start()
+            
             buffer = io.BytesIO(modele_bytes)
             donnees = joblib.load(buffer)
 
-            # ⚠️ OPTIMISATION ICI : On optimise le dataframe dès son chargement
+            # ⚠️ MESURE DE LA RAM APRÈS CHARGEMENT
+            current, peak = tracemalloc.get_traced_memory()
+            tracemalloc.stop()
+            log_info(f"[DEBUG RAM] Modèle chargé : {current / 1024 / 1024:.2f} MB en cours (Pic : {peak / 1024 / 1024:.2f} MB)", "ML_MODEL")
+
             df = donnees.get('df')
             global_model_data['df'] = _optimiser_dataframe(df)
             
@@ -245,7 +248,6 @@ def get_top_pronostics_du_jour(nb=3):
         away = row['AwayTeam']
         competition = row.get('Competition', 'default')
         
-        # Si c'est une catégorie, on la convertit en string pour predire_match
         if isinstance(competition, pd.Categorical):
             competition = str(competition)
 
