@@ -1,5 +1,7 @@
 import telebot
-from users import est_administrateur, compter_codes_disponibles
+import io
+import csv
+from users import est_administrateur, compter_codes_disponibles, get_tous_utilisateurs
 
 from telegram_bot.admin.menus import (
     menu_principal_admin, menu_premium, menu_codes,
@@ -80,7 +82,7 @@ def enregistrer_admin_handlers(bot):
         "📊 Stats", "👥 Utilisateurs", "💳 Paiements", "🎟️ Codes Premium",
         "🗄️ Base de données", "👑 Admins", "⚙️ Paramètres", "📝 Logs",
         "🚫 Bannis", "📢 Broadcast", "💎 Premium", "🔙 Quitter Admin",
-        "🔍 Lancer l'Audit",
+        "🔍 Lancer l'Audit", "📋 Exporter la liste",
         "➕ Ajouter Premium", "➖ Retirer Premium", "🔙 Retour Admin",
         "Gen 10 jours", "Gen 30 jours", "Gen 90 jours", "Gen custom", "👁️ Voir codes dispo",
         "Heure notifs", "Limite Free", "Prix Stars", "Message accueil", "Mode maintenance", "👁️ Voir parametres",
@@ -99,6 +101,27 @@ def enregistrer_admin_handlers(bot):
         # --- Retour Admin ---
         if text == "🔙 Retour Admin":
             bot.send_message(message.chat.id, "🎛️ PANNEAU ADMIN", reply_markup=menu_admin_bas())
+            return
+
+        # --- Exporter la liste des utilisateurs ---
+        if text == "📋 Exporter la liste":
+            users = get_tous_utilisateurs()
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow(["user_id", "first_name", "username", "status", "date_inscription"])
+            
+            # On récupère les infos complètes (pas juste les IDs)
+            from users import get_liste_utilisateurs
+            liste_complete = get_liste_utilisateurs(limite=100000) # Une grande limite pour tout avoir
+            
+            for u in liste_complete:
+                writer.writerow([u['user_id'], u['first_name'], u['username'], u['status'], u['date_inscription']])
+            
+            # On encode en bytes pour l'envoi
+            fichier_bytes = io.BytesIO(output.getvalue().encode('utf-8'))
+            fichier_bytes.name = "utilisateurs.csv"
+            
+            bot.send_document(message.chat.id, fichier_bytes, caption="📋 Liste complète de tes utilisateurs.")
             return
 
         # --- Audit (SÉCURISÉ) ---
