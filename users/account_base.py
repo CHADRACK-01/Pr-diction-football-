@@ -1,4 +1,4 @@
-import psycopg2.extras
+import libsql
 from datetime import datetime
 
 from users.db import get_connection
@@ -6,19 +6,25 @@ from core.utils.logs import log_info, log_error
 
 
 def utilisateur_existe(user_id):
-    with get_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT 1 FROM utilisateurs WHERE user_id = %s", (user_id,))
-            result = cur.fetchone()
-            return result is not None
+    conn = get_connection()
+    result = conn.execute("SELECT 1 FROM utilisateurs WHERE user_id = ?", (user_id,)).fetchone()
+    conn.close()
+    return result is not None
 
 
 def get_user_info(user_id):
-    with get_connection() as conn:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute("SELECT * FROM utilisateurs WHERE user_id = %s", (user_id,))
-            row = cur.fetchone()
-            return dict(row) if row else None
+    conn = get_connection()
+    # On récupère les noms de colonnes pour construire un dictionnaire
+    cur = conn.execute("SELECT * FROM utilisateurs WHERE user_id = ?", (user_id,))
+    row = cur.fetchone()
+    if row:
+        # Récupérer les noms des colonnes
+        columns = [desc[0] for desc in cur.description]
+        info = dict(zip(columns, row))
+        conn.close()
+        return info
+    conn.close()
+    return None
 
 
 def get_user_status(user_id):
@@ -32,44 +38,50 @@ def enregistrer_utilisateur(user_id, username, first_name):
     if utilisateur_existe(user_id):
         return False
         
-    with get_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                INSERT INTO utilisateurs (user_id, username, first_name, status)
-                VALUES (%s, %s, %s, 'free')
-                ON CONFLICT (user_id) DO NOTHING
-            """, (user_id, username or "", first_name or ""))
-        conn.commit()
-        log_info(f"Nouvel utilisateur : {first_name} ({user_id})", "ACCOUNTS")
-        return True
+    conn = get_connection()
+    conn.execute("""
+        INSERT INTO utilisateurs (user_id, username, first_name, status)
+        VALUES (?, ?, ?, 'free')
+        ON CONFLICT (user_id) DO NOTHING
+    """, (user_id, username or "", first_name or ""))
+    conn.commit()
+    conn.close()
+    log_info(f"Nouvel utilisateur : {first_name} ({user_id})", "ACCOUNTS")
+    return True
 
 
 def set_premium(user_id, date_expiration):
-    if isinstance(date_expiration, str):
-        date_expiration = datetime.strptime(date_expiration, "%Y-%m-%d %H:%M")
+    # SQLite stocke les dates en TEXT. On s'assure que c'est une chaîne.
+    if isinstance(date_expiration, datetime):
+        date_expiration = date_expiration.strftime("%Y-%m-%d %H:%M:%S")
         
-    with get_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                UPDATE utilisateurs
-                SET status = 'premium', date_expiration = %s
-                WHERE user_id = %s
-            """, (date_expiration, user_id))
-            rows = cur.rowcount
-        conn.commit()
-        
-        if rows == 0:
-            return False
-            
-        log_info(f"Utilisateur {user_id} passé en PREMIUM", "ACCOUNTS")
-        return True
+    conn = get_connection()
+    conn.execute("""
+        UPDATE utilisateurs
+        SET status = 'premium', date_expiration = ?
+        WHERE user_id = ?
+    """, (date_expiration, user_id))
+    conn.commit()
+    conn.close()
+    
+    log_info(f"Utilisateur {user_id} passé en PREMIUM (expire {date_expiration})", "ACCOUNTS")
+    return True
 
 
 def est_premium(user_id):
     status, expiration = get_user_status(user_id)
     if status != 'premium' or not expiration:
         return False
-    return expiration > datetime.now()
+    try:
+        # SQLite renvoie la date en string, on la convertit
+        if isinstance(expiration, str):
+            expiration_dt = datetime.strptime(expiration, "%Y-%m-%d %H:%M:%S")
+        else:
+            expiration_dt = expiration
+        return expiration_dt > datetime.now()
+    except Exception as e:
+        log_error(f"Erreur parsing date expiration : {e}", "ACCOUNTS")
+        return False
 
 
 def get_statut_label(user_id):
@@ -77,24 +89,22 @@ def get_statut_label(user_id):
 
 
 def get_langue(user_id):
-    with get_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT langue FROM utilisateurs WHERE user_id = %s", (user_id,))
-            row = cur.fetchone()
-            return row[0] if row and row[0] else "fr"
+    conn = get_connection()
+    result = conn.execute("SELECT langue FROM utilisateurs WHERE user_id = ?", (user_id,)).fetchone()
+    conn.close()
+    return result[0] if result and result[0] else "fr"
 
 
 def set_langue(user_id, langue):
     if langue not in ["fr", "en", "ln"]:
         return False
         
-    with get_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                UPDATE utilisateurs
-                SET langue = %s
-                WHERE user_id = %s
-            """, (langue, user_id))
-            rows = cur.rowcount
-        conn.commit()
-        return rows > 0
+    conn = get_connection()
+    conn.execute("""
+        UPDATE utilisateurs
+        SET langue = ?
+        WHERE user_id = ?
+    """, (langue, user_id))
+    conn.commit()
+    conn.close()
+    return True
