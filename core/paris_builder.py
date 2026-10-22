@@ -13,6 +13,7 @@ NIVEAUX = {
 
 
 def _meilleure_reco(prono):
+    """Renvoie la meilleure recommandation (1X, X2, ou 12) et sa probabilité."""
     dc_1x = float(prono['dc_1x'])
     dc_x2 = float(prono['dc_x2'])
     dc_12 = float(prono['dc_12'])
@@ -23,6 +24,7 @@ def _meilleure_reco(prono):
 
 
 def get_tous_pronostics_disponibles():
+    """Récupère tous les pronostics disponibles pour les matchs du jour."""
     from core.daily_matches import get_matchs_du_jour
     matchs = get_matchs_du_jour()
     resultats = []
@@ -32,7 +34,7 @@ def get_tous_pronostics_disponibles():
         away = m['away']
         competition = m.get('competition', 'default')
         
-        prono = predire_match(home, away, competition=competition)
+        prono = predire_match(home, away, competition=competition, cotes_book=m.get('cotes_book'))
         
         if not isinstance(prono, dict) or 'erreur' in prono:
             continue
@@ -56,6 +58,7 @@ def get_tous_pronostics_disponibles():
 
 
 def construire_coupon(niveau, matchs_disponibles):
+    """Construit un coupon pour un niveau donné (sur, modéré, risque)."""
     seuil = NIVEAUX[niveau]
     candidats = [m for m in matchs_disponibles if seuil['min'] <= m['reco_pct'] < seuil['max']]
 
@@ -84,6 +87,7 @@ def construire_coupon(niveau, matchs_disponibles):
 
 
 def construire_coupon_outside(matchs_disponibles):
+    """Construit un coupon 'Outside' (Value) avec des probabilités plus faibles."""
     candidats = [m for m in matchs_disponibles if 0.45 <= m['reco_pct'] <= 0.60]
     if len(candidats) < 3:
         return None
@@ -106,6 +110,7 @@ def construire_coupon_outside(matchs_disponibles):
 
 
 def generer_coupons_du_jour():
+    """Génère tous les coupons du jour (sur, modéré, risque, outside)."""
     maintenant = datetime.now(TZ_KINSHASA)
     est_weekend = maintenant.weekday() >= 5
     matchs = get_tous_pronostics_disponibles()
@@ -116,11 +121,13 @@ def generer_coupons_du_jour():
     coupons = []
 
     if not est_weekend:
+        # En semaine : un coupon par niveau
         for niveau in ['sur', 'modere', 'risque']:
             coupon = construire_coupon(niveau, matchs)
             if coupon:
                 coupons.append(coupon)
     else:
+        # Le week-end : on découpe par intervalle horaire
         intervalles = [
             {"nom": "matin", "min_h": 8, "max_h": 14},
             {"nom": "apres_midi", "min_h": 14, "max_h": 19},
@@ -142,6 +149,7 @@ def generer_coupons_du_jour():
                     coupon['intervalle'] = inter['nom']
                     coupons.append(coupon)
 
+    # On ajoute toujours le coupon Outside
     coupon_outside = construire_coupon_outside(matchs)
     if coupon_outside:
         coupons.append(coupon_outside)
@@ -150,6 +158,7 @@ def generer_coupons_du_jour():
 
 
 def formater_coupon(coupon, langue="fr", montrer_details=True):
+    """Formate un coupon pour l'affichage Telegram."""
     niveau_labels = {
         "sur": "🔥 COUPON SUR",
         "modere": "⚖️ COUPON MODÉRÉ",
