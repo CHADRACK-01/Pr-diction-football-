@@ -9,23 +9,19 @@ BOT_TOKEN = "8443191637:AAGcCknBZDg1o0NBeL8czLt0SsQ4c2LEMvY"
 
 def envoyer_erreur_admin(message_erreur, context="Global"):
     """Envoie une alerte d'erreur directement sur le Telegram de l'admin."""
-    try:
-        bot_alerte = telebot.TeleBot(BOT_TOKEN, threaded=False)
-        date_str = datetime.now().strftime("%d/%m/%Y à %H:%M:%S")
-        
-        # On tronque pour ne pas dépasser la limite de Telegram (4096 caractères)
-        erreur_courte = message_erreur[:3500]
-        
-        texte = (
-            f"🚨 **ALERTE ERREUR** 🚨\n\n"
-            f"📅 Date : {date_str}\n"
-            f"📌 Contexte : {context}\n\n"
-            f"```python\n{erreur_courte}\n```"
-        )
-        bot_alerte.send_message(ADMIN_ID, texte, parse_mode="Markdown")
-    except Exception as e:
-        # Si même l'alerte plante, on l'écrit dans les logs Render
-        print(f"⚠️ Impossible d'envoyer l'alerte Telegram : {e}")
+    bot_alerte = telebot.TeleBot(BOT_TOKEN, threaded=False)
+    date_str = datetime.now().strftime("%d/%m/%Y à %H:%M:%S")
+    
+    # On tronque pour ne pas dépasser la limite de Telegram (4096 caractères)
+    erreur_courte = message_erreur[:3500]
+    
+    texte = (
+        f"🚨 **ALERTE ERREUR** 🚨\n\n"
+        f"📅 Date : {date_str}\n"
+        f"📌 Contexte : {context}\n\n"
+        f"```python\n{erreur_courte}\n```"
+    )
+    bot_alerte.send_message(ADMIN_ID, texte, parse_mode="Markdown")
 
 def gerer_exception_non_geree(exc_type, exc_value, exc_traceback):
     """
