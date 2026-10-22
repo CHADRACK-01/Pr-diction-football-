@@ -8,7 +8,6 @@ from users import (
     get_compteur_jour, get_limite_jour
 )
 from core.translations import get_text, LANGUES_DISPONIBLES
-from core.ml_model import global_model_data
 from core.utils.logs import log_info
 
 BOT_USERNAME = "MonPronosticFootball_bot"
@@ -46,7 +45,6 @@ def envoyer_menu_principal(chat_id, user_id, bot):
 
     # ⚠️ SINON (MODE NORMAL - ton code habituel)
     statut_label = get_statut_label(user_id)
-    prec = global_model_data.get('precision', 0.5)
     compteur = get_compteur_jour(user_id)
     limite = get_limite_jour(user_id)
 
@@ -54,8 +52,7 @@ def envoyer_menu_principal(chat_id, user_id, bot):
         f"👋 Bienvenue {nom} sur Pronostic Football !\n\n"
         f"🤖 Je suis un bot d'Intelligence Artificielle spécialisé dans les pronostics sportifs.\n\n"
         f"📊 Statut : {statut_label}\n"
-        f"🎯 Pronostics aujourd'hui : {compteur}/{limite}\n"
-        f"⚙️ Précision du modèle : {prec*100:.2f}%\n\n"
+        f"🎯 Pronostics aujourd'hui : {compteur}/{limite}\n\n"
         f"👇 Utilise les boutons ci-dessous pour commencer :"
     )
 
