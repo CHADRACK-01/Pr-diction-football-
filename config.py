@@ -66,22 +66,13 @@ INFOS_COMPETITIONS = {
 }
 
 # =========================================================
-# BASE DE DONNÉES POSTGRESQL (AIVEN)
+# TURSO (Base de données)
 # =========================================================
-DB_HOST = os.environ.get("DB_HOST", "").strip()
-DB_PORT = os.environ.get("DB_PORT", "5432").strip()
-DB_USER = os.environ.get("DB_USER", "").strip()
-DB_PASSWORD = os.environ.get("DB_PASSWORD", "").strip()
-DB_NAME = os.environ.get("DB_NAME", "").strip()
+TURSO_URL = os.environ.get("TURSO_URL", "")
+TURSO_TOKEN = os.environ.get("TURSO_TOKEN", "")
 
 # =========================================================
-# UPSTASH BLOB (stockage CSV)
-# =========================================================
-UPSTASH_BLOB_TOKEN = os.environ.get("UPSTASH_BLOB_TOKEN", "").strip()
-UPSTASH_BUCKET_NAME = "PredictionFootball-csv"
-
-# =========================================================
-# API FOOTBALL-DATA & BZZOIRO (Sécurisées)
+# API FOOTBALL-DATA & BZZOIRO
 # =========================================================
 FOOTBALL_DATA_KEY = os.environ.get("FOOTBALL_DATA_KEY", "")
 BZZOIRO_API_KEY = os.environ.get("BZZOIRO_API_KEY", "")
