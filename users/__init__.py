@@ -1,7 +1,7 @@
 # Package users - Gestion des utilisateurs, base de données et paiements
 
 # =========================================================
-# BASE DE DONNÉES sql
+# BASE DE DONNÉES
 # =========================================================
 from users.db import (
     get_connection,
