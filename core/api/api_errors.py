@@ -6,6 +6,9 @@ def gerer_erreur_api(status_code, competition, module="API"):
     Gère les erreurs HTTP de l'API football-data.org.
     Retourne True si on peut continuer, False s'il faut arrêter.
     """
+    if status_code == 200:
+        return True
+    
     if status_code == 403:
         log_error(f"Accès refusé à l'API ({competition}). Vérifie ta clé API.", module)
         return False
