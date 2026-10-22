@@ -75,6 +75,9 @@ def publier_message_custom(bot, texte):
     Permet aux admins d'envoyer un message personnalisé sur le canal.
     Cette fonction est utilisée par le broadcast_manager.
     """
+    if len(texte) > 4000:
+        texte = texte[:3990] + "\n\n[...Message tronqué...]"
+    
     bot.send_message(CANAL_ID, texte)
     log_info("Message personnalisé publié sur le canal.", "CANAL")
     return True
