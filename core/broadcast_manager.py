@@ -13,13 +13,9 @@ def lancer_broadcast_async(bot, users, texte, admins, canal=False):
         
         # 1. Envoi aux utilisateurs
         for uid in users:
-            try:
-                bot.send_message(uid, f"📢 ANNONCE\n\n{texte}")
-                succes += 1
-                time.sleep(0.05)
-            except Exception:
-                # On ignore silencieusement les utilisateurs qui ont bloqué le bot
-                echecs += 1
+            bot.send_message(uid, f"📢 ANNONCE\n\n{texte}")
+            succes += 1
+            time.sleep(0.05)
 
         log_info(f"Broadcast utilisateurs terminé : {succes} succès, {echecs} échecs.", "BROADCAST")
 
@@ -43,10 +39,7 @@ def lancer_broadcast_async(bot, users, texte, admins, canal=False):
                 recap += "\n📢 Envoyé sur le Canal : OUI"
             
         for a in admins:
-            try:
-                bot.send_message(a['user_id'], recap)
-            except Exception:
-                pass
+            bot.send_message(a['user_id'], recap)
 
     thread = threading.Thread(target=_worker)
     thread.daemon = True
