@@ -12,3 +12,4 @@ soccerdata
 xgboost
 python-telegram-bot
 lightgbm
+libsql
