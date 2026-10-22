@@ -1,5 +1,5 @@
 # =========================================================
-# TRADUCTIONS MULTI-LANGUE. 
+# TRADUCTIONS MULTI-LANGUE
 # =========================================================
 
 LANGUES_DISPONIBLES = {
