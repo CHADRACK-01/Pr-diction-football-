@@ -21,18 +21,21 @@ def get_top_affiches(limite=10):
         log_warning("Aucun match disponible pour les top affiches.", "TOP")
         return []
 
+    # Filtre 1 : Confiance >= 75%
     top = [m for m in matchs if m['reco_pct'] >= SEUIL_CONFIANCE_MIN]
 
     if not top:
         log_warning(f"Aucun match avec confiance >= {SEUIL_CONFIANCE_MIN*100}%.", "TOP")
         return []
 
+    # Filtre 2 : Cote >= 1.30 (déjà fait dans get_tous_pronostics_disponibles, mais sécurité)
     top = [m for m in top if round(1/m['reco_pct'], 2) >= 1.30]
 
     if not top:
         log_warning("Aucun match avec cote >= 1.30.", "TOP")
         return []
 
+    # Tri par confiance décroissante
     top.sort(key=lambda x: x['reco_pct'], reverse=True)
 
     log_info(f"{len(top)} top affiches trouvées (limite : {limite}).", "TOP")
