@@ -17,69 +17,75 @@ def verifier_resultats_veille():
     hier = (datetime.now(TZ_KINSHASA) - timedelta(days=1)).strftime("%Y-%m-%d")
     headers = {"X-Auth-Token": FOOTBALL_DATA_KEY}
     
-    with get_connection() as conn:
-        with conn.cursor() as cur:
-            # 1. On récupère tous les pronostics d'hier qui n'ont pas encore été vérifiés
-            cur.execute("""
-                SELECT id, home_team, away_team, pronostic_reco 
-                FROM resultats_pronostics 
-                WHERE date_match = %s AND est_gagnant IS NULL
-            """, (hier,))
-            pronos = cur.fetchall()
-            
-            if not pronos:
-                return {"total": 0, "gagnes": 0, "texte": "Aucun pronostic à vérifier hier."}
+    conn = get_connection()
+    
+    # 1. On récupère tous les pronostics d'hier qui n'ont pas encore été vérifiés
+    cur = conn.execute("""
+        SELECT id, home_team, away_team, pronostic_reco 
+        FROM resultats_pronostics 
+        WHERE date_match = ? AND est_gagnant IS NULL
+    """, (hier,))
+    pronos = cur.fetchall()
+    
+    if not pronos:
+        conn.close()
+        return {"total": 0, "gagnes": 0, "texte": "Aucun pronostic à vérifier hier."}
 
-            # 2. On récupère les résultats réels via l'API
-            url = f"https://api.football-data.org/v4/matches?dateFrom={hier}&dateTo={hier}"
-            res = requests.get(url, headers=headers, timeout=15)
-            
-            if res.status_code != 200:
-                log_error(f"Erreur API résultats ({res.status_code})", "RESULTS")
-                return {"total": 0, "gagnes": 0, "texte": "Erreur API lors de la vérification."}
+    # 2. On récupère les résultats réels via l'API
+    url = f"https://api.football-data.org/v4/matches?dateFrom={hier}&dateTo={hier}"
+    res = requests.get(url, headers=headers, timeout=15)
+    
+    if res.status_code != 200:
+        conn.close()
+        log_error(f"Erreur API résultats ({res.status_code})", "RESULTS")
+        return {"total": 0, "gagnes": 0, "texte": "Erreur API lors de la vérification."}
 
-            matchs_api = res.json().get("matches", [])
-            resultats_api = {}
+    matchs_api = res.json().get("matches", [])
+    resultats_api = {}
+    
+    for m in matchs_api:
+        if m.get("status") == "FINISHED":
+            home = _normaliser_nom(m["homeTeam"]["name"])
+            away = _normaliser_nom(m["awayTeam"]["name"])
+            score_h = m["score"]["fullTime"]["home"]
+            score_a = m["score"]["fullTime"]["away"]
+            resultats_api[f"{home}_{away}"] = (score_h, score_a)
+    
+    # 3. On compare nos pronostics avec les résultats
+    gagnes = 0
+    total = len(pronos)
+    resultats_a_mettre_a_jour = []
+    
+    for p_id, home, away, reco in pronos:
+        home_norm = _normaliser_nom(home)
+        away_norm = _normaliser_nom(away)
+        api_key = f"{home_norm}_{away_norm}"
+        
+        if api_key in resultats_api:
+            sh, sa = resultats_api[api_key]
             
-            for m in matchs_api:
-                if m.get("status") == "FINISHED":
-                    home = _normaliser_nom(m["homeTeam"]["name"])
-                    away = _normaliser_nom(m["awayTeam"]["name"])
-                    score_h = m["score"]["fullTime"]["home"]
-                    score_a = m["score"]["fullTime"]["away"]
-                    resultats_api[f"{home}_{away}"] = (score_h, score_a)
+            est_gagnant = False
+            if reco == "1X" and sh >= sa: 
+                est_gagnant = True
+            elif reco == "X2" and sa >= sh: 
+                est_gagnant = True
+            elif reco == "12" and sh != sa: 
+                est_gagnant = True
             
-            # 3. On compare nos pronostics avec les résultats
-            gagnes = 0
-            total = len(pronos)
-            resultats_a_mettre_a_jour = []
+            if est_gagnant:
+                gagnes += 1
             
-            for p_id, home, away, reco in pronos:
-                home_norm = _normaliser_nom(home)
-                away_norm = _normaliser_nom(away)
-                api_key = f"{home_norm}_{away_norm}"
-                
-                if api_key in resultats_api:
-                    sh, sa = resultats_api[api_key]
-                    
-                    est_gagnant = False
-                    if reco == "1X" and sh >= sa: 
-                        est_gagnant = True
-                    elif reco == "X2" and sa >= sh: 
-                        est_gagnant = True
-                    elif reco == "12" and sh != sa: 
-                        est_gagnant = True
-                    
-                    if est_gagnant:
-                        gagnes += 1
-                    
-                    resultats_a_mettre_a_jour.append((est_gagnant, p_id))
-            
-            # 4. Mise à jour de la BDD
-            for est_gagnant, p_id in resultats_a_mettre_a_jour:
-                cur.execute("UPDATE resultats_pronostics SET est_gagnant = %s WHERE id = %s", (est_gagnant, p_id))
-            
-        conn.commit()
+            resultats_a_mettre_a_jour.append((est_gagnant, p_id))
+    
+    # 4. Mise à jour de la BDD (Turso)
+    for est_gagnant, p_id in resultats_a_mettre_a_jour:
+        conn.execute(
+            "UPDATE resultats_pronostics SET est_gagnant = ? WHERE id = ?", 
+            (1 if est_gagnant else 0, p_id)
+        )
+    
+    conn.commit()
+    conn.close()
     
     # 5. Préparation du message pour le canal
     pourcentage = round((gagnes / total) * 100, 1) if total > 0 else 0
