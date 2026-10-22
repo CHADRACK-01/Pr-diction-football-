@@ -1,39 +1,43 @@
 import difflib
-import gc  # ⚠️ NOUVEAU : Garbage Collector pour libérer la RAM
-from datetime import datetime
-import pandas as pd
+import gc
 import numpy as np
+import pandas as pd
 from scipy.stats import poisson
 
 from core.ml_model import global_model_data, charger_modele_competition
 from users.db import get_connection
-from core.utils.logs import log_info
+from core.utils.logs import log_info, log_error
 
 
 def trouver_nom_exact(nom_partiel, teams):
     """Recherche intelligente d'équipe : priorité aux initiales (PSG → Paris SG)."""
     recherche = nom_partiel.lower().strip()
 
+    # 1. Correspondance exacte
     for t in teams:
         if t.lower() == recherche:
             return t
 
+    # 2. Correspondance par initiales (PSG → Paris SG)
     initiales_recherche = recherche.replace(" ", "").replace(".", "")
     for t in teams:
         initiales_equipe = "".join(w[0] for w in t.lower().split() if w)
         if initiales_equipe == initiales_recherche:
             return t
 
+    # 3. Correspondance de mots-clés
     mots_recherche = set(recherche.split())
     for t in teams:
         mots_equipe = set(t.lower().split())
         if mots_recherche and mots_recherche.issubset(mots_equipe):
             return t
 
+    # 4. Préfixe
     for t in teams:
         if t.lower().startswith(recherche):
             return t
 
+    # 5. Fallback difflib
     lower_teams = {t.lower(): t for t in teams}
     matches = difflib.get_close_matches(recherche, lower_teams.keys(), n=1, cutoff=0.6)
     return lower_teams[matches[0]] if matches else nom_partiel
@@ -96,19 +100,18 @@ def predire_match(home_input, away_input, competition="default", cotes_book=None
     if not global_model_data:
         return {"erreur": "Modèle non chargé."}
 
+    # On récupère le modèle spécifique à la compétition
+    model = charger_modele_competition(competition)
+    
+    if not model:
+        return {"erreur": f"⚠️ Le modèle pour la compétition '{competition}' n'est pas disponible."}
+
+    # On récupère les données de base pour les équipes
     teams = global_model_data.get('teams', [])
     team_to_code = global_model_data.get('team_to_code', {})
     team_global_stats = global_model_data.get('team_global_stats', {})
-    team_xg_stats = global_model_data.get('team_xg_stats', {})
-    df = global_model_data.get('df')
-
-    model_choisi = charger_modele_competition(competition)
     
-    if not model_choisi:
-        return {"erreur": f"⚠️ Le modèle pour la compétition '{competition}' n'est pas disponible."}
-
-    precision_modele = global_model_data.get('precision', 0.5)
-
+    # On cherche les noms exacts
     home_team = trouver_nom_exact(home_input, teams)
     away_team = trouver_nom_exact(away_input, teams)
 
@@ -118,71 +121,60 @@ def predire_match(home_input, away_input, competition="default", cotes_book=None
     if away_team not in team_to_code:
         return {"erreur": f"⚠️ Équipe introuvable : **{away_input}**.\n\nLe bot prend en charge 21 compétitions (Premier League, Ligue 1, Champions League, etc.).\n\n(Note : vérifie l'orthographe du nom de l'équipe)."}
 
-    h_xg_hist = team_xg_stats.get(home_team, {}).get('xg_for', [])
-    h_xga_hist = team_xg_stats.get(home_team, {}).get('xg_against', [])
-    a_xg_hist = team_xg_stats.get(away_team, {}).get('xg_for', [])
-    a_xga_hist = team_xg_stats.get(away_team, {}).get('xg_against', [])
+    # =========================================================
+    # ⚠️ On utilise les stats de buts (plus simples que les features du modèle)
+    # =========================================================
+    h_stats = team_global_stats.get(home_team, {})
+    a_stats = team_global_stats.get(away_team, {})
+    
+    h_att = sum(h_stats.get('scored', [1.2])[-10:]) / len(h_stats.get('scored', [1.2])[-10:])
+    h_def = sum(h_stats.get('conceded', [1.2])[-10:]) / len(h_stats.get('conceded', [1.2])[-10:])
+    a_att = sum(a_stats.get('scored', [1.0])[-10:]) / len(a_stats.get('scored', [1.0])[-10:])
+    a_def = sum(a_stats.get('conceded', [1.3])[-10:]) / len(a_stats.get('conceded', [1.3])[-10:])
 
-    if h_xg_hist and a_xg_hist:
-        h_att = sum(h_xg_hist[-5:]) / len(h_xg_hist[-5:])
-        h_def = sum(h_xga_hist[-5:]) / len(h_xga_hist[-5:])
-        a_att = sum(a_xg_hist[-5:]) / len(a_xg_hist[-5:])
-        a_def = sum(a_xga_hist[-5:]) / len(a_xga_hist[-5:])
-    else:
-        h_g_hist = team_global_stats.get(home_team, {}).get('scored', [])
-        h_g_cond = team_global_stats.get(home_team, {}).get('conceded', [])
-        a_g_hist = team_global_stats.get(away_team, {}).get('scored', [])
-        a_g_cond = team_global_stats.get(away_team, {}).get('conceded', [])
-        
-        h_att = sum(h_g_hist) / len(h_g_hist) if h_g_hist else 1.2
-        h_def = sum(h_g_cond) / len(h_g_cond) if h_g_cond else 1.2
-        a_att = sum(a_g_hist) / len(a_g_hist) if a_g_hist else 1.0
-        a_def = sum(a_g_cond) / len(a_g_cond) if a_g_cond else 1.3
+    lambda_home = max(0.2, (h_att * a_def) / 1.5)
+    lambda_away = max(0.2, (a_att * h_def) / 1.2)
 
-    league_avg_home = df['FTHG'].mean() if 'FTHG' in df else 1.5
-    league_avg_away = df['FTAG'].mean() if 'FTAG' in df else 1.2
-
-    lambda_home = max(0.2, (h_att * a_def) / league_avg_home)
-    lambda_away = max(0.2, (a_att * h_def) / league_avg_away)
-
-    max_goals = 5
-    score_matrix = np.outer(
+    max_goals = 6
+    matrix = np.outer(
         [poisson.pmf(i, lambda_home) for i in range(max_goals + 1)],
         [poisson.pmf(j, lambda_away) for j in range(max_goals + 1)]
     )
 
-    prob_home_win = float(np.sum(np.tril(score_matrix, -1)))
-    prob_draw = float(np.sum(np.diag(score_matrix)))
-    prob_away_win = float(np.sum(np.triu(score_matrix, 1)))
-    total_prob = prob_home_win + prob_draw + prob_away_win
+    p_h = float(np.sum(np.tril(matrix, -1)))
+    p_d = float(np.sum(np.diag(matrix)))
+    p_a = float(np.sum(np.triu(matrix, 1)))
+    total = p_h + p_d + p_a
+    p_h, p_d, p_a = p_h/total, p_d/total, p_a/total
 
-    p_h = prob_home_win / total_prob
-    p_d = prob_draw / total_prob
-    p_a = prob_away_win / total_prob
+    dc_1x = p_h + p_d
+    dc_x2 = p_d + p_a
+    dc_12 = p_h + p_a
 
-    under_25 = float(np.sum([
-        score_matrix[i, j]
-        for i in range(max_goals + 1)
-        for j in range(max_goals + 1)
-        if i + j < 2.5
-    ]))
-    over_25 = 1.0 - under_25
+    under_25 = sum(matrix[i, j] for i in range(7) for j in range(7) if i + j < 2.5)
+    over_25 = 1 - under_25
+    under_15 = sum(matrix[i, j] for i in range(7) for j in range(7) if i + j < 1.5)
+    over_15 = 1 - under_15
+    under_35 = sum(matrix[i, j] for i in range(7) for j in range(7) if i + j < 3.5)
+    over_35 = 1 - under_35
 
-    btts_yes = float(np.sum([
-        score_matrix[i, j]
-        for i in range(1, max_goals + 1)
-        for j in range(1, max_goals + 1)
-    ]))
+    btts_yes = sum(matrix[i, j] for i in range(1, 7) for j in range(1, 7))
 
-    best_i, best_j = np.unravel_index(np.argmax(score_matrix), score_matrix.shape)
-    best_i, best_j = int(best_i), int(best_j)
+    indices = np.dstack(np.unravel_index(np.argsort(matrix.ravel())[::-1], matrix.shape))[0]
+    top_scores = [(int(idx[0]), int(idx[1]), float(matrix[idx[0], idx[1]])) for idx in indices[:5]]
 
-    indices = np.dstack(np.unravel_index(np.argsort(score_matrix.ravel())[::-1], score_matrix.shape))[0]
-    top_scores = []
-    for idx in indices[:3]:
-        i, j = int(idx[0]), int(idx[1])
-        proba = float(score_matrix[i, j])
-        top_scores.append((i, j, proba))
+    lh_mt = lambda_home / 2.2
+    la_mt = lambda_away / 2.2
+    matrix_mt = np.outer(
+        [poisson.pmf(i, lh_mt) for i in range(4)],
+        [poisson.pmf(j, la_mt) for j in range(4)]
+    )
+    mt_over_05 = 1 - matrix_mt[0, 0]
+    mt_over_15 = 1 - sum(matrix_mt[i, j] for i in range(4) for j in range(4) if i + j < 1.5)
+    mt_btts = sum(matrix_mt[i, j] for i in range(1, 4) for j in range(1, 4))
+
+    hcp_home_moins_05 = p_h
+    hcp_home_plus_05 = p_h + p_d
 
     max_prob = float(max(p_h, p_d, p_a))
     if max_prob >= 0.55:
@@ -192,70 +184,57 @@ def predire_match(home_input, away_input, competition="default", cotes_book=None
     else:
         fiabilite = "⚠️ MATCH INCERTAIN / RISQUÉ"
 
-    dc_1x = float(p_h + p_d)
-    dc_x2 = float(p_d + p_a)
-    dc_12 = float(p_h + p_a)
-
-    options_dc = [("1X", dc_1x), ("X2", dc_x2), ("12", dc_12)]
-    meilleure_dc = max(options_dc, key=lambda x: x[1])[0]
-
-    if meilleure_dc == "1X":
-        if best_i < best_j:
-            best_i, best_j = best_j, best_i
-    elif meilleure_dc == "X2":
-        if best_i > best_j:
-            best_i, best_j = best_j, best_i
-    elif meilleure_dc == "12":
-        if best_i == best_j:
-            best_i += 1
-            
-    if (best_i, best_j) != (top_scores[0][0], top_scores[0][1]):
-        top_scores.insert(0, (best_i, best_j, float(score_matrix[best_i, best_j])))
-
     prono = {
         "home_team": home_team,
         "away_team": away_team,
-        "p_h": float(p_h),
-        "p_d": float(p_d),
-        "p_a": float(p_a),
+        "p_h": p_h,
+        "p_d": p_d,
+        "p_a": p_a,
         "dc_1x": dc_1x,
         "dc_x2": dc_x2,
         "dc_12": dc_12,
+        "over_15": over_15,
         "over_25": over_25,
+        "over_35": over_35,
         "under_25": under_25,
         "btts_yes": btts_yes,
-        "btts_no": float(1.0 - btts_yes),
-        "best_score": (best_i, best_j),
+        "btts_no": 1.0 - btts_yes,
+        "best_score": top_scores[0][:2] if top_scores else (0, 0),
         "top_scores": top_scores,
+        "mt_over_05": mt_over_05,
+        "mt_over_15": mt_over_15,
+        "mt_btts": mt_btts,
+        "hcp_home_moins_05": hcp_home_moins_05,
+        "hcp_home_plus_05": hcp_home_plus_05,
         "fiabilite": fiabilite,
-        "precision_modele": precision_modele
     }
     
     analyse_pari = _calculer_meilleur_pari(prono, cotes_book)
     prono["analyse_pari"] = analyse_pari
 
-    # ⚠️ LIBÉRATION DE LA RAM APRÈS LE CALCUL
-    del score_matrix
+    # Libération de la RAM
+    del matrix
+    del matrix_mt
     gc.collect()
 
     return prono
 
 
 def sauvegarder_historique(home_team, away_team, p_h, p_d, p_a, best_i, best_j):
-    """Sauvegarde dans PostgreSQL et nettoie les données de + de 30 jours."""
+    """Sauvegarde dans Turso et nettoie les données de + de 30 jours."""
     options = [("1X", p_h + p_d), ("X2", p_d + p_a), ("12", p_h + p_a)]
     meilleure = max(options, key=lambda x: x[1])[0]
     score_exact = f"{best_i}-{best_j}"
     
-    with get_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                INSERT INTO resultats_pronostics (date_match, home_team, away_team, pronostic_reco, score_reel)
-                VALUES (CURRENT_DATE, %s, %s, %s, %s)
-            """, (home_team, away_team, meilleure, score_exact))
-            
-            cur.execute("""
-                DELETE FROM resultats_pronostics 
-                WHERE date_match < CURRENT_DATE - INTERVAL '30 days'
-            """)
-        conn.commit()
+    conn = get_connection()
+    conn.execute("""
+        INSERT INTO resultats_pronostics (date_match, home_team, away_team, pronostic_reco, score_reel)
+        VALUES (date('now'), ?, ?, ?, ?)
+    """, (home_team, away_team, meilleure, score_exact))
+    
+    conn.execute("""
+        DELETE FROM resultats_pronostics 
+        WHERE date_match < date('now', '-30 days')
+    """)
+    conn.commit()
+    conn.close()
