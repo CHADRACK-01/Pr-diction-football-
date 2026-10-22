@@ -1,270 +1,79 @@
 import os
 os.environ['LOKY_MAX_CPU_COUNT'] = '1'
 
-import time
 import io
 import joblib
-import requests
-import pandas as pd
-import numpy as np
-import tracemalloc  # ⚠️ NOUVEAU : Pour mesurer la RAM
+import zlib
 from datetime import datetime
-from io import BytesIO
 
-from config import CHAMPIONNATS
-from users import (
-    inserer_matchs, charger_tous_les_matchs, compter_matchs,
-    sauvegarder_modele_cache, charger_modele_cache, vider_modele_cache
-)
+from users import charger_modele_cache
 from core.utils.logs import log_info, log_error
 
+# Dictionnaire global : contiendra les données de base et les modèles
 global_model_data = {}
 
+# Cache LRU pour les modèles par compétition (évite de recharger tout le temps)
 CACHE_MODELES = {}
 TAILLE_MAX_CACHE = 3
 
-HOME_ADVANTAGE = 100
-ELO_K = 32
 
-
-def obtenir_code_saison_actuelle():
-    now = datetime.now()
-    annee_d = now.year if now.month >= 7 else now.year - 1
-    annee_f = annee_d + 1
-    return f"{str(annee_d)[-2:]}{str(annee_f)[-2:]}"
-
-
-def _extraire_matchs(df, nom_competition):
-    matchs = []
-    if not all(c in df.columns for c in ['Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'FTR']):
-        return matchs
-
-    df = df.copy()
-    df['Date'] = pd.to_datetime(df['Date'], dayfirst=True, errors='coerce')
-    df = df.dropna(subset=['Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'FTR'])
-
-    for _, r in df.iterrows():
-        def g(col):
-            if col in r.index and pd.notna(r[col]):
-                return r[col]
-            return None
-
-        m = {
-            'date': r['Date'].date(),
-            'home_team': str(r['HomeTeam']),
-            'away_team': str(r['AwayTeam']),
-            'fthg': int(r['FTHG']),
-            'ftag': int(r['FTAG']),
-            'ftr': str(r['FTR']),
-            'competition': nom_competition,
-            'hthg': int(g('HTHG')) if g('HTHG') is not None else None,
-            'htag': int(g('HTAG')) if g('HTAG') is not None else None,
-            'htr': str(g('HTR')) if g('HTR') is not None else None,
-            'hs': int(g('HS')) if g('HS') is not None else None,
-            'as_shots': int(g('AS')) if g('AS') is not None else None,
-            'hst': int(g('HST')) if g('HST') is not None else None,
-            'ast': int(g('AST')) if g('AST') is not None else None,
-            'hc': int(g('HC')) if g('HC') is not None else None,
-            'ac': int(g('AC')) if g('AC') is not None else None,
-            'hf': int(g('HF')) if g('HF') is not None else None,
-            'af': int(g('AF')) if g('AF') is not None else None,
-            'hy': int(g('HY')) if g('HY') is not None else None,
-            'ay': int(g('AY')) if g('AY') is not None else None,
-            'hr': int(g('HR')) if g('HR') is not None else None,
-            'ar': int(g('AR')) if g('AR') is not None else None,
-            'b365h': float(g('B365H')) if g('B365H') is not None else None,
-            'b365d': float(g('B365D')) if g('B365D') is not None else None,
-            'b365a': float(g('B365A')) if g('B365A') is not None else None,
-        }
-        matchs.append(m)
-
-    return matchs
-
-
-def _optimiser_dataframe(df):
+def charger_et_entrainer():
     """
-    Optimise le DataFrame pour réduire la consommation de RAM.
-    """
-    if df is None or df.empty:
-        return df
-
-    for col in ['HomeTeam', 'AwayTeam', 'Competition', 'FTR', 'HTR']:
-        if col in df.columns:
-            df[col] = df[col].astype('category')
-
-    for col in ['B365H', 'B365D', 'B365A']:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce').astype('float32')
-
-    for col in ['FTHG', 'FTAG', 'HTHG', 'HTAG', 'HS', 'AS', 'HST', 'AST', 'HC', 'AC', 'HF', 'AF', 'HY', 'AY', 'HR', 'AR']:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype('int32')
-
-    return df
-
-
-def charger_et_entrainer(forcer_entrainement=False):
-    """
-    Charge UNIQUEMENT les données de base depuis le cache PostgreSQL.
+    Charge les données de base depuis Turso.
+    ⚠️ Le modèle est déjà entraîné et stocké dans Turso.
+    ⚠️ Cette fonction ne fait que charger le dictionnaire global.
     """
     global global_model_data
 
-    if not forcer_entrainement:
-        cache = charger_modele_cache()
-        if cache:
-            modele_bytes, precision, nb_matchs = cache
-            log_info(f"Chargement des données de base depuis le cache...", "ML_MODEL")
+    if global_model_data.get('modeles_par_competition') is not None:
+        return True
 
-            # ⚠️ MESURE DE LA RAM AVANT CHARGEMENT
-            tracemalloc.start()
-            
-            buffer = io.BytesIO(modele_bytes)
-            donnees = joblib.load(buffer)
+    cache = charger_modele_cache()
+    if not cache:
+        log_error("Aucun modèle trouvé dans Turso.", "ML_MODEL")
+        return False
 
-            # ⚠️ MESURE DE LA RAM APRÈS CHARGEMENT
-            current, peak = tracemalloc.get_traced_memory()
-            tracemalloc.stop()
-            log_info(f"[DEBUG RAM] Modèle chargé : {current / 1024 / 1024:.2f} MB en cours (Pic : {peak / 1024 / 1024:.2f} MB)", "ML_MODEL")
+    modele_bytes, precision, nb_matchs = cache
+    
+    log_info(f"Décompression du modèle ({len(modele_bytes) / 1024 / 1024:.2f} MB)...", "ML_MODEL")
+    modele_decompresse = zlib.decompress(modele_bytes)
+    
+    log_info("Chargement en mémoire...", "ML_MODEL")
+    buffer = io.BytesIO(modele_decompresse)
+    donnees = joblib.load(buffer)
 
-            df = donnees.get('df')
-            global_model_data['df'] = _optimiser_dataframe(df)
-            
-            global_model_data['teams'] = donnees.get('teams')
-            global_model_data['team_to_code'] = donnees.get('team_to_code')
-            global_model_data['team_global_stats'] = donnees.get('team_global_stats')
-            global_model_data['team_xg_stats'] = donnees.get('team_xg_stats')
-            global_model_data['features'] = donnees.get('features')
-            global_model_data['precision'] = precision
-            global_model_data['_tables_initialisees'] = True
-            
-            if 'modeles_par_competition' in donnees:
-                global_model_data['competitions_disponibles'] = list(donnees['modeles_par_competition'].keys())
-                log_info(f"{len(global_model_data['competitions_disponibles'])} compétitions disponibles.", "ML_MODEL")
-            else:
-                global_model_data['competitions_disponibles'] = []
-
-            log_info("Données de base chargées et optimisées ! (Les modèles restent en BDD pour économiser la RAM)", "ML_MODEL")
-            return
-
-    log_error("Réentraînement demandé. Lance le script d'entraînement sur Colab.", "ML_MODEL")
+    # On injecte les données dans le dictionnaire global
+    global_model_data['modeles_par_competition'] = donnees.get('modeles_par_competition')
+    global_model_data['precision_moyenne'] = donnees.get('precision_moyenne', precision)
+    global_model_data['total_matchs'] = donnees.get('total_matchs', nb_matchs)
+    global_model_data['_tables_initialisees'] = True
+    
+    log_info(f"Modèle chargé : {len(global_model_data['modeles_par_competition'])} compétitions", "ML_MODEL")
+    return True
 
 
 def charger_modele_competition(competition):
     """
-    Charge le modèle d'une compétition spécifique depuis la BDD.
+    Charge le modèle d'une compétition spécifique depuis le dictionnaire global.
     Utilise un cache LRU pour ne garder que les 3 derniers modèles en RAM.
     """
     if competition in CACHE_MODELES:
         return CACHE_MODELES[competition]
 
-    log_info(f"Chargement du modèle pour '{competition}' depuis la BDD...", "ML_MODEL")
-    
-    cache_bdd = charger_modele_cache()
-    if not cache_bdd:
-        return None
-    
-    modele_bytes, _, _ = cache_bdd
-    buffer = io.BytesIO(modele_bytes)
-    donnees = joblib.load(buffer)
-    
-    modeles = donnees.get('modeles_par_competition', {})
+    modeles = global_model_data.get('modeles_par_competition', {})
     if competition not in modeles:
         log_error(f"Modèle introuvable pour la compétition : {competition}", "ML_MODEL")
         return None
     
+    # Gestion du cache LRU
     if len(CACHE_MODELES) >= TAILLE_MAX_CACHE:
         plus_ancien = next(iter(CACHE_MODELES))
         del CACHE_MODELES[plus_ancien]
         log_info(f"Cache plein. Suppression du modèle '{plus_ancien}' de la RAM.", "ML_MODEL")
     
-    CACHE_MODELES[competition] = modeles[competition]['model']
-    log_info(f"Modèle '{competition}' chargé en RAM (Précision: {round(modeles[competition]['precision']*100, 2)}%).", "ML_MODEL")
+    modele_data = modeles[competition]
+    CACHE_MODELES[competition] = modele_data['model']
+    
+    log_info(f"Modèle '{competition}' chargé en RAM (Précision: {round(modele_data['precision']*100, 2)}%).", "ML_MODEL")
     
     return CACHE_MODELES[competition]
-
-
-def tache_arriere_plan_maj(chat_id, bot):
-    now = datetime.now()
-    annee_courante_debut = now.year if now.month >= 7 else now.year - 1
-    saison_actuelle_code = obtenir_code_saison_actuelle()
-
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-                      '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    }
-
-    matchs_a_inserer = []
-
-    def _traiter_saison(code_saison):
-        for nom_propre, code in CHAMPIONNATS.items():
-            url = f"https://www.football-data.co.uk/mmz4281/{code_saison}/{code}.csv"
-            res = requests.get(url, headers=headers, timeout=10)
-            if res.status_code == 200 and b',' in res.content and b'<!DOCTYPE html>' not in res.content:
-                temp_df = pd.read_csv(BytesIO(res.content), encoding='latin1', low_memory=False)
-                matchs = _extraire_matchs(temp_df, nom_propre.replace("_", " ").title())
-                matchs_a_inserer.extend(matchs)
-            time.sleep(0.1)
-
-    for i in range(1, 5):
-        annee_d = annee_courante_debut - i
-        annee_f = annee_d + 1
-        code_saison = f"{str(annee_d)[-2:]}{str(annee_f)[-2:]}"
-        _traiter_saison(code_saison)
-
-    _traiter_saison(saison_actuelle_code)
-
-    inseres = inserer_matchs(matchs_a_inserer)
-    total = compter_matchs()
-
-    vider_modele_cache()
-    
-    bot.send_message(
-        chat_id,
-        f"✅ *Synchronisation réussie !*\n\n"
-        f"📥 {inseres} nouveau(x) match(s) téléchargé(s).\n"
-        f"💾 Total en base : *{total} matchs*.\n\n"
-        f"⚠️ Le modèle doit être réentraîné sur Colab pour intégrer ces nouvelles données.",
-        parse_mode="Markdown"
-    )
-
-
-def get_top_pronostics_du_jour(nb=3):
-    """Retourne les N meilleurs pronostics parmi les matchs les plus récents."""
-    from core.prediction import predire_match
-
-    if not global_model_data or not global_model_data.get('df'):
-        return []
-
-    df = global_model_data['df']
-    if df is None or len(df) == 0:
-        return []
-
-    df_recent = df.tail(100).copy()
-    df_recent = df_recent.sort_values('Date', ascending=False)
-
-    resultats = []
-    for _, row in df_recent.iterrows():
-        home = row['HomeTeam']
-        away = row['AwayTeam']
-        competition = row.get('Competition', 'default')
-        
-        if isinstance(competition, pd.Categorical):
-            competition = str(competition)
-
-        prono = predire_match(home, away, competition=competition)
-        
-        if "erreur" in prono:
-            continue
-
-        max_dc = max(prono['dc_1x'], prono['dc_x2'], prono['dc_12'])
-
-        resultats.append({
-            'home': home,
-            'away': away,
-            'prono': prono,
-            'score_confiance': max_dc
-        })
-
-    resultats.sort(key=lambda x: x['score_confiance'], reverse=True)
-
-    return resultats[:nb]
