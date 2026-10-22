@@ -3,7 +3,6 @@ os.environ['LOKY_MAX_CPU_COUNT'] = '1'
 
 import time
 import threading
-import json  # ⚠️ Ajouté pour le scheduler
 import telebot
 from datetime import datetime, timezone, timedelta
 from flask import Flask, request
@@ -14,7 +13,7 @@ from flask import Flask, request
 from core.utils.error_handler import activer_capture_globale
 activer_capture_globale()
 
-from config import TOKEN
+from config import TOKEN, MODE_VITRINE
 from users import (
     initialiser_tables, get_utilisateurs_notifies, est_banni, 
     est_administrateur, get_parametre
@@ -25,7 +24,7 @@ from telegram_bot.handlers import enregistrer_handlers
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
-# Enregistrement de tous les handlers (commandes, messages, callbacks)
+# Enregistrement de tous les handlers
 enregistrer_handlers(bot)
 
 TZ_KINSHASA = timezone(timedelta(hours=1))
@@ -50,12 +49,12 @@ def charger_modele_universel():
     """
     from core.ml_model import global_model_data, charger_et_entrainer
     
-    if global_model_data.get('df') is not None:
+    if global_model_data.get('modeles_par_competition') is not None:
         return True
         
     charger_et_entrainer()
     
-    if global_model_data.get('df') is not None:
+    if global_model_data.get('modeles_par_competition') is not None:
         print("✅ Données de base chargées avec succès ! (Les modèles seront chargés à la demande)")
         return True
     else:
@@ -144,14 +143,12 @@ def _envoyer_coupons_premium():
         return
 
     conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("""
+    cur = conn.execute("""
         SELECT user_id FROM utilisateurs
         WHERE status = 'premium'
-        AND (date_expiration IS NULL OR date_expiration > NOW())
+        AND (date_expiration IS NULL OR date_expiration > datetime('now'))
     """)
     premiums = [row[0] for row in cur.fetchall()]
-    cur.close()
     conn.close()
 
     succes = 0
@@ -167,16 +164,15 @@ def _envoyer_coupons_premium():
 
 
 def _scheduler_notifications():
-    """Tâche de fond qui gère les envois automatiques."""
+    """Tâche de fond qui gère les envois automatiques (notifications, canal, nettoyage)."""
     print("Scheduler demarre...")
-    
-    # ⚠️ On charge l'état depuis un fichier pour survivre aux redémarrages
-    etat_fichier = "/tmp/scheduler_state.json"
-    try:
-        with open(etat_fichier, "r") as f:
-            etat = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        etat = {}
+    derniere_date_envoi = None
+    derniere_date_coupons_semaine = None
+    derniere_date_coupons_weekend = None
+    derniere_date_canal = None
+    derniere_date_teasing = None
+    dernier_nettoyage = None
+    derniere_verif_resultats = None
 
     while True:
         try:
@@ -195,71 +191,57 @@ def _scheduler_notifications():
 
             # 1. Vérification des résultats de la veille (à 7h)
             if now.hour == 7 and now.minute < 5:
-                if etat.get("derniere_verif_resultats") != date_du_jour:
+                if derniere_verif_resultats != date_du_jour:
                     print(f"Vérification des résultats du {date_du_jour}...")
                     from core.results_checker import verifier_resultats_veille
                     from core.canal_manager import publier_bilan_veille
                     bilan = verifier_resultats_veille()
                     if bilan.get('total', 0) > 0:
                         publier_bilan_veille(bot, bilan['texte'])
-                    etat["derniere_verif_resultats"] = date_du_jour
-                    with open(etat_fichier, "w") as f:
-                        json.dump(etat, f)
+                    derniere_verif_resultats = date_du_jour
 
             # 2. Notifications et Canal (à 8h)
             if now.hour == heure_notif and now.minute < 5:
-                if etat.get("derniere_date_envoi") != date_du_jour:
+                if derniere_date_envoi != date_du_jour:
                     print(f"Envoi des notifications du {date_du_jour}...")
                     _envoyer_notifications()
-                    etat["derniere_date_envoi"] = date_du_jour
-                    with open(etat_fichier, "w") as f:
-                        json.dump(etat, f)
+                    derniere_date_envoi = date_du_jour
                     
                     if est_weekend:
                         print("Weekend : envoi des coupons...")
                         _envoyer_coupons_premium()
-                        etat["derniere_date_coupons_weekend"] = date_du_jour
-                        with open(etat_fichier, "w") as f:
-                            json.dump(etat, f)
+                        derniere_date_coupons_weekend = date_du_jour
                         
-                    if etat.get("derniere_date_canal") != date_du_jour:
+                    if derniere_date_canal != date_du_jour:
                         from core.canal_manager import publier_matchs_sur_canal
                         publier_matchs_sur_canal(bot)
-                        etat["derniere_date_canal"] = date_du_jour
-                        with open(etat_fichier, "w") as f:
-                            json.dump(etat, f)
+                        derniere_date_canal = date_du_jour
 
             # 3. Coupons Semaine (à 10h)
             if not est_weekend and now.hour == 10 and now.minute < 5:
-                if etat.get("derniere_date_coupons_semaine") != date_du_jour:
+                if derniere_date_coupons_semaine != date_du_jour:
                     print(f"Envoi des coupons du {date_du_jour}...")
                     _envoyer_coupons_premium()
                     from core.canal_manager import publier_coupons_sur_canal
                     publier_coupons_sur_canal(bot)
-                    etat["derniere_date_coupons_semaine"] = date_du_jour
-                    with open(etat_fichier, "w") as f:
-                        json.dump(etat, f)
+                    derniere_date_coupons_semaine = date_du_jour
 
             # 4. Teasing Canal (à 17h)
             if now.hour == 17 and now.minute < 5:
-                if etat.get("derniere_date_teasing") != date_du_jour:
+                if derniere_date_teasing != date_du_jour:
                     print(f"Publication du teasing sur le canal...")
                     from core.canal_manager import publier_teasing
                     publier_teasing(bot)
-                    etat["derniere_date_teasing"] = date_du_jour
-                    with open(etat_fichier, "w") as f:
-                        json.dump(etat, f)
+                    derniere_date_teasing = date_du_jour
 
             # 5. Nettoyage automatique (à 3h)
             if now.hour == 3 and now.minute < 5:
-                if etat.get("dernier_nettoyage") != date_du_jour:
+                if dernier_nettoyage != date_du_jour:
                     print(f"Nettoyage auto du {date_du_jour}...")
                     from users import nettoyer_logs_anciens, nettoyer_paiements_anciens
                     nettoyer_logs_anciens(jours=30)
                     nettoyer_paiements_anciens(jours=90)
-                    etat["dernier_nettoyage"] = date_du_jour
-                    with open(etat_fichier, "w") as f:
-                        json.dump(etat, f)
+                    dernier_nettoyage = date_du_jour
 
             time.sleep(60)
         except Exception as e:
@@ -304,5 +286,4 @@ def index():
 print("🔄 Initialisation de la base de données...")
 initialiser_tables()
 
-# ⚠️ ON NE CHARGE PLUS LE MODÈLE AU DÉMARRAGE POUR ÉVITER LE CRASH RAM
 print("✅ Bot prêt (chargement du modèle différé pour économiser la RAM).")
