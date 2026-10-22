@@ -281,8 +281,10 @@ def index():
 # =========================================================
 print("🔄 Initialisation de la base de données...")
 initialiser_tables()
+print("✅ Tables prêtes.")
 
-# ⚠️ On lance le scheduler APRES l'initialisation
-threading.Thread(target=_scheduler_notifications, daemon=True).start()
+# ⚠️ Le scheduler est DÉSACTIVÉ en mode vitrine pour éviter les erreurs de tables
+# On le réactivera quand tu passeras en mode réel avec plus de RAM.
+# threading.Thread(target=_scheduler_notifications, daemon=True).start()
 
-print("✅ Bot prêt (chargement du modèle différé pour économiser la RAM).")
+print("✅ Bot prêt (mode vitrine, scheduler désactivé).")
