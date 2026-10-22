@@ -249,10 +249,6 @@ def _scheduler_notifications():
             time.sleep(60)
 
 
-# Lancement du scheduler en arrière-plan
-threading.Thread(target=_scheduler_notifications, daemon=True).start()
-
-
 @app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
     """Point d'entrée pour les mises à jour Telegram."""
@@ -285,5 +281,8 @@ def index():
 # =========================================================
 print("🔄 Initialisation de la base de données...")
 initialiser_tables()
+
+# ⚠️ On lance le scheduler APRES l'initialisation
+threading.Thread(target=_scheduler_notifications, daemon=True).start()
 
 print("✅ Bot prêt (chargement du modèle différé pour économiser la RAM).")
