@@ -12,4 +12,4 @@ soccerdata
 xgboost
 python-telegram-bot
 lightgbm
-libsql
+turso_serverless
