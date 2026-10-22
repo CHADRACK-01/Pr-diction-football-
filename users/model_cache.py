@@ -1,43 +1,67 @@
-import psycopg2
+import io
+import joblib
+import libsql
 
 from users.db import get_connection
 from core.utils.logs import log_info
 
+CHUNK_SIZE = 1 * 1024 * 1024  # 1 Mo par morceau (Turso est plus restrictif que PostgreSQL)
+
 
 def sauvegarder_modele_cache(modele_bytes, precision, nb_matchs):
-    with get_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                INSERT INTO model_cache (id, modele, precision, nb_matchs, date_creation)
-                VALUES (1, %s, %s, %s, NOW())
-                ON CONFLICT (id) DO UPDATE
-                SET modele = EXCLUDED.modele,
-                    precision = EXCLUDED.precision,
-                    nb_matchs = EXCLUDED.nb_matchs,
-                    date_creation = NOW()
-            """, (psycopg2.Binary(modele_bytes), precision, nb_matchs))
-        conn.commit()
+    """
+    Sauvegarde le modèle dans Turso par morceaux (chunks).
+    """
+    total_chunks = (len(modele_bytes) // CHUNK_SIZE) + 1
+    
+    conn = get_connection()
+    conn.execute("DELETE FROM model_cache_chunks")
+    
+    for i in range(total_chunks):
+        chunk = modele_bytes[i * CHUNK_SIZE:(i + 1) * CHUNK_SIZE]
+        conn.execute("""
+            INSERT INTO model_cache_chunks (chunk_index, total_chunks, chunk_data, precision, nb_matchs)
+            VALUES (?, ?, ?, ?, ?)
+        """, (i, total_chunks, chunk, precision, nb_matchs))
         
-    log_info(f"Modèle sauvegardé (précision={round(precision*100, 2)}%, matchs={nb_matchs})", "CACHE")
+    conn.commit()
+    conn.close()
+    
+    log_info(f"Modèle sauvegardé en {total_chunks} morceaux (précision={round(precision*100, 2)}%)", "CACHE")
     return True
 
 
 def charger_modele_cache():
-    with get_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT modele, precision, nb_matchs FROM model_cache WHERE id = 1")
-            row = cur.fetchone()
-
-            if row and row[0]:
-                return bytes(row[0]), row[1], row[2]
-            return None
+    """
+    Récupère tous les morceaux de la BDD, les assemble et retourne le modèle.
+    """
+    conn = get_connection()
+    
+    cur = conn.execute("""
+        SELECT chunk_data, precision, nb_matchs 
+        FROM model_cache_chunks 
+        ORDER BY chunk_index
+    """)
+    rows = cur.fetchall()
+    conn.close()
+    
+    if not rows:
+        return None
+    
+    # On assemble les morceaux
+    modele_compresse = b"".join([bytes(r[0]) for r in rows])
+    precision = rows[0][1]
+    nb_matchs = rows[0][2]
+    
+    log_info(f"Modèle assemblé depuis {len(rows)} morceaux.", "CACHE")
+    return modele_compresse, precision, nb_matchs
 
 
 def vider_modele_cache():
-    with get_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM model_cache WHERE id = 1")
-        conn.commit()
-        
+    """Vide la table du cache modèle."""
+    conn = get_connection()
+    conn.execute("DELETE FROM model_cache_chunks")
+    conn.commit()
+    conn.close()
     log_info("Cache modèle vidé.", "CACHE")
     return True
