@@ -1,13 +1,16 @@
 import traceback
 from core.utils.error_handler import envoyer_erreur_admin
 
+
 def log_info(message, module="BOT"):
     """Log une information normale."""
     print(f"[{module}] ℹ️ {message}")
 
+
 def log_warning(message, module="BOT"):
     """Log un avertissement."""
     print(f"[{module}] ⚠️ {message}")
+
 
 def log_error(message, module="BOT", exception=None):
     """
@@ -18,7 +21,6 @@ def log_error(message, module="BOT", exception=None):
     
     trace = ""
     if exception:
-        # On récupère la trace complète de l'exception
         trace = traceback.format_exc()
         print(f"[{module}] 🔥 TRACEBACK:\n{trace}")
         
@@ -27,6 +29,7 @@ def log_error(message, module="BOT", exception=None):
     
     # On envoie l'alerte via le gestionnaire d'erreurs global
     envoyer_erreur_admin(texte_alerte, context=module)
+
 
 def log_canal_action(action, succes, details=""):
     """Log spécifique pour les actions sur le canal."""
