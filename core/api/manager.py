@@ -37,7 +37,7 @@ def get_matchs_du_jour():
     except Exception as e:
         log_error(f"Erreur Football-Data.org dans le manager : {e}", "MANAGER")
 
-    # 3. OpenLigaDB (backup ultime : Bundesliga uniquement)
+    # 3. O. penLigaDB (backup ultime : Bundesliga uniquement)
     try:
         if openligadb.tester_api():
             matchs = openligadb.get_matchs_du_jour()
