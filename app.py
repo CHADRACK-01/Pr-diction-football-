@@ -43,9 +43,7 @@ def _envoyer_message_securise(chat_id, texte, parse_mode=None):
 
 
 def charger_modele_universel():
-    """
-    Charge les modèles depuis Turso (table models_cache).
-    """
+    """Charge les modèles depuis Turso (table models_cache)."""
     from core.ml_model import global_model_data, charger_et_entrainer
     
     if global_model_data.get('modeles_par_competition') is not None:
@@ -150,7 +148,7 @@ def _envoyer_coupons_premium():
 
 
 def _scheduler_notifications():
-    """Tâche de fond qui gère les envois automatiques (notifications, canal, nettoyage)."""
+    """Tâche de fond qui gère les envois automatiques."""
     print("Scheduler démarré...")
     derniere_date_envoi = None
     derniere_date_coupons_semaine = None
@@ -167,7 +165,12 @@ def _scheduler_notifications():
             est_weekend = jour_semaine >= 5
             date_du_jour = now.strftime("%Y-%m-%d")
 
-            heure_notif_val = get_parametre("notif_heure", "8")
+            # ⚠️ Gestion d'erreur pour la lecture de parametres
+            try:
+                heure_notif_val = get_parametre("notif_heure", "8")
+            except Exception:
+                heure_notif_val = "8"
+
             if isinstance(heure_notif_val, str) and heure_notif_val.isdigit():
                 heure_notif = int(heure_notif_val)
             elif isinstance(heure_notif_val, int):
@@ -179,54 +182,75 @@ def _scheduler_notifications():
             if now.hour == 7 and now.minute < 5:
                 if derniere_verif_resultats != date_du_jour:
                     print(f"Vérification des résultats du {date_du_jour}...")
-                    from core.results_checker import verifier_resultats_veille
-                    from core.canal_manager import publier_bilan_veille
-                    bilan = verifier_resultats_veille()
-                    if bilan.get('total', 0) > 0:
-                        publier_bilan_veille(bot, bilan['texte'])
+                    try:
+                        from core.results_checker import verifier_resultats_veille
+                        from core.canal_manager import publier_bilan_veille
+                        bilan = verifier_resultats_veille()
+                        if bilan.get('total', 0) > 0:
+                            publier_bilan_veille(bot, bilan['texte'])
+                    except Exception as e:
+                        print(f"Erreur vérif résultats : {e}")
                     derniere_verif_resultats = date_du_jour
 
             # 2. Notifications et Canal (à 8h)
             if now.hour == heure_notif and now.minute < 5:
                 if derniere_date_envoi != date_du_jour:
                     print(f"Envoi des notifications du {date_du_jour}...")
-                    _envoyer_notifications()
+                    try:
+                        _envoyer_notifications()
+                    except Exception as e:
+                        print(f"Erreur notifs : {e}")
                     derniere_date_envoi = date_du_jour
                     
                     if est_weekend:
                         print("Weekend : envoi des coupons...")
-                        _envoyer_coupons_premium()
+                        try:
+                            _envoyer_coupons_premium()
+                        except Exception as e:
+                            print(f"Erreur coupons : {e}")
                         derniere_date_coupons_weekend = date_du_jour
                         
                     if derniere_date_canal != date_du_jour:
-                        from core.canal_manager import publier_matchs_sur_canal
-                        publier_matchs_sur_canal(bot)
+                        try:
+                            from core.canal_manager import publier_matchs_sur_canal
+                            publier_matchs_sur_canal(bot)
+                        except Exception as e:
+                            print(f"Erreur canal : {e}")
                         derniere_date_canal = date_du_jour
 
             # 3. Coupons Semaine (à 10h)
             if not est_weekend and now.hour == 10 and now.minute < 5:
                 if derniere_date_coupons_semaine != date_du_jour:
                     print(f"Envoi des coupons du {date_du_jour}...")
-                    _envoyer_coupons_premium()
-                    from core.canal_manager import publier_coupons_sur_canal
-                    publier_coupons_sur_canal(bot)
+                    try:
+                        _envoyer_coupons_premium()
+                        from core.canal_manager import publier_coupons_sur_canal
+                        publier_coupons_sur_canal(bot)
+                    except Exception as e:
+                        print(f"Erreur coupons : {e}")
                     derniere_date_coupons_semaine = date_du_jour
 
             # 4. Teasing Canal (à 17h)
             if now.hour == 17 and now.minute < 5:
                 if derniere_date_teasing != date_du_jour:
                     print(f"Publication du teasing sur le canal...")
-                    from core.canal_manager import publier_teasing
-                    publier_teasing(bot)
+                    try:
+                        from core.canal_manager import publier_teasing
+                        publier_teasing(bot)
+                    except Exception as e:
+                        print(f"Erreur teasing : {e}")
                     derniere_date_teasing = date_du_jour
 
             # 5. Nettoyage automatique (à 3h)
             if now.hour == 3 and now.minute < 5:
                 if dernier_nettoyage != date_du_jour:
                     print(f"Nettoyage auto du {date_du_jour}...")
-                    from users import nettoyer_logs_anciens, nettoyer_paiements_anciens
-                    nettoyer_logs_anciens(jours=30)
-                    nettoyer_paiements_anciens(jours=90)
+                    try:
+                        from users import nettoyer_logs_anciens, nettoyer_paiements_anciens
+                        nettoyer_logs_anciens(jours=30)
+                        nettoyer_paiements_anciens(jours=90)
+                    except Exception as e:
+                        print(f"Erreur nettoyage : {e}")
                     dernier_nettoyage = date_du_jour
 
             time.sleep(60)
@@ -237,7 +261,7 @@ def _scheduler_notifications():
 
 def _lancer_scheduler_apres_delai():
     """Lance le scheduler après un délai pour laisser la BDD s'initialiser."""
-    time.sleep(30)  # On attend 30 secondes que la BDD soit prête
+    time.sleep(60)  # On attend 60 secondes
     _scheduler_notifications()
 
 
@@ -250,11 +274,23 @@ def webhook():
     if update.message:
         user_id = update.message.from_user.id
         
-        if est_banni(user_id) and not est_administrateur(user_id):
+        # ⚠️ Sécurité : on utilise une vérification robuste
+        try:
+            is_banned = est_banni(user_id)
+            is_admin = est_administrateur(user_id)
+        except Exception:
+            is_banned = False
+            is_admin = False
+        
+        if is_banned and not is_admin:
             return "OK", 200
             
-        mode_maintenance = get_parametre("mode_maintenance", "off")
-        if mode_maintenance == "on" and not est_administrateur(user_id):
+        try:
+            mode_maintenance = get_parametre("mode_maintenance", "off")
+        except Exception:
+            mode_maintenance = "off"
+            
+        if mode_maintenance == "on" and not is_admin:
             bot.send_message(user_id, "🛠️ Le bot est actuellement en maintenance. Veuillez réessayer plus tard.")
             return "OK", 200
 
@@ -275,10 +311,10 @@ print("🔄 Initialisation de la base de données...")
 initialiser_tables()
 print("✅ Tables prêtes.")
 
-# ⚠️ Le scheduler démarre APRÈS un délai de 30s (via le thread)
+# ⚠️ Le scheduler démarre APRÈS un délai de 60s (via le thread)
 if not MODE_VITRINE:
     threading.Thread(target=_lancer_scheduler_apres_delai, daemon=True).start()
-    print("✅ Scheduler programmé (démarrage dans 30s).")
+    print("✅ Scheduler programmé (démarrage dans 60s).")
 else:
     print("⚠️ Mode vitrine : scheduler désactivé.")
 
