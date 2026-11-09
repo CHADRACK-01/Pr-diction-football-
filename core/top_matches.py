@@ -2,7 +2,6 @@ from datetime import datetime, timezone, timedelta
 from core.paris_builder import get_tous_pronostics_disponibles, _meilleure_reco
 from core.utils.logs import log_info, log_warning
 
-
 TZ_KINSHASA = timezone(timedelta(hours=1))
 
 SEUIL_CONFIANCE_MIN = 0.75
@@ -21,14 +20,14 @@ def get_top_affiches(limite=10):
         log_warning("Aucun match disponible pour les top affiches.", "TOP")
         return []
 
-    # Filtre 1 : Confiance >= 75%
+    # Filtre 1 : Confiance >= 75% (sur la Double Chance)
     top = [m for m in matchs if m['reco_pct'] >= SEUIL_CONFIANCE_MIN]
 
     if not top:
         log_warning(f"Aucun match avec confiance >= {SEUIL_CONFIANCE_MIN*100}%.", "TOP")
         return []
 
-    # Filtre 2 : Cote >= 1.30 (déjà fait dans get_tous_pronostics_disponibles, mais sécurité)
+    # Filtre 2 : Cote >= 1.30
     top = [m for m in top if round(1/m['reco_pct'], 2) >= 1.30]
 
     if not top:
@@ -43,30 +42,38 @@ def get_top_affiches(limite=10):
 
 
 def formater_top_affiches(affiches, langue="fr", montrer_details=True):
-    """Formate la liste des top affiches pour Telegram."""
+    """Formate la liste des top affiches pour Telegram avec les 5 marchés."""
     date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
 
     if not affiches:
         return "Aucune affiche à fort potentiel aujourd'hui."
 
-    texte = f"🎯 TOP AFFICHES - {date_str}\n"
+    texte = f"🎯 **TOP AFFICHES - {date_str}**\n"
     texte += f"Seuil : {int(SEUIL_CONFIANCE_MIN*100)}%+ | Cote : ≥ 1.30\n\n"
 
     for i, m in enumerate(affiches, 1):
-        texte += f"{i}. {m['home']} vs {m['away']}\n"
-        texte += f"   🏆 {m['competition'].replace('_', ' ').title()}\n"
+        nom_comp = m.get('nom_competition', m['competition'])
+        texte += f"{i}. **{m['home']} vs {m['away']}**\n"
+        texte += f"   🏆 {nom_comp}\n"
 
         if montrer_details:
-            texte += f"   🎯 Reco : {m['reco_label']}\n"
-            texte += f"   📊 Confiance : {round(m['reco_pct']*100, 1)}%\n"
+            texte += f"   🛡️ DC : {m['reco_label']} ({round(m['reco_pct']*100, 1)}%)\n"
+            texte += f"   🎯 BTTS : {round(m['btts']*100, 1)}% | 🥅 Over 2.5 : {round(m['over_25']*100, 1)}%\n"
+            
             cote = round(1/m['reco_pct'], 2) if m['reco_pct'] > 0 else 0
-            texte += f"   💰 Cote : {cote}\n"
+            texte += f"   💰 Cote estimée : {cote}\n"
+            
+            analyse = m.get('analyse_pari')
+            if analyse and analyse.get('cote_book'):
+                texte += f"   🏢 Cote Book : {analyse['cote_book']}\n"
+                if analyse.get('is_value'):
+                    texte += f"   🔥 VALUE BET !\n"
         else:
             texte += f"   🎯 Reco : {m['reco_label']}\n"
 
         texte += "\n"
 
     if not montrer_details:
-        texte += "_Passe Premium pour les détails complets_\n"
+        texte += "_Passe Premium pour les détails complets (BTTS, Over, Mi-temps, Value Bets)_\n"
 
     return texte
