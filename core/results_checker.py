@@ -1,3 +1,4 @@
+import os
 import requests
 from datetime import datetime, timedelta, timezone
 from users.db import get_connection
@@ -9,6 +10,8 @@ TZ_KINSHASA = timezone(timedelta(hours=1))
 
 def _normaliser_nom(nom):
     """Petite fonction pour matcher les noms de l'API avec ceux de la BDD."""
+    if not nom:
+        return ""
     return nom.lower().replace("fc", "").replace("afc", "").replace("cf", "").replace(" ", "").strip()
 
 
@@ -33,16 +36,20 @@ def verifier_resultats_veille():
 
     # 2. On récupère les résultats réels via l'API
     url = f"https://api.football-data.org/v4/matches?dateFrom={hier}&dateTo={hier}"
-    res = requests.get(url, headers=headers, timeout=15)
     
-    if res.status_code != 200:
+    try:
+        res = requests.get(url, headers=headers, timeout=15)
+        if res.status_code != 200:
+            conn.close()
+            log_error(f"Erreur API résultats ({res.status_code})", "RESULTS")
+            return {"total": 0, "gagnes": 0, "texte": "Erreur API lors de la vérification."}
+        matchs_api = res.json().get("matches", [])
+    except Exception as e:
         conn.close()
-        log_error(f"Erreur API résultats ({res.status_code})", "RESULTS")
-        return {"total": 0, "gagnes": 0, "texte": "Erreur API lors de la vérification."}
+        log_error(f"Erreur requête API résultats : {e}", "RESULTS")
+        return {"total": 0, "gagnes": 0, "texte": "Erreur réseau lors de la vérification."}
 
-    matchs_api = res.json().get("matches", [])
     resultats_api = {}
-    
     for m in matchs_api:
         if m.get("status") == "FINISHED":
             home = _normaliser_nom(m["homeTeam"]["name"])
