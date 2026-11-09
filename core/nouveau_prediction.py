@@ -109,7 +109,6 @@ def _get_elo(competition, team):
 def predire_match_v2(home_team, away_team, competition, cotes_book=None):
     """
     Fait une prédiction en utilisant nos 5 modèles LightGBM.
-    Retourne un dictionnaire compatible avec l'ancien format de ton bot.
     """
     modeles = _charger_modeles()
     if not modeles:
@@ -126,7 +125,6 @@ def predire_match_v2(home_team, away_team, competition, cotes_book=None):
     h_elo = _get_elo(competition, home_team)
     a_elo = _get_elo(competition, away_team)
     
-    # Normalisation des cotes bookmaker
     p_h, p_d, p_a = 1/3, 1/3, 1/3
     if cotes_book and all(cotes_book.get(k) for k in ['h','d','a']):
         try:
@@ -135,7 +133,6 @@ def predire_match_v2(home_team, away_team, competition, cotes_book=None):
         except ZeroDivisionError:
             pass
     
-    # Préparation des features pour le ML
     ft_f = np.array([[
         h_elo, a_elo, h_elo - a_elo,
         h_feat['ft_glob_sc'], h_feat['ft_glob_co'], a_feat['ft_glob_sc'], a_feat['ft_glob_co'],
@@ -151,11 +148,9 @@ def predire_match_v2(home_team, away_team, competition, cotes_book=None):
         p_h, p_d, p_a
     ]])
     
-    # Prédictions des 5 marchés
     preds = {}
     for nom, info in modeles[competition].items():
         try:
-            # Détection automatique : features FT ou HT ?
             is_ft = any('ft' in str(f) for f in info['features'])
             X = ft_f if is_ft else ht_f
             X_scaled = info['scaler'].transform(X)
@@ -165,29 +160,22 @@ def predire_match_v2(home_team, away_team, competition, cotes_book=None):
             log_error(f"Erreur prédiction {nom} : {e}", "PREDICTION")
             preds[nom] = None
     
-    # Construction du résultat (compatible avec l'ancien format de ton bot)
     res = {
         "home_team": home_team, 
         "away_team": away_team,
-        # 1N2 (approximé depuis DC_1X)
         "p_h": float(preds['DC_1X'][1] * 0.6) if preds.get('DC_1X') is not None else 0.33,
         "p_d": 0.33, 
         "p_a": 0.33,
-        # Double chance
         "dc_1x": float(preds['DC_1X'][1]) if preds.get('DC_1X') is not None else 0.5,
         "dc_x2": 1.0 - float(preds['DC_1X'][1]) if preds.get('DC_1X') is not None else 0.5,
         "dc_12": 0.5,
-        # Buts
         "over_25": float(preds['Over25'][1]) if preds.get('Over25') is not None else 0.5,
         "under_25": 1.0 - float(preds['Over25'][1]) if preds.get('Over25') is not None else 0.5,
         "btts_yes": float(preds['BTTS'][1]) if preds.get('BTTS') is not None else 0.5,
         "btts_no": 1.0 - float(preds['BTTS'][1]) if preds.get('BTTS') is not None else 0.5,
-        # Scores (fictifs pour l'instant)
         "best_score": (1, 1), 
         "top_scores": [(1,1,0.1), (2,1,0.08), (1,2,0.07)],
-        # Fiabilité
         "fiabilite": "⚖️ CONFIANCE MODÉRÉE",
-        # Mi-temps
         "ht_prolific": {
             "1ere_mt": float(preds['HT_Prolific'][1]) if preds.get('HT_Prolific') is not None else 0.33,
             "2eme_mt": float(preds['HT_Prolific'][2]) if preds.get('HT_Prolific') is not None else 0.33,
@@ -198,11 +186,9 @@ def predire_match_v2(home_team, away_team, competition, cotes_book=None):
             "N": float(preds['HTR'][1]) if preds.get('HTR') is not None else 0.33,
             "2": float(preds['HTR'][2]) if preds.get('HTR') is not None else 0.33,
         },
-        # Value bet (calculée plus tard)
         "analyse_pari": None,
     }
     
-    # Calcul de la Value Bet (uniquement sur la Double Chance)
     if preds.get('DC_1X') is not None:
         meilleure_dc = max([("1X", res['dc_1x']), ("X2", res['dc_x2']), ("12", res['dc_12'])], key=lambda x: x[1])
         cote_bot = round(1/meilleure_dc[1], 2) if meilleure_dc[1] > 0 else 999
@@ -213,7 +199,6 @@ def predire_match_v2(home_team, away_team, competition, cotes_book=None):
             elif meilleure_dc[0] == "12": cote_book = cotes_book.get('a')
             elif meilleure_dc[0] == "X2": cote_book = cotes_book.get('d')
         
-        # Value si la cote bookmaker est plus élevée que la cote "bot"
         is_value = False
         if cote_book and cote_book > cote_bot:
             is_value = True
