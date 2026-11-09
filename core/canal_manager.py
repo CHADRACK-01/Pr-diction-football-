@@ -15,22 +15,29 @@ def _envoyer_au_canal_securise(bot, texte, dry_run=False, chat_debug=None):
             bot.send_message(chat_debug, f"🧪 MODE TEST (Dry Run)\n\n{texte}")
         return True
 
-    bot.send_message(CANAL_ID, texte)
-    log_info("Message publié sur le canal.", "CANAL")
-    return True
+    try:
+        bot.send_message(CANAL_ID, texte)
+        log_info("Message publié sur le canal.", "CANAL")
+        return True
+    except Exception as e:
+        log_error(f"Erreur envoi canal : {e}", "CANAL")
+        return False
 
 
 def publier_matchs_sur_canal(bot, dry_run=False, chat_debug=None):
+    """Publie les matchs du jour sur le canal."""
     matchs = get_matchs_du_jour()
     if not matchs:
         if chat_debug and dry_run:
             bot.send_message(chat_debug, "❌ Aucun match trouvé.")
         return False
 
-    matchs_filtres = [m for m in matchs if m.get('analyse_pari') and m['analyse_pari']['cote_bot'] >= 1.30]
+    # On filtre sur la confiance de la Double Chance
+    matchs_filtres = [m for m in matchs if m.get('dc_pct', 0) >= 0.60]
+    
     if not matchs_filtres:
         if chat_debug and dry_run:
-            bot.send_message(chat_debug, "⏸️ Aucun match avec cote ≥ 1.30.")
+            bot.send_message(chat_debug, "⏸️ Aucun match avec confiance ≥ 60%.")
         return False
 
     texte = "🔥 LES MATCHS DU JOUR 🔥\n\n"
@@ -41,6 +48,7 @@ def publier_matchs_sur_canal(bot, dry_run=False, chat_debug=None):
 
 
 def publier_coupons_sur_canal(bot, dry_run=False, chat_debug=None):
+    """Publie un coupon gratuit sur le canal."""
     data = generer_coupons_du_jour()
     coupons = data['coupons']
     if not coupons:
@@ -48,6 +56,7 @@ def publier_coupons_sur_canal(bot, dry_run=False, chat_debug=None):
             bot.send_message(chat_debug, "❌ Aucun coupon généré.")
         return False
 
+    # On prend le coupon modéré en priorité (ou le premier disponible)
     coupon_a_publier = next((c for c in coupons if c['niveau'] == 'modere'), coupons[0])
     texte = "🎟️ COUPON DU JOUR (Gratuit) 🎟️\n\n"
     texte += formater_coupon(coupon_a_publier, langue="fr", montrer_details=False)
@@ -57,10 +66,12 @@ def publier_coupons_sur_canal(bot, dry_run=False, chat_debug=None):
 
 
 def publier_bilan_veille(bot, texte, dry_run=False, chat_debug=None):
+    """Publie le bilan de la veille sur le canal."""
     return _envoyer_au_canal_securise(bot, texte, dry_run, chat_debug)
 
 
 def publier_teasing(bot):
+    """Publie un teasing en soirée pour rappeler les pronostics."""
     texte = (
         "👀 Les matchs de ce soir approchent !\n\n"
         "Nos experts ont analysé les rencontres du jour. "
@@ -78,6 +89,10 @@ def publier_message_custom(bot, texte):
     if len(texte) > 4000:
         texte = texte[:3990] + "\n\n[...Message tronqué...]"
     
-    bot.send_message(CANAL_ID, texte)
-    log_info("Message personnalisé publié sur le canal.", "CANAL")
-    return True
+    try:
+        bot.send_message(CANAL_ID, texte)
+        log_info("Message personnalisé publié sur le canal.", "CANAL")
+        return True
+    except Exception as e:
+        log_error(f"Erreur envoi message custom : {e}", "CANAL")
+        return False
