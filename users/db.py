@@ -1,8 +1,7 @@
-import turso_serverless
+import libsql
 import os
 
 from core.utils.logs import log_info
-
 
 # ⚠️ Utilise des variables d'environnement pour la sécurité
 TURSO_URL = os.environ.get("TURSO_URL", "")
@@ -10,11 +9,8 @@ TURSO_TOKEN = os.environ.get("TURSO_TOKEN", "")
 
 
 def get_connection():
-    """Retourne une connexion à la base de données Turso."""
-    return turso_serverless.connect(
-        url=TURSO_URL,
-        auth_token=TURSO_TOKEN
-    )
+    """Retourne une connexion à la base de données Turso via libsql."""
+    return libsql.connect(database=TURSO_URL, auth_token=TURSO_TOKEN)
 
 
 def initialiser_tables():
@@ -47,7 +43,7 @@ def initialiser_tables():
         )
     """)
     
-    # 3. Matchs
+    # 3. Matchs (gardée pour compatibilité avec ton ancien code)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS matchs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -65,15 +61,11 @@ def initialiser_tables():
         )
     """)
     
-    # 4. Cache modèle
+    # 4. NOUVELLE TABLE : Cache des modèles (format simplifié)
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS model_cache_chunks (
+        CREATE TABLE IF NOT EXISTS models_cache (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            chunk_index INTEGER,
-            total_chunks INTEGER,
-            chunk_data BLOB,
-            precision REAL,
-            nb_matchs INTEGER,
+            data BLOB,
             date_creation TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -168,7 +160,7 @@ def initialiser_tables():
     
     conn.commit()
     conn.close()
-    log_info("Tables Turso prêtes (12 tables).", "DATABASE")
+    log_info("Tables Turso prêtes (12 tables + models_cache).", "DATABASE")
 
 
 def get_taille_base():
@@ -187,7 +179,7 @@ def get_taille_base():
 def get_detail_tables():
     """Retourne la taille de chaque table."""
     conn = get_connection()
-    tables = ["utilisateurs", "matchs", "model_cache_chunks", "paiements_attente", "codes_premium", "logs_admin"]
+    tables = ["utilisateurs", "matchs", "models_cache", "paiements_attente", "codes_premium", "logs_admin"]
     resultats = []
     for table in tables:
         res = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
