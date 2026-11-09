@@ -27,25 +27,46 @@ os.makedirs(DOSSIER_PASSE, exist_ok=True)
 os.makedirs(DOSSIER_ACTUEL, exist_ok=True)
 
 # =========================================================
-# CHAMPIONNATS & COMPÉTITIONS
+# CHAMPIONNATS (Anciens codes -> Noms propres de nos modèles)
 # =========================================================
-CHAMPIONNATS = {
-    "premier_league": "Premier League", "laliga": "La Liga", "ligue_1": "Ligue 1",
-    "bundesliga_1": "Bundesliga", "serie_a": "Serie A",
-    "champions_league": "Champions League", "europa_league": "Europa League",
+# C'est ce mapping qui permet au bot de faire le lien
+# entre les boutons (#PRONO_LIGUE_1) et nos modèles ("Ligue 1")
+MAPPING_COMPETITIONS = {
+    "premier_league": "Premier League",
+    "championship": "Championship",
+    "laliga": "La Liga",
+    "segunda_division": "La Liga 2",
+    "ligue_1": "Ligue 1",
+    "ligue_2": "Ligue 2",
+    "bundesliga_1": "Bundesliga",
+    "bundesliga_2": "2. Bundesliga",
+    "serie_a": "Serie A",
+    "serie_b": "Serie B",
+    "champions_league": "Ligue des Champions",
+    "europa_league": "Europa League",
     "conference_league": "Conference League",
-    "championship": "Championship", "league_one": "League One", "league_two": "League Two",
-    "segunda_division": "Segunda Division", "serie_b": "Serie B", "ligue_2": "Ligue 2",
-    "bundesliga_2": "2. Bundesliga", "super_lig": "Super Lig", "primeira_liga": "Primeira Liga",
-    "eredivisie": "Eredivisie", "first_division_a": "First Division A",
-    "super_league": "Super League", "premiership": "Premiership"
+}
+
+# On garde aussi CHAMPIONNATS pour l'affichage dans les menus
+CHAMPIONNATS = {
+    "premier_league": "Premier League", 
+    "laliga": "La Liga", 
+    "ligue_1": "Ligue 1",
+    "bundesliga_1": "Bundesliga", 
+    "serie_a": "Serie A",
+    "champions_league": "Champions League", 
+    "europa_league": "Europa League",
+    "conference_league": "Conference League",
+    "championship": "Championship", 
+    "ligue_2": "Ligue 2",
+    "segunda_division": "Segunda Division", 
+    "serie_b": "Serie B", 
+    "bundesliga_2": "2. Bundesliga"
 }
 
 INFOS_COMPETITIONS = {
     "Premier League": {"pays": "Angleterre", "emoji": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"},
     "Championship": {"pays": "Angleterre", "emoji": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"},
-    "League One": {"pays": "Angleterre", "emoji": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"},
-    "League Two": {"pays": "Angleterre", "emoji": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"},
     "La Liga": {"pays": "Espagne", "emoji": "🇪🇸"},
     "Segunda Division": {"pays": "Espagne", "emoji": "🇪🇸"},
     "Ligue 1": {"pays": "France", "emoji": "🇫🇷"},
@@ -57,12 +78,6 @@ INFOS_COMPETITIONS = {
     "Champions League": {"pays": "Europe", "emoji": "🇪🇺"},
     "Europa League": {"pays": "Europe", "emoji": "🇪🇺"},
     "Conference League": {"pays": "Europe", "emoji": "🇪🇺"},
-    "Super Lig": {"pays": "Turquie", "emoji": "🇹🇷"},
-    "Primeira Liga": {"pays": "Portugal", "emoji": "🇵🇹"},
-    "Eredivisie": {"pays": "Pays-Bas", "emoji": "🇳🇱"},
-    "First Division A": {"pays": "Belgique", "emoji": "🇧🇪"},
-    "Super League": {"pays": "Grèce", "emoji": "🇬🇷"},
-    "Premiership": {"pays": "Écosse", "emoji": "🏴󠁧󠁢󠁳󠁣󠁴󠁿"},
 }
 
 # =========================================================
@@ -86,4 +101,4 @@ LIMITE_PREMIUM_JOUR = 100
 # =========================================================
 # MODE VITRINE (True = Bot bloqué sauf inscription, False = Bot complet)
 # =========================================================
-MODE_VITRINE = True
+MODE_VITRINE = False
