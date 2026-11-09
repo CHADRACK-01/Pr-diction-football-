@@ -68,7 +68,6 @@ def _envoyer_notifications():
         return
 
     from core.daily_matches import get_matchs_du_jour
-    from core.utils.logs import log_info
     
     matchs = get_matchs_du_jour()
     if not matchs:
@@ -236,6 +235,12 @@ def _scheduler_notifications():
             time.sleep(60)
 
 
+def _lancer_scheduler_apres_delai():
+    """Lance le scheduler après un délai pour laisser la BDD s'initialiser."""
+    time.sleep(30)  # On attend 30 secondes que la BDD soit prête
+    _scheduler_notifications()
+
+
 @app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
     """Point d'entrée pour les mises à jour Telegram."""
@@ -270,10 +275,10 @@ print("🔄 Initialisation de la base de données...")
 initialiser_tables()
 print("✅ Tables prêtes.")
 
-# ⚠️ Le scheduler est DÉSACTIVÉ en mode vitrine pour éviter les erreurs de tables
+# ⚠️ Le scheduler démarre APRÈS un délai de 30s (via le thread)
 if not MODE_VITRINE:
-    threading.Thread(target=_scheduler_notifications, daemon=True).start()
-    print("✅ Scheduler démarré (mode normal).")
+    threading.Thread(target=_lancer_scheduler_apres_delai, daemon=True).start()
+    print("✅ Scheduler programmé (démarrage dans 30s).")
 else:
     print("⚠️ Mode vitrine : scheduler désactivé.")
 
