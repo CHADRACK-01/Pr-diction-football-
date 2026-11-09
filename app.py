@@ -44,8 +44,7 @@ def _envoyer_message_securise(chat_id, texte, parse_mode=None):
 
 def charger_modele_universel():
     """
-    Charge UNIQUEMENT les données de base (df, teams, etc.) depuis la BDD.
-    ⚠️ Les modèles lourds sont chargés à la demande dans prediction.py
+    Charge les modèles depuis Turso (table models_cache).
     """
     from core.ml_model import global_model_data, charger_et_entrainer
     
@@ -55,61 +54,49 @@ def charger_modele_universel():
     charger_et_entrainer()
     
     if global_model_data.get('modeles_par_competition') is not None:
-        print("✅ Données de base chargées avec succès ! (Les modèles seront chargés à la demande)")
+        print(f"✅ Modèles chargés : {len(global_model_data['modeles_par_competition'])} compétitions")
         return True
     else:
-        print("⚠️ Impossible de charger les données de base.")
+        print("⚠️ Impossible de charger les modèles.")
         return False
 
 
 def _envoyer_notifications():
     """Envoie les meilleurs pronostics du jour aux utilisateurs abonnés."""
-    from core.ml_model import get_top_pronostics_du_jour
-    
     if not charger_modele_universel():
         print("Notifications : impossible de charger le modèle.")
         return
 
-    top = get_top_pronostics_du_jour(nb=15)
-    if not top:
-        print("Notifications : aucun pronostic disponible.")
-        return
-
-    date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
-    texte = f"🔥 PRONOSTICS VALUE BET DU JOUR 🔥\nDate : {date_str}\n\n"
+    from core.daily_matches import get_matchs_du_jour
+    from core.utils.logs import log_info
     
-    compte = 0
-    for item in top:
-        prono = item['prono']
-        analyse = prono.get('analyse_pari')
-        if not analyse: 
-            continue
-            
-        if analyse['cote_bot'] >= 1.25 and analyse['proba'] >= 0.65:
-            compte += 1
-            texte += (
-                f"------------------------\n"
-                f"{compte}. {item['home']} vs {item['away']}\n"
-                f"✅ Reco : {analyse['label']} ({round(analyse['proba']*100, 1)}%)\n"
-                f"💰 Cote Bot : {analyse['cote_bot']}\n"
-            )
-            if analyse['cote_book']:
-                texte += f"🏢 Cote Book : {analyse['cote_book']}\n"
-                if analyse['is_value']:
-                    texte += f"🔥 VALUE BET !\n"
-            texte += f"⚽ Score probable : {prono['best_score'][0]} - {prono['best_score'][1]}\n\n"
-        
-        if compte >= 3: 
-            break
-
-    if compte == 0:
-        print("Notifications : Aucun Value Bet trouvé aujourd'hui.")
+    matchs = get_matchs_du_jour()
+    if not matchs:
+        print("Notifications : aucun match disponible.")
         return
+
+    # On prend les 3 meilleurs matchs par confiance DC
+    top_3 = sorted(matchs, key=lambda x: x['dc_pct'], reverse=True)[:3]
+    
+    date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
+    texte = f"🔥 **TOP 3 PRONOSTICS DU JOUR** 🔥\nDate : {date_str}\n\n"
+    
+    for i, m in enumerate(top_3, 1):
+        texte += (
+            f"{i}. **{m['home']} vs {m['away']}**\n"
+            f"   🛡️ DC : {m['dc_label']} ({round(m['dc_pct']*100, 1)}%)\n"
+            f"   🎯 BTTS : {round(m['btts']*100, 1)}% | 🥅 Over 2.5 : {round(m['over_25']*100, 1)}%\n"
+        )
+        analyse = m.get('analyse_pari')
+        if analyse and analyse.get('cote_book'):
+            texte += f"   🏢 Cote Book : {analyse['cote_book']}\n"
+            if analyse.get('is_value'):
+                texte += f"   🔥 VALUE BET !\n"
+        texte += "\n"
         
     texte += (
-        f"------------------------\n"
-        f"Tape une affiche pour plus de details\n"
-        f"Pour desactiver : /notif_off"
+        "Tape une affiche pour plus de détails.\n"
+        "Pour désactiver : /notif_off"
     )
 
     users = get_utilisateurs_notifies()
@@ -117,24 +104,24 @@ def _envoyer_notifications():
     echecs = 0
     for uid in users:
         try:
-            bot.send_message(uid, texte)
+            _envoyer_message_securise(uid, texte, parse_mode='Markdown')
             succes += 1
             time.sleep(0.1)
         except Exception:
             echecs += 1
 
-    print(f"Notifications envoyees : {succes} succes, {echecs} echecs")
+    print(f"Notifications envoyées : {succes} succès, {echecs} échecs")
 
 
 def _envoyer_coupons_premium():
     """Génère et envoie les coupons du jour uniquement aux utilisateurs Premium."""
-    from core.paris_builder import generer_coupons_du_jour, formater_coupon
-    from users import get_langue
-    from users.db import get_connection
-
     if not charger_modele_universel():
         print("Coupons : impossible de charger le modèle.")
         return
+
+    from core.paris_builder import generer_coupons_du_jour, formater_coupon
+    from users import get_langue
+    from users.db import get_connection
 
     data = generer_coupons_du_jour()
     coupons = data['coupons']
@@ -165,7 +152,7 @@ def _envoyer_coupons_premium():
 
 def _scheduler_notifications():
     """Tâche de fond qui gère les envois automatiques (notifications, canal, nettoyage)."""
-    print("Scheduler demarre...")
+    print("Scheduler démarré...")
     derniere_date_envoi = None
     derniere_date_coupons_semaine = None
     derniere_date_coupons_weekend = None
@@ -284,7 +271,10 @@ initialiser_tables()
 print("✅ Tables prêtes.")
 
 # ⚠️ Le scheduler est DÉSACTIVÉ en mode vitrine pour éviter les erreurs de tables
-# On le réactivera quand tu passeras en mode réel avec plus de RAM.
-# threading.Thread(target=_scheduler_notifications, daemon=True).start()
+if not MODE_VITRINE:
+    threading.Thread(target=_scheduler_notifications, daemon=True).start()
+    print("✅ Scheduler démarré (mode normal).")
+else:
+    print("⚠️ Mode vitrine : scheduler désactivé.")
 
-print("✅ Bot prêt (mode vitrine, scheduler désactivé).")
+print("✅ Bot prêt.")
