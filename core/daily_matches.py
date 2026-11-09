@@ -7,7 +7,7 @@ from core.prediction import predire_match
 from core.api.manager import get_matchs_du_jour as manager_get_matchs_du_jour
 from core.utils.logs import log_info, log_warning, log_error
 from core.utils.markdown import formater_proprement
-from config import CHAMPIONNATS, INFOS_COMPETITIONS
+from config import CHAMPIONNATS, INFOS_COMPETITIONS, MAPPING_COMPETITIONS
 
 TZ_KINSHASA = timezone(timedelta(hours=1))
 
@@ -85,33 +85,13 @@ def _normaliser(nom):
 
 
 def _charger_modele_si_necessaire():
-    """Charge le modèle IA depuis Turso si la mémoire est vide."""
-    if global_model_data and global_model_data.get('modeles_par_competition') is not None:
+    """Charge les modèles depuis Turso si la mémoire est vide."""
+    if global_model_data.get('modeles_par_competition') is not None:
         return True
     
-    log_info("Modèle absent en mémoire. Tentative de chargement depuis Turso...", "MATCHS")
-    
-    from users import charger_modele_cache
-    cache = charger_modele_cache()
-    if not cache:
-        log_error("Cache vide. Impossible de charger le modèle.", "MATCHS")
-        return False
-        
-    modele_bytes, precision, nb_matchs = cache
-    
-    import zlib
-    modele_decompresse = zlib.decompress(modele_bytes)
-    
-    buffer = io.BytesIO(modele_decompresse)
-    donnees = joblib.load(buffer)
-    
-    global_model_data['modeles_par_competition'] = donnees.get('modeles_par_competition')
-    global_model_data['precision_moyenne'] = donnees.get('precision_moyenne', precision)
-    global_model_data['total_matchs'] = donnees.get('total_matchs', nb_matchs)
-    global_model_data['_tables_initialisees'] = True
-    
-    log_info(f"Modèle chargé avec succès ! (Précision : {round(precision*100, 2)}%)", "MATCHS")
-    return True
+    log_info("Modèles absents en mémoire. Chargement depuis Turso...", "MATCHS")
+    from core.ml_model import charger_et_entrainer
+    return charger_et_entrainer()
 
 
 def _nom_competition(code):
@@ -142,17 +122,21 @@ def get_matchs_du_jour():
     for m in matchs_bruts:
         home = _normaliser(m["home"])
         away = _normaliser(m["away"])
-        competition = m.get("competition", "default")
+        competition_code = m.get("competition", "default")
         
-        prono = predire_match(home, away, competition=competition, cotes_book=m.get("cotes_book"))
+        # ⚠️ CONVERSION : code API -> nom propre du modèle
+        competition_reelle = MAPPING_COMPETITIONS.get(competition_code, competition_code)
+        
+        prono = predire_match(home, away, competition=competition_reelle, cotes_book=m.get("cotes_book"))
         
         if not isinstance(prono, dict) or 'erreur' in prono:
-            log_warning(f"Skip {home} vs {away} : équipe inconnue du modèle.", "MATCHS")
+            log_warning(f"Skip {home} vs {away} : {prono.get('erreur', 'erreur inconnue')}", "MATCHS")
             continue
 
-        dc_1x = float(prono['dc_1x'])
-        dc_x2 = float(prono['dc_x2'])
-        dc_12 = float(prono['dc_12'])
+        # ⚠️ On filtre sur la Double Chance (notre marché le plus fiable)
+        dc_1x = float(prono.get('dc_1x', 0.5))
+        dc_x2 = float(prono.get('dc_x2', 0.5))
+        dc_12 = float(prono.get('dc_12', 0.5))
 
         options = [("1X", dc_1x), ("X2", dc_x2), ("12", dc_12)]
         meilleure = max(options, key=lambda x: x[1])
@@ -162,16 +146,20 @@ def get_matchs_du_jour():
             continue
 
         matchs_trouves.append({
-            "competition": competition,
+            "competition": competition_code,
+            "nom_competition": _nom_competition(competition_code),
             "heure": m.get("heure"),
             "home": home,
             "away": away,
-            "p_h": float(prono['p_h']),
-            "p_d": float(prono['p_d']),
-            "p_a": float(prono['p_a']),
-            "score": prono['best_score'],
+            # Marchés
             "dc_label": meilleure[0],
             "dc_pct": float(meilleure[1]),
+            "btts": float(prono.get('btts_yes', 0.5)),
+            "over_25": float(prono.get('over_25', 0.5)),
+            # Mi-temps (peut être None si le modèle n'a pas chargé)
+            "ht_prolific": prono.get('ht_prolific'),
+            "htr": prono.get('htr'),
+            # Confiance & analyse
             "confiance": float(meilleure[1]),
             "analyse_pari": prono.get('analyse_pari')
         })
@@ -181,7 +169,7 @@ def get_matchs_du_jour():
 
 
 def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None):
-    """Formate la liste des matchs pour Telegram avec le pays et l'emoji."""
+    """Formate la liste des matchs pour Telegram avec les nouveaux marchés."""
     date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
 
     if matchs is None or len(matchs) == 0:
@@ -228,7 +216,7 @@ def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None)
                 m['heure'].replace("Z", "+00:00")
             ).astimezone(TZ_KINSHASA).strftime("%H:%M")
 
-            nom_comp = _nom_competition(m['competition'])
+            nom_comp = m.get('nom_competition', m['competition'])
             info_pays = _get_info_competition(nom_comp)
 
             texte += formater_proprement(f"⚽ {m['home']} vs {m['away']}\n")
@@ -238,23 +226,30 @@ def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None)
                 texte += formater_proprement(f"   📍 {info_pays}\n")
 
             if est_premium:
+                texte += formater_proprement(f"   🛡️ DC : {m['dc_label']} ({round(m['dc_pct']*100, 1)}%)\n")
+                texte += formater_proprement(f"   🎯 BTTS : {round(m['btts']*100, 1)}%\n")
+                texte += formater_proprement(f"   🥅 Over 2.5 : {round(m['over_25']*100, 1)}%\n")
+                
+                # Mi-temps
+                if m.get('ht_prolific'):
+                    ht = m['ht_prolific']
+                    texte += formater_proprement(f"   ⏱️ MT : 1ère={round(ht.get('1ere_mt',0.33)*100,1)}% | 2ème={round(ht.get('2eme_mt',0.33)*100,1)}%\n")
+                
+                # Value bet
                 analyse = m.get('analyse_pari')
                 if analyse:
-                    texte += formater_proprement(f"   🎯 Reco : {analyse['label']} ({round(analyse['proba']*100, 1)}%)\n")
-                    texte += formater_proprement(f"   🤖 Cote Bot : {analyse['cote_bot']}\n")
-                    if analyse['cote_book']:
+                    texte += formater_proprement(f"   💰 Cote Bot : {analyse['cote_bot']}\n")
+                    if analyse.get('cote_book'):
                         texte += formater_proprement(f"   🏢 Cote Book : {analyse['cote_book']}\n")
-                        if analyse['is_value']:
+                        if analyse.get('is_value'):
                             texte += formater_proprement(f"   🔥 VALUE BET !\n")
-                    else:
-                        texte += "   🏢 Cote Book : N/A\n"
-                else:
-                    texte += formater_proprement(f"   💡 Reco : {m['dc_label']} à {round(m['dc_pct']*100, 1)}%\n")
+            else:
+                texte += formater_proprement(f"   🛡️ DC : {m['dc_label']} ({round(m['dc_pct']*100, 1)}%)\n")
 
             texte += "\n"
 
     if not est_premium:
         texte += "\n━━━━━━━━━━━━━━━━━━━━\n"
-        texte += "⭐ Passe Premium pour voir les recommandations et les cotes !\n"
+        texte += "⭐ Passe Premium pour voir les recommandations complètes (BTTS, Over, Mi-temps, Value Bets) !\n"
 
     return texte
