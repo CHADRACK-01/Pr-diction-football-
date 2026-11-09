@@ -1,7 +1,7 @@
 from datetime import datetime, timezone, timedelta
 from core.ml_model import global_model_data
 from core.prediction import predire_match
-
+from core.utils.logs import log_info
 
 TZ_KINSHASA = timezone(timedelta(hours=1))
 
@@ -14,9 +14,9 @@ NIVEAUX = {
 
 def _meilleure_reco(prono):
     """Renvoie la meilleure recommandation (1X, X2, ou 12) et sa probabilité."""
-    dc_1x = float(prono['dc_1x'])
-    dc_x2 = float(prono['dc_x2'])
-    dc_12 = float(prono['dc_12'])
+    dc_1x = float(prono.get('dc_1x', 0.5))
+    dc_x2 = float(prono.get('dc_x2', 0.5))
+    dc_12 = float(prono.get('dc_12', 0.5))
 
     options = [("1X", dc_1x), ("X2", dc_x2), ("12", dc_12)]
     meilleure = max(options, key=lambda x: x[1])
@@ -26,15 +26,19 @@ def _meilleure_reco(prono):
 def get_tous_pronostics_disponibles():
     """Récupère tous les pronostics disponibles pour les matchs du jour."""
     from core.daily_matches import get_matchs_du_jour
+    from config import MAPPING_COMPETITIONS
+    
     matchs = get_matchs_du_jour()
     resultats = []
 
     for m in matchs:
         home = m['home']
         away = m['away']
-        competition = m.get('competition', 'default')
         
-        prono = predire_match(home, away, competition=competition, cotes_book=m.get('cotes_book'))
+        # ⚠️ On récupère le nom propre de la compétition
+        competition_reelle = MAPPING_COMPETITIONS.get(m['competition'], m['competition'])
+        
+        prono = predire_match(home, away, competition=competition_reelle, cotes_book=m.get('cotes_book'))
         
         if not isinstance(prono, dict) or 'erreur' in prono:
             continue
@@ -47,12 +51,13 @@ def get_tous_pronostics_disponibles():
 
         resultats.append({
             'home': home, 'away': away, 'competition': m['competition'],
-            'heure': m['heure'], 'reco_label': reco_label,
+            'nom_competition': m.get('nom_competition', m['competition']),
+            'heure': m['heure'], 
+            'reco_label': reco_label,
             'reco_pct': float(reco_pct),
-            'score_exact': prono.get('best_score', (0, 0)),
-            'top_scores': prono.get('top_scores', []),
+            'btts': float(prono.get('btts_yes', 0.5)),
             'over_25': float(prono.get('over_25', 0.5)),
-            'btts_yes': float(prono.get('btts_yes', 0.5)),
+            'analyse_pari': prono.get('analyse_pari'),
         })
     return resultats
 
@@ -136,9 +141,12 @@ def generer_coupons_du_jour():
         for inter in intervalles:
             matchs_inter = []
             for m in matchs:
-                dt = datetime.fromisoformat(m['heure'].replace("Z", "+00:00")).astimezone(TZ_KINSHASA)
-                if inter['min_h'] <= dt.hour < inter['max_h']:
-                    matchs_inter.append(m)
+                try:
+                    dt = datetime.fromisoformat(m['heure'].replace("Z", "+00:00")).astimezone(TZ_KINSHASA)
+                    if inter['min_h'] <= dt.hour < inter['max_h']:
+                        matchs_inter.append(m)
+                except:
+                    continue
 
             if len(matchs_inter) < 3: 
                 continue
@@ -176,12 +184,14 @@ def formater_coupon(coupon, langue="fr", montrer_details=True):
     for i, m in enumerate(coupon['matchs'], 1):
         texte += f"{i}. {m['home']} vs {m['away']}\n"
         if montrer_details:
-            texte += f"   🎯 Reco : {m['reco_label']}\n"
-            texte += f"   📊 Confiance : {round(m['reco_pct']*100, 1)}%\n"
+            texte += f"   🎯 Reco : {m['reco_label']} ({round(m['reco_pct']*100, 1)}%)\n"
+            texte += f"   🎯 BTTS : {round(m['btts']*100, 1)}% | 🥅 Over 2.5 : {round(m['over_25']*100, 1)}%\n"
             
-            if m.get('score_exact'):
-                score_str = f"{m['score_exact'][0]}-{m['score_exact'][1]}"
-                texte += f"   ⚽ Score : {score_str}\n"
+            analyse = m.get('analyse_pari')
+            if analyse and analyse.get('cote_book'):
+                texte += f"   🏢 Cote Book : {analyse['cote_book']}\n"
+                if analyse.get('is_value'):
+                    texte += f"   🔥 VALUE BET !\n"
         else:
             texte += f"   🎯 Reco : {m['reco_label']}\n"
         texte += "\n"
