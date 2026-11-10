@@ -26,9 +26,9 @@ def lancer_broadcast_async(bot, users, texte, admins, canal=False):
                 time.sleep(0.05)  # Éviter de se faire rate-limit par Telegram
             except Exception as e:
                 echecs += 1
-                echecs_details.append(f"User {uid} : {e}")
-                # On ne logge pas chaque échec pour éviter de spammer l'admin
-                # Mais on garde la trace pour le récapitulatif
+                # On garde les 5 premiers échecs pour le récapitulatif
+                if len(echecs_details) < 5:
+                    echecs_details.append(f"User {uid} : {str(e)[:100]}")
 
         log_info(f"Broadcast utilisateurs terminé : {succes} succès, {echecs} échecs.", "BROADCAST")
 
@@ -44,7 +44,7 @@ def lancer_broadcast_async(bot, users, texte, admins, canal=False):
                     erreur_canal = "La fonction publier_message_custom a échoué (voir logs)."
                     log_error(erreur_canal, "BROADCAST")
             except Exception as e:
-                erreur_canal = f"Exception lors de l'envoi canal : {e}"
+                erreur_canal = f"Exception lors de l'envoi canal : {str(e)[:100]}"
                 log_error(erreur_canal, "BROADCAST", exception=e)
 
         # 3. Récapitulatif aux admins
@@ -52,12 +52,12 @@ def lancer_broadcast_async(bot, users, texte, admins, canal=False):
         recap += f"✅ Envoyés : {succes}\n"
         recap += f"❌ Échecs : {echecs}\n"
         
-        if echecs > 0:
-            recap += f"\n⚠️ **Détails des échecs (5 max)** :\n"
-            for detail in echecs_details[:5]:
+        if echecs_details:
+            recap += f"\n⚠️ **Détails des échecs** :\n"
+            for detail in echecs_details:
                 recap += f"• {detail}\n"
-            if len(echecs_details) > 5:
-                recap += f"... et {len(echecs_details) - 5} autres\n"
+            if echecs > 5:
+                recap += f"... et {echecs - 5} autres\n"
         
         if canal:
             if erreur_canal:
