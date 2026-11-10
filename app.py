@@ -9,7 +9,7 @@ from datetime import datetime, timezone, timedelta
 from flask import Flask, request
 
 # =========================================================
-# ⚠️ SÉCURITÉ GLOBALE
+# ⚠️ SÉCURITÉ GLOBALE : Activation AVANT tout le reste
 # =========================================================
 from core.utils.error_handler import activer_capture_globale
 activer_capture_globale()
@@ -20,6 +20,7 @@ from users import (
     est_administrateur, get_parametre
 )
 from telegram_bot.handlers import enregistrer_handlers
+from core.utils.logs import log_info, log_error, log_warning
 
 # Initialisation du bot et de l'application Flask
 bot = telebot.TeleBot(TOKEN, threaded=False)
@@ -30,25 +31,39 @@ enregistrer_handlers(bot)
 
 TZ_KINSHASA = timezone(timedelta(hours=1))
 
-# Variable globale pour éviter d'initialiser la BDD 1000 fois
+# Variable globale pour l'initialisation différée de la BDD
 _db_initialisee = False
 
 
 def _initialiser_bdd_si_necessaire():
-    """Crée les tables Turso une seule fois."""
+    """Crée les tables Turso une seule fois (Lazy Loading)."""
     global _db_initialisee
     if _db_initialisee:
         return
-    try:
-        from users.db import initialiser_tables
-        print("🔧 Initialisation BDD (lazy)...")
-        initialiser_tables()
-        _db_initialisee = True
-        print("✅ BDD initialisée.")
-    except Exception as e:
-        print(f"⚠️ Erreur init BDD : {e}")
+    from users.db import initialiser_tables
+    print("🔧 Initialisation BDD (lazy)...")
+    initialiser_tables()
+    _db_initialisee = True
+    print("✅ BDD initialisée.")
 
 
+# =========================================================
+# MIDDLEWARE FLASK : Capture TOUTES les erreurs HTTP
+# =========================================================
+@app.errorhandler(Exception)
+def gerer_erreur_globale(e):
+    """Capture toutes les erreurs Flask et les envoie à l'admin."""
+    log_error(
+        message=f"Erreur Flask non gérée : {e}",
+        module="FLASK",
+        exception=e
+    )
+    return f"❌ Erreur interne : {e}", 500
+
+
+# =========================================================
+# FONCTIONS UTILITAIRES
+# =========================================================
 def _envoyer_message_securise(chat_id, texte, parse_mode=None):
     """Envoie un message en gérant la limite de 4096 caractères."""
     limite = 4000
@@ -95,8 +110,8 @@ def _envoyer_notifications():
         try:
             _envoyer_message_securise(uid, texte, parse_mode='Markdown')
             time.sleep(0.1)
-        except Exception:
-            pass
+        except Exception as e:
+            log_warning(f"Impossible d'envoyer la notif à {uid} : {e}", "NOTIFS")
 
 
 def _envoyer_coupons_premium():
@@ -114,18 +129,23 @@ def _envoyer_coupons_premium():
         cur = conn.execute("SELECT user_id FROM utilisateurs WHERE status = 'premium'")
         premiums = [row[0] for row in cur.fetchall()]
         conn.close()
-    except Exception:
+    except Exception as e:
+        log_error("Erreur récupération premiums", "COUPONS", exception=e)
         return
     for uid in premiums:
         langue = get_langue(uid)
         for coupon in coupons:
             texte = formater_coupon(coupon, langue, montrer_details=True)
-            _envoyer_message_securise(uid, texte)
-            time.sleep(0.1)
+            try:
+                _envoyer_message_securise(uid, texte)
+                time.sleep(0.1)
+            except Exception as e:
+                log_warning(f"Impossible d'envoyer le coupon à {uid} : {e}", "COUPONS")
 
 
 def _scheduler_notifications():
-    print("Scheduler démarré...")
+    """Tâche de fond qui gère les envois automatiques."""
+    log_info("Scheduler démarré...", "SCHEDULER")
     dernier_nettoyage = None
     while True:
         try:
@@ -143,16 +163,16 @@ def _scheduler_notifications():
                         nettoyer_logs_anciens(jours=30)
                         nettoyer_paiements_anciens(jours=90)
                     except Exception as e:
-                        print(f"Erreur nettoyage : {e}")
+                        log_error("Erreur lors du nettoyage automatique", "SCHEDULER", exception=e)
                     dernier_nettoyage = date_du_jour
             time.sleep(60)
         except Exception as e:
-            print(f"Erreur scheduler : {e}")
+            log_error("Erreur scheduler", "SCHEDULER", exception=e)
             time.sleep(60)
 
 
 def _lancer_scheduler_apres_delai():
-    time.sleep(60)
+    time.sleep(60)  # Attendre que la BDD soit prête
     _scheduler_notifications()
 
 
@@ -161,41 +181,19 @@ def _lancer_scheduler_apres_delai():
 # =========================================================
 @app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
-    """Point d'entrée Telegram avec initialisation lazy."""
+    """Point d'entrée Telegram. Les erreurs sont gérées globalement."""
     # 1. Initialiser la BDD au premier message reçu
     _initialiser_bdd_si_necessaire()
 
     json_str = request.get_data().decode('UTF-8')
     update = telebot.types.Update.de_json(json_str)
 
-    if update.message:
-        user_id = update.message.from_user.id
-        try:
-            is_banned = est_banni(user_id)
-            is_admin = est_administrateur(user_id)
-            mode_maintenance = get_parametre("mode_maintenance", "off")
-        except Exception:
-            is_banned = False
-            is_admin = False
-            mode_maintenance = "off"
-            
-        if is_banned and not is_admin:
-            return "OK", 200
-            
-        if mode_maintenance == "on" and not is_admin:
-            try:
-                bot.send_message(user_id, "🛠️ Maintenance en cours.")
-            except Exception:
-                pass
-            return "OK", 200
-
-    try:
+    # 2. Traiter le message en arrière-plan (non bloquant)
+    def traiter_update():
         bot.process_new_updates([update])
-    except Exception as e:
-        print(f"❌ Erreur update : {e}")
-        import traceback
-        traceback.print_exc()
-    
+
+    threading.Thread(target=traiter_update, daemon=True).start()
+
     return "OK", 200
 
 
@@ -208,13 +206,10 @@ def index():
 def health():
     """Vérifie Turso."""
     from users.db import get_connection
-    try:
-        conn = get_connection()
-        result = conn.execute("SELECT 1").fetchone()
-        conn.close()
-        return "✅ Turso OK" if result else "❌ Turso muet", 200
-    except Exception as e:
-        return f"❌ Turso erreur : {e}", 500
+    conn = get_connection()
+    result = conn.execute("SELECT 1").fetchone()
+    conn.close()
+    return "✅ Turso OK" if result else "❌ Turso muet", 200
 
 
 @app.route('/debug_env')
@@ -230,57 +225,44 @@ def init_db():
     """Crée les tables manuellement."""
     global _db_initialisee
     from users.db import initialiser_tables, get_connection
-    try:
-        initialiser_tables()
-        _db_initialisee = True
-        conn = get_connection()
-        result = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
-        noms = [r[0] for r in result]
-        conn.close()
-        return f"✅ Tables créées :\n" + "\n".join(noms), 200
-    except Exception as e:
-        import traceback
-        return f"❌ Erreur : {e}\n{traceback.format_exc()}", 500
+    initialiser_tables()
+    _db_initialisee = True
+    conn = get_connection()
+    result = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+    noms = [r[0] for r in result]
+    conn.close()
+    return f"✅ Tables créées :\n" + "\n".join(noms), 200
 
 
 @app.route('/webhook_info')
 def webhook_info():
-    try:
-        url = f"https://api.telegram.org/bot{TOKEN}/getWebhookInfo"
-        res = requests.get(url, timeout=10)
-        data = res.json()
-        if not data.get('ok'):
-            return f"❌ Erreur Telegram : {data}", 500
-        info = data.get('result', {})
-        texte = f"📡 INFOS WEBHOOK\n\n🔗 URL : {info.get('url', '❌')}\n📥 En attente : {info.get('pending_update_count', 0)}\n🔧 Dernière erreur : {info.get('last_error_message', 'Aucune')}\n"
-        return texte, 200
-    except Exception as e:
-        return f"❌ Erreur : {e}", 500
+    url = f"https://api.telegram.org/bot{TOKEN}/getWebhookInfo"
+    res = requests.get(url, timeout=10)
+    data = res.json()
+    if not data.get('ok'):
+        return f"❌ Erreur Telegram : {data}", 500
+    info = data.get('result', {})
+    texte = f"📡 INFOS WEBHOOK\n\n🔗 URL : {info.get('url', '❌')}\n📥 En attente : {info.get('pending_update_count', 0)}\n🔧 Dernière erreur : {info.get('last_error_message', 'Aucune')}\n"
+    return texte, 200
 
 
 @app.route('/delete_webhook_pending')
 def delete_webhook_pending():
-    try:
-        url = f"https://api.telegram.org/bot{TOKEN}/deleteWebhook?drop_pending_updates=true"
-        res = requests.get(url, timeout=10)
-        return "✅ Webhook supprimé et messages vidés !", 200
-    except Exception as e:
-        return f"❌ Erreur : {e}", 500
+    url = f"https://api.telegram.org/bot{TOKEN}/deleteWebhook?drop_pending_updates=true"
+    requests.get(url, timeout=10)
+    return "✅ Webhook supprimé et messages vidés !", 200
 
 
 @app.route('/set_webhook')
 def set_webhook():
-    try:
-        host = request.headers.get('Host', 'prediction-football-209y.onrender.com')
-        webhook_url = f"https://{host}/{TOKEN}"
-        url = f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={webhook_url}"
-        res = requests.get(url, timeout=10)
-        data = res.json()
-        if data.get('ok'):
-            return f"✅ Webhook défini : {webhook_url}", 200
-        return f"❌ Erreur : {data}", 500
-    except Exception as e:
-        return f"❌ Erreur : {e}", 500
+    host = request.headers.get('Host', 'prediction-football-209y.onrender.com')
+    webhook_url = f"https://{host}/{TOKEN}"
+    url = f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={webhook_url}"
+    res = requests.get(url, timeout=10)
+    data = res.json()
+    if data.get('ok'):
+        return f"✅ Webhook défini : {webhook_url}", 200
+    return f"❌ Erreur : {data}", 500
 
 
 # =========================================================
