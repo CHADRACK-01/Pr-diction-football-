@@ -22,7 +22,7 @@ COMPETITIONS = {
 def _gerer_erreur_http(status_code, competition):
     """
     Gère les erreurs HTTP de l'API Football-Data.
-    Retourne True si on peut continuer pour les autres compétitions, False sinon.
+    Retourne True si on peut continuer, False sinon.
     """
     if status_code == 200:
         return True
@@ -30,9 +30,10 @@ def _gerer_erreur_http(status_code, competition):
     if status_code == 403:
         log_error(f"Accès refusé à l'API Football-Data ({competition}). Vérifie ta clé API.", "API")
         return False
+    elif status_code == 400:
+        # Erreur 400 : généralement "pas de match pour cette date" → pas grave
+        return True
     elif status_code == 404:
-        # Pas de match pour cette compétition : c'est normal
-        log_warning(f"Aucun match trouvé pour {competition} (404).", "API")
         return True
     elif status_code == 429:
         log_error("Quota API Football-Data dépassé (429). Pause nécessaire.", "API")
@@ -41,7 +42,7 @@ def _gerer_erreur_http(status_code, competition):
         log_error("Erreur interne du serveur Football-Data (500).", "API")
         return False
     elif status_code >= 400:
-        log_error(f"Erreur API Football-Data ({status_code}) pour {competition}.", "API")
+        # On ne loggue plus chaque erreur individuellement
         return False
     
     return True
@@ -50,7 +51,6 @@ def _gerer_erreur_http(status_code, competition):
 def recuperer_matchs_bruts():
     """
     Récupère les matchs des 3 prochains jours depuis l'API Football-Data.org.
-    Retourne une liste de dictionnaires bruts (sans prédiction).
     """
     log_info("Début de la récupération des matchs depuis Football-Data.org...", "API")
     
@@ -63,8 +63,8 @@ def recuperer_matchs_bruts():
     
     headers = {"X-Auth-Token": FOOTBALL_DATA_KEY}
     matchs_bruts = []
-    competitions_reussies = 0
-    competitions_echouees = 0
+    erreurs_graves = 0
+    competitions_vides = 0
 
     for code, comp_code in COMPETITIONS.items():
         try:
@@ -73,89 +73,85 @@ def recuperer_matchs_bruts():
             
             res = requests.get(url, headers=headers, params=params, timeout=15)
             
-            # Gestion des erreurs HTTP
-            if not _gerer_erreur_http(res.status_code, code):
-                competitions_echouees += 1
-                continue
+            # Gestion simplifiée
+            if res.status_code == 200:
+                data = res.json()
+                matchs_comp = data.get("matches", [])
+                count_comp = 0
                 
-            if res.status_code == 404:
-                continue  # Pas de match pour cette compétition
-            
-            data = res.json()
-            matchs_comp = data.get("matches", [])
-            count_comp = 0
-            
-            for m in matchs_comp:
-                status = m.get("status", "")
-                if status not in ["SCHEDULED", "TIMED"]: 
-                    continue
+                for m in matchs_comp:
+                    status = m.get("status", "")
+                    if status not in ["SCHEDULED", "TIMED"]: 
+                        continue
 
-                # Extraction sécurisée des équipes
-                home_team = m.get("homeTeam", {}) or {}
-                away_team = m.get("awayTeam", {}) or {}
-                home_name = home_team.get("name")
-                away_name = away_team.get("name")
+                    home_team = m.get("homeTeam", {}) or {}
+                    away_team = m.get("awayTeam", {}) or {}
+                    home_name = home_team.get("name")
+                    away_name = away_team.get("name")
+                    
+                    if not home_name or not away_name:
+                        continue
+
+                    cotes_book = None
+                    odds = m.get("odds", {})
+                    if isinstance(odds, dict) and "bet365" in odds:
+                        b365 = odds["bet365"]
+                        if b365 and b365.get('homeWin') and b365.get('draw') and b365.get('awayWin'):
+                            cotes_book = {
+                                'h': b365.get('homeWin'),
+                                'd': b365.get('draw'),
+                                'a': b365.get('awayWin')
+                            }
+
+                    matchs_bruts.append({
+                        "competition": code,
+                        "heure": m.get("utcDate"),
+                        "home": home_name,
+                        "away": away_name,
+                        "cotes_book": cotes_book
+                    })
+                    count_comp += 1
                 
-                if not home_name or not away_name:
-                    log_warning(f"Match sans nom d'équipe ignoré ({code})", "API")
-                    continue
-
-                # Extraction sécurisée des cotes
-                cotes_book = None
-                odds = m.get("odds", {})
-                if isinstance(odds, dict) and "bet365" in odds:
-                    b365 = odds["bet365"]
-                    if b365 and b365.get('homeWin') and b365.get('draw') and b365.get('awayWin'):
-                        cotes_book = {
-                            'h': b365.get('homeWin'),
-                            'd': b365.get('draw'),
-                            'a': b365.get('awayWin')
-                        }
-                elif isinstance(odds, dict) and odds.get('homeWin'):
-                    cotes_book = {
-                        'h': odds.get('homeWin'),
-                        'd': odds.get('draw'),
-                        'a': odds.get('awayWin')
-                    }
-
-                matchs_bruts.append({
-                    "competition": code,
-                    "heure": m.get("utcDate"),
-                    "home": home_name,
-                    "away": away_name,
-                    "cotes_book": cotes_book
-                })
-                count_comp += 1
+                if count_comp > 0:
+                    log_info(f"Football-Data / {code} : {count_comp} matchs récupérés.", "API")
+            elif res.status_code == 400:
+                # Pas de match pour cette compétition, c'est normal
+                competitions_vides += 1
+            elif res.status_code == 403:
+                log_error(f"Football-Data : accès refusé (clé API invalide)", "API")
+                erreurs_graves += 1
+            elif res.status_code == 429:
+                log_error("Football-Data : quota dépassé (429)", "API")
+                erreurs_graves += 1
+            else:
+                erreurs_graves += 1
             
-            competitions_reussies += 1
-            if count_comp > 0:
-                log_info(f"Football-Data / {code} : {count_comp} matchs récupérés.", "API")
-            
-            # Pause pour respecter la limite (10 requêtes/minute)
+            # Pause pour respecter la limite
             time.sleep(1)
                 
         except requests.exceptions.Timeout:
-            log_error(f"Timeout de l'API Football-Data pour {code}", "API")
-            competitions_echouees += 1
-        except requests.exceptions.ConnectionError as e:
-            log_error(f"Erreur de connexion Football-Data pour {code}", "API", exception=e)
-            competitions_echouees += 1
+            erreurs_graves += 1
+        except requests.exceptions.ConnectionError:
+            erreurs_graves += 1
         except Exception as e:
             log_error(f"Exception inattendue pour {code}", "API", exception=e)
-            competitions_echouees += 1
+            erreurs_graves += 1
             continue
 
-    # Bilan final
-    if competitions_reussies == 0 and competitions_echouees > 0:
+    # Bilan final (un seul message, pas 7)
+    if erreurs_graves > 0 and len(matchs_bruts) == 0:
         log_error(
-            f"Football-Data : AUCUNE compétition n'a répondu "
-            f"({competitions_echouees} échecs). L'API est probablement HS.",
+            f"Football-Data : toutes les compétitions ont échoué ({erreurs_graves} erreurs graves).",
+            "API"
+        )
+    elif len(matchs_bruts) > 0:
+        log_info(
+            f"Football-Data : {len(matchs_bruts)} matchs récupérés au total.",
             "API"
         )
     else:
         log_info(
-            f"Football-Data : {len(matchs_bruts)} matchs bruts récupérés "
-            f"({competitions_reussies} compétitions OK, {competitions_echouees} échecs).",
+            f"Football-Data : aucun match trouvé ({competitions_vides} compétitions sans match).",
             "API"
         )
     
