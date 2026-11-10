@@ -3,6 +3,7 @@ import joblib
 import io
 import os
 import libsql
+import difflib
 from core.ml_model import global_model_data
 from core.utils.logs import log_info, log_error, log_warning
 
@@ -44,6 +45,45 @@ def _charger_modeles():
         return None
 
 
+def _trouver_nom_exact(nom_recherche, competition):
+    """
+    Cherche le nom d'équipe le plus proche dans la base de données.
+    Gère les fautes de frappe et la casse.
+    """
+    if not nom_recherche:
+        return None
+    
+    try:
+        conn = get_connection()
+        cur = conn.execute("""
+            SELECT DISTINCT home_team FROM matchs_features WHERE competition = ?
+            UNION
+            SELECT DISTINCT away_team FROM matchs_features WHERE competition = ?
+        """, (competition, competition))
+        equipes_bdd = [row[0] for row in cur.fetchall()]
+        conn.close()
+    except Exception as e:
+        log_error(f"Impossible de récupérer les équipes pour '{competition}'", "PREDICTION", exception=e)
+        return nom_recherche
+    
+    if not equipes_bdd:
+        return nom_recherche
+    
+    # 1. Recherche exacte (insensible à la casse)
+    for equipe in equipes_bdd:
+        if equipe.lower() == nom_recherche.lower():
+            return equipe
+    
+    # 2. Recherche approximative (difflib)
+    equipes_lower = {e.lower(): e for e in equipes_bdd}
+    matches = difflib.get_close_matches(nom_recherche.lower(), equipes_lower.keys(), n=1, cutoff=0.6)
+    
+    if matches:
+        return equipes_lower[matches[0]]
+    
+    return nom_recherche
+
+
 def _get_team_stats(competition, team, n=5):
     """Récupère les stats récentes d'une équipe."""
     try:
@@ -57,7 +97,7 @@ def _get_team_stats(competition, team, n=5):
         rows = cur.fetchall()
         conn.close()
     except Exception as e:
-        log_error(f"Impossible de récupérer les stats pour l'équipe '{team}' en '{competition}'", "PREDICTION", exception=e)
+        log_error(f"Impossible de récupérer les stats pour '{team}' en '{competition}'", "PREDICTION", exception=e)
         return None
     
     if not rows:
@@ -119,7 +159,6 @@ def _get_elo(competition, team):
         return 1500.0
     
     if not row:
-        log_warning(f"Aucun Elo trouvé pour '{team}' en '{competition}', on utilise 1500 par défaut", "PREDICTION")
         return 1500.0
     return row[0] if row[2] == team else row[1]
 
@@ -136,22 +175,30 @@ def predire_match_v2(home_team, away_team, competition, cotes_book=None):
         log_error(f"Compétition '{competition}' non supportée par le modèle", "PREDICTION")
         return {"erreur": f"⚠️ Compétition '{competition}' non supportée."}
     
-    h_feat = _get_team_stats(competition, home_team)
-    a_feat = _get_team_stats(competition, away_team)
+    # ⚠️ CORRECTION : On cherche le nom exact dans la base
+    home_team_reel = _trouver_nom_exact(home_team, competition)
+    away_team_reel = _trouver_nom_exact(away_team, competition)
+    
+    if home_team_reel != home_team:
+        log_info(f"Nom corrigé : '{home_team}' -> '{home_team_reel}'", "PREDICTION")
+    if away_team_reel != away_team:
+        log_info(f"Nom corrigé : '{away_team}' -> '{away_team_reel}'", "PREDICTION")
+    
+    h_feat = _get_team_stats(competition, home_team_reel)
+    a_feat = _get_team_stats(competition, away_team_reel)
     if not h_feat or not a_feat:
         return {"erreur": f"⚠️ Données insuffisantes pour {home_team} ou {away_team}."}
     
-    h_elo = _get_elo(competition, home_team)
-    a_elo = _get_elo(competition, away_team)
+    h_elo = _get_elo(competition, home_team_reel)
+    a_elo = _get_elo(competition, away_team_reel)
     
-    # Normalisation des cotes bookmaker
     p_h, p_d, p_a = 1/3, 1/3, 1/3
     if cotes_book and all(cotes_book.get(k) for k in ['h','d','a']):
         try:
             s = sum(1/cotes_book[k] for k in ['h','d','a'])
             p_h, p_d, p_a = (1/cotes_book['h'])/s, (1/cotes_book['d'])/s, (1/cotes_book['a'])/s
         except ZeroDivisionError as e:
-            log_error("Cotes bookmaker invalides (division par zéro)", "PREDICTION", exception=e)
+            log_error("Cotes bookmaker invalides", "PREDICTION", exception=e)
     
     ft_f = np.array([[
         h_elo, a_elo, h_elo - a_elo,
@@ -181,8 +228,8 @@ def predire_match_v2(home_team, away_team, competition, cotes_book=None):
             preds[nom] = None
     
     res = {
-        "home_team": home_team, 
-        "away_team": away_team,
+        "home_team": home_team_reel, 
+        "away_team": away_team_reel,
         "p_h": float(preds['DC_1X'][1] * 0.6) if preds.get('DC_1X') is not None else 0.33,
         "p_d": 0.33, 
         "p_a": 0.33,
