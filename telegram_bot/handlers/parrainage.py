@@ -4,6 +4,7 @@ from users import (
     get_top_parrains, get_filleuls, get_palier_atteint, get_prochain_palier
 )
 from core.utils.logs import log_info, log_error, log_warning
+from core.utils.markdown import formater_proprement
 
 BOT_USERNAME = "MonPronosticFootball_bot"
 
@@ -47,7 +48,6 @@ def enregistrer_parrainage_handlers(bot):
             f"• Ton code : {code}"
         )
 
-        # Affichage des paliers (protection si les fonctions échouent)
         try:
             palier = get_palier_atteint(nb_filleuls)
             if palier:
@@ -75,9 +75,16 @@ def enregistrer_parrainage_handlers(bot):
         )
         
         try:
-            bot.reply_to(message, texte, reply_markup=markup, parse_mode="Markdown")
+            # ⚠️ Échappement du Markdown pour éviter les erreurs
+            texte_secu = formater_proprement(texte)
+            bot.reply_to(message, texte_secu, reply_markup=markup, parse_mode="Markdown")
         except Exception as e:
-            log_error(f"Impossible d'envoyer le menu parrainage à {user_id}", "PARRAINAGE", exception=e)
+            log_error(f"Impossible d'envoyer le menu parrainage à {user_id} (Markdown)", "PARRAINAGE", exception=e)
+            # Fallback sans Markdown
+            try:
+                bot.reply_to(message, texte.replace("**", ""), reply_markup=markup)
+            except Exception as e2:
+                log_error(f"Impossible d'envoyer le menu parrainage à {user_id} (fallback)", "PARRAINAGE", exception=e2)
 
     @bot.callback_query_handler(func=lambda call: call.data == "parr|classement")
     def parrainage_classement(call):
