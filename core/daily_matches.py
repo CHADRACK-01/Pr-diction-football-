@@ -1,5 +1,3 @@
-import io
-import joblib
 from datetime import datetime, timezone, timedelta
 
 from core.ml_model import global_model_data
@@ -90,8 +88,12 @@ def _charger_modele_si_necessaire():
         return True
     
     log_info("Modèles absents en mémoire. Chargement depuis Turso...", "MATCHS")
-    from core.ml_model import charger_et_entrainer
-    return charger_et_entrainer()
+    try:
+        from core.ml_model import charger_et_entrainer
+        return charger_et_entrainer()
+    except Exception as e:
+        log_error("Impossible de charger les modèles pour les matchs du jour", "MATCHS", exception=e)
+        return False
 
 
 def _nom_competition(code):
@@ -110,61 +112,84 @@ def _get_info_competition(nom_comp):
 def get_matchs_du_jour():
     """Orchestre la récupération via le manager, puis calcule les pronostics."""
     if not _charger_modele_si_necessaire():
+        log_error("Impossible de charger les modèles, les matchs du jour sont indisponibles.", "MATCHS")
         return []
 
-    matchs_bruts = manager_get_matchs_du_jour()
+    try:
+        matchs_bruts = manager_get_matchs_du_jour()
+    except Exception as e:
+        log_error("Erreur lors de la récupération des matchs via le manager", "MATCHS", exception=e)
+        return []
+
     if not matchs_bruts:
         log_warning("Aucun match renvoyé par le manager.", "MATCHS")
         return []
 
     matchs_trouves = []
+    matchs_ignores = 0
     
     for m in matchs_bruts:
-        home = _normaliser(m["home"])
-        away = _normaliser(m["away"])
-        competition_code = m.get("competition", "default")
-        
-        # ⚠️ CONVERSION : code API -> nom propre du modèle
-        competition_reelle = MAPPING_COMPETITIONS.get(competition_code, competition_code)
-        
-        prono = predire_match(home, away, competition=competition_reelle, cotes_book=m.get("cotes_book"))
-        
-        if not isinstance(prono, dict) or 'erreur' in prono:
-            log_warning(f"Skip {home} vs {away} : {prono.get('erreur', 'erreur inconnue')}", "MATCHS")
+        try:
+            home = _normaliser(m.get("home", ""))
+            away = _normaliser(m.get("away", ""))
+            competition_code = m.get("competition", "default")
+            
+            if not home or not away:
+                matchs_ignores += 1
+                continue
+            
+            # Le manager a déjà mis "competition_reelle" (nom propre)
+            competition_reelle = m.get("competition_reelle") or MAPPING_COMPETITIONS.get(competition_code, competition_code)
+            
+            try:
+                prono = predire_match(home, away, competition=competition_reelle, cotes_book=m.get("cotes_book"))
+            except Exception as e:
+                log_error(f"Erreur de prédiction pour {home} vs {away}", "MATCHS", exception=e)
+                matchs_ignores += 1
+                continue
+            
+            if not isinstance(prono, dict) or 'erreur' in prono:
+                log_warning(f"Skip {home} vs {away} : {prono.get('erreur', 'erreur inconnue') if isinstance(prono, dict) else 'réponse invalide'}", "MATCHS")
+                matchs_ignores += 1
+                continue
+
+            # Filtre sur la Double Chance (notre marché le plus fiable)
+            dc_1x = float(prono.get('dc_1x', 0.5))
+            dc_x2 = float(prono.get('dc_x2', 0.5))
+            dc_12 = float(prono.get('dc_12', 0.5))
+
+            options = [("1X", dc_1x), ("X2", dc_x2), ("12", dc_12)]
+            meilleure = max(options, key=lambda x: x[1])
+
+            cote_bot = round(1 / meilleure[1], 2) if meilleure[1] > 0 else 999
+            if cote_bot < 1.30:
+                matchs_ignores += 1
+                continue
+
+            matchs_trouves.append({
+                "competition": competition_code,
+                "nom_competition": _nom_competition(competition_code),
+                "heure": m.get("heure"),
+                "home": home,
+                "away": away,
+                "dc_label": meilleure[0],
+                "dc_pct": float(meilleure[1]),
+                "btts": float(prono.get('btts_yes', 0.5)),
+                "over_25": float(prono.get('over_25', 0.5)),
+                "ht_prolific": prono.get('ht_prolific'),
+                "htr": prono.get('htr'),
+                "confiance": float(meilleure[1]),
+                "analyse_pari": prono.get('analyse_pari')
+            })
+            
+        except Exception as e:
+            log_error(f"Erreur de traitement d'un match", "MATCHS", exception=e)
+            matchs_ignores += 1
             continue
 
-        # ⚠️ On filtre sur la Double Chance (notre marché le plus fiable)
-        dc_1x = float(prono.get('dc_1x', 0.5))
-        dc_x2 = float(prono.get('dc_x2', 0.5))
-        dc_12 = float(prono.get('dc_12', 0.5))
-
-        options = [("1X", dc_1x), ("X2", dc_x2), ("12", dc_12)]
-        meilleure = max(options, key=lambda x: x[1])
-
-        cote_bot = round(1 / meilleure[1], 2) if meilleure[1] > 0 else 999
-        if cote_bot < 1.30:
-            continue
-
-        matchs_trouves.append({
-            "competition": competition_code,
-            "nom_competition": _nom_competition(competition_code),
-            "heure": m.get("heure"),
-            "home": home,
-            "away": away,
-            # Marchés
-            "dc_label": meilleure[0],
-            "dc_pct": float(meilleure[1]),
-            "btts": float(prono.get('btts_yes', 0.5)),
-            "over_25": float(prono.get('over_25', 0.5)),
-            # Mi-temps (peut être None si le modèle n'a pas chargé)
-            "ht_prolific": prono.get('ht_prolific'),
-            "htr": prono.get('htr'),
-            # Confiance & analyse
-            "confiance": float(meilleure[1]),
-            "analyse_pari": prono.get('analyse_pari')
-        })
-
-    matchs_trouves.sort(key=lambda x: (x['heure'] or '', -x['confiance']))
+    matchs_trouves.sort(key=lambda x: (x.get('heure') or '', -x['confiance']))
+    
+    log_info(f"{len(matchs_trouves)} matchs retenus, {matchs_ignores} ignorés.", "MATCHS")
     return matchs_trouves
 
 
@@ -182,13 +207,19 @@ def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None)
     matchs_affiches = 0
 
     for m in matchs:
-        dt = datetime.fromisoformat(m['heure'].replace("Z", "+00:00")).astimezone(TZ_KINSHASA)
-        jour_key = dt.strftime("%A %d/%m/%Y")
-        
-        if jour_key not in jours:
-            jours[jour_key] = []
-        jours[jour_key].append(m)
-        matchs_affiches += 1
+        if not m.get('heure'):
+            continue
+        try:
+            dt = datetime.fromisoformat(str(m['heure']).replace("Z", "+00:00")).astimezone(TZ_KINSHASA)
+            jour_key = dt.strftime("%A %d/%m/%Y")
+            
+            if jour_key not in jours:
+                jours[jour_key] = []
+            jours[jour_key].append(m)
+            matchs_affiches += 1
+        except Exception as e:
+            log_warning(f"Impossible de parser la date '{m.get('heure')}' : {e}", "MATCHS")
+            continue
 
     if matchs_affiches == 0:
         return f"📅 Aucun match avec une cote intéressante aujourd'hui."
@@ -212,39 +243,43 @@ def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None)
         texte += f"━━━━━━━━━━━━━━━━━━━━\n\n"
 
         for m in matchs_jour:
-            heure_local = datetime.fromisoformat(
-                m['heure'].replace("Z", "+00:00")
-            ).astimezone(TZ_KINSHASA).strftime("%H:%M")
+            try:
+                heure_local = datetime.fromisoformat(
+                    str(m['heure']).replace("Z", "+00:00")
+                ).astimezone(TZ_KINSHASA).strftime("%H:%M")
+            except Exception:
+                heure_local = "?"
 
-            nom_comp = m.get('nom_competition', m['competition'])
+            nom_comp = m.get('nom_competition', m.get('competition', '?'))
             info_pays = _get_info_competition(nom_comp)
 
-            texte += formater_proprement(f"⚽ {m['home']} vs {m['away']}\n")
-            texte += formater_proprement(f"   🕐 {heure_local} | 🏆 {nom_comp}\n")
-            
-            if info_pays:
-                texte += formater_proprement(f"   📍 {info_pays}\n")
+            try:
+                texte += formater_proprement(f"⚽ {m['home']} vs {m['away']}\n")
+                texte += formater_proprement(f"   🕐 {heure_local} | 🏆 {nom_comp}\n")
+                
+                if info_pays:
+                    texte += formater_proprement(f"   📍 {info_pays}\n")
 
-            if est_premium:
-                texte += formater_proprement(f"   🛡️ DC : {m['dc_label']} ({round(m['dc_pct']*100, 1)}%)\n")
-                texte += formater_proprement(f"   🎯 BTTS : {round(m['btts']*100, 1)}%\n")
-                texte += formater_proprement(f"   🥅 Over 2.5 : {round(m['over_25']*100, 1)}%\n")
-                
-                # Mi-temps
-                if m.get('ht_prolific'):
-                    ht = m['ht_prolific']
-                    texte += formater_proprement(f"   ⏱️ MT : 1ère={round(ht.get('1ere_mt',0.33)*100,1)}% | 2ème={round(ht.get('2eme_mt',0.33)*100,1)}%\n")
-                
-                # Value bet
-                analyse = m.get('analyse_pari')
-                if analyse:
-                    texte += formater_proprement(f"   💰 Cote Bot : {analyse['cote_bot']}\n")
-                    if analyse.get('cote_book'):
-                        texte += formater_proprement(f"   🏢 Cote Book : {analyse['cote_book']}\n")
-                        if analyse.get('is_value'):
-                            texte += formater_proprement(f"   🔥 VALUE BET !\n")
-            else:
-                texte += formater_proprement(f"   🛡️ DC : {m['dc_label']} ({round(m['dc_pct']*100, 1)}%)\n")
+                if est_premium:
+                    texte += formater_proprement(f"   🛡️ DC : {m['dc_label']} ({round(m['dc_pct']*100, 1)}%)\n")
+                    texte += formater_proprement(f"   🎯 BTTS : {round(m['btts']*100, 1)}%\n")
+                    texte += formater_proprement(f"   🥅 Over 2.5 : {round(m['over_25']*100, 1)}%\n")
+                    
+                    if m.get('ht_prolific'):
+                        ht = m['ht_prolific']
+                        texte += formater_proprement(f"   ⏱️ MT : 1ère={round(ht.get('1ere_mt',0.33)*100,1)}% | 2ème={round(ht.get('2eme_mt',0.33)*100,1)}%\n")
+                    
+                    analyse = m.get('analyse_pari')
+                    if analyse:
+                        texte += formater_proprement(f"   💰 Cote Bot : {analyse['cote_bot']}\n")
+                        if analyse.get('cote_book'):
+                            texte += formater_proprement(f"   🏢 Cote Book : {analyse['cote_book']}\n")
+                            if analyse.get('is_value'):
+                                texte += formater_proprement(f"   🔥 VALUE BET !\n")
+                else:
+                    texte += formater_proprement(f"   🛡️ DC : {m['dc_label']} ({round(m['dc_pct']*100, 1)}%)\n")
+            except Exception as e:
+                log_warning(f"Erreur de formatage d'un match : {e}", "MATCHS")
 
             texte += "\n"
 
