@@ -9,7 +9,6 @@ def _formater_date(date_match):
     if not date_match:
         return "?"
     try:
-        # SQLite renvoie parfois "2026-11-10 00:00:00" ou "2026-11-10"
         date_str = str(date_match).split(" ")[0]
         parts = date_str.split("-")
         if len(parts) == 3:
@@ -24,7 +23,13 @@ def enregistrer_historique_handlers(bot):
     @bot.message_handler(func=lambda m: m.text == "📜 Historique")
     def handle_historique(message):
         user_id = message.from_user.id
-        langue = get_langue(user_id)
+        
+        # Récupération de la langue (avec fallback)
+        try:
+            langue = get_langue(user_id)
+        except Exception as e:
+            log_error(f"Impossible de récupérer la langue de {user_id}", "HISTORIQUE", exception=e)
+            langue = "fr"
         
         # Lecture de la BDD
         try:
@@ -87,7 +92,7 @@ def enregistrer_historique_handlers(bot):
             bot.reply_to(message, texte, parse_mode="Markdown")
         except Exception as e:
             log_error(f"Impossible d'envoyer l'historique à {user_id}", "HISTORIQUE", exception=e)
-            # Fallback sans Markdown si le Markdown cause une erreur
+            # Fallback sans Markdown
             try:
                 bot.reply_to(message, texte.replace("**", "").replace("_", ""))
             except Exception as e2:
