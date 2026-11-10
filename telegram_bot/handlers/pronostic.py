@@ -6,7 +6,7 @@ from config import CHAMPIONNATS, INFOS_COMPETITIONS, MAPPING_COMPETITIONS
 from core.session import set_session_competition, clear_session_competition
 from users.matchs import get_equipes_saison_en_cours
 from core.utils.logs import log_info, log_error, log_warning
-
+from telegram_bot.prediction_handlers import _formater_bulletin_premium, _formater_bulletin_free
 
 def _creer_clavier_principal(user_id):
     """Recrée le clavier principal (après un pronostic ou un retour)."""
