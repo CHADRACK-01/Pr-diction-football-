@@ -30,8 +30,6 @@ os.makedirs(DOSSIER_ACTUEL, exist_ok=True)
 # =========================================================
 # CHAMPIONNATS (Anciens codes -> Noms propres de nos modèles)
 # =========================================================
-# C'est ce mapping qui permet au bot de faire le lien
-# entre les boutons ("Ligue 1") et nos modèles ("Ligue 1")
 MAPPING_COMPETITIONS = {
     "premier_league": "Premier League",
     "championship": "Championship",
@@ -88,10 +86,16 @@ TURSO_URL = os.environ.get("TURSO_URL", "")
 TURSO_TOKEN = os.environ.get("TURSO_TOKEN", "")
 
 # =========================================================
-# API FOOTBALL-DATA & BZZOIRO
+# API FOOTBALL-DATA, BZZOIRO & API-FOOTBALL
 # =========================================================
 FOOTBALL_DATA_KEY = os.environ.get("FOOTBALL_DATA_KEY", "")
 BZZOIRO_API_KEY = os.environ.get("BZZOIRO_API_KEY", "")
+
+# ⚠️ Deux clés API-Football pour le round-robin (200 requêtes/jour au total)
+API_FOOTBALL_KEYS = [
+    os.environ.get("API_FOOTBALL_KEY_1", "06602a138f8d0a9347279e10247d860d"),
+    os.environ.get("API_FOOTBALL_KEY_2", "c77662959b3a20fdbb47b969f02c7b77"),
+]
 
 # =========================================================
 # LIMITES PAR DÉFAUT
