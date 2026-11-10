@@ -1,3 +1,6 @@
+from core.utils.logs import log_error
+
+
 def echapper_markdown(texte):
     """
     Échappe les caractères spéciaux du Markdown pour éviter l'erreur 
@@ -6,12 +9,19 @@ def echapper_markdown(texte):
     if not texte:
         return ""
     
-    caracteres_dangereux = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
-    
-    for char in caracteres_dangereux:
-        texte = texte.replace(char, f'\\{char}')
-    
-    return texte
+    try:
+        # ⚠️ On échappe d'abord le backslash, sinon on double les échappements
+        texte = str(texte).replace('\\', '\\\\')
+        
+        caracteres_dangereux = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
+        
+        for char in caracteres_dangereux:
+            texte = texte.replace(char, f'\\{char}')
+        
+        return texte
+    except Exception as e:
+        log_error("Erreur lors de l'échappement Markdown", "MARKDOWN", exception=e)
+        return str(texte) if texte else ""
 
 
 def formater_proprement(texte):
@@ -22,8 +32,13 @@ def formater_proprement(texte):
     if not texte:
         return ""
     
-    texte_secu = texte.replace('**', '§§GRAS§§')
-    texte_secu = echapper_markdown(texte_secu)
-    texte_secu = texte_secu.replace('§§GRAS§§', '**')
-    
-    return texte_secu
+    try:
+        # Placeholder plus sûr : caractère nul (aucun nom d'équipe ne contient \x00)
+        texte_secu = str(texte).replace('**', '\x00GRAS\x00')
+        texte_secu = echapper_markdown(texte_secu)
+        texte_secu = texte_secu.replace('\x00GRAS\x00', '**')
+        
+        return texte_secu
+    except Exception as e:
+        log_error("Erreur lors du formatage propre du texte", "MARKDOWN", exception=e)
+        return str(texte) if texte else ""
