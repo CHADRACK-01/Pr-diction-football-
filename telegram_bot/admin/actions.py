@@ -21,11 +21,13 @@ ADMIN_SESSIONS = {}
 
 
 def _retirer_premium(user_id):
+    """Retire le premium d'un utilisateur (avec log d'erreur)."""
     try:
         conn = get_connection()
         conn.execute("UPDATE utilisateurs SET status = 'free', date_expiration = NULL WHERE user_id = ?", (user_id,))
         conn.commit()
         conn.close()
+        log_info(f"Premium retiré pour {user_id}", "ADMIN")
         return True
     except Exception as e:
         log_error(f"Impossible de retirer le premium de {user_id}", "ADMIN", exception=e)
@@ -39,6 +41,9 @@ def executer_action(bot, call, data, user_id):
     log_info(f"EXECUTION ACTION INLINE : '{data}' demandée par {user_id}", "ADMIN")
 
     try:
+        # =========================================================
+        # STATS
+        # =========================================================
         if data == "admin_stats":
             try:
                 stats = get_stats_globales()
@@ -49,6 +54,9 @@ def executer_action(bot, call, data, user_id):
             texte = f"📊 STATISTIQUES\n\nTotal : {stats.get('total', 0)}\nPremium : {stats.get('premium', 0)}\nFree : {stats.get('free', 0)}"
             bot.send_message(call.message.chat.id, texte)
         
+        # =========================================================
+        # UTILISATEURS
+        # =========================================================
         elif data == "admin_users":
             try:
                 users = get_liste_utilisateurs(limite=20)
@@ -62,6 +70,9 @@ def executer_action(bot, call, data, user_id):
                 texte += f"{statut} {u['first_name'] or '?'} : {u['user_id']}\n"
             bot.send_message(call.message.chat.id, texte)
 
+        # =========================================================
+        # PAIEMENTS EN ATTENTE
+        # =========================================================
         elif data == "admin_payments":
             try:
                 demandes = get_demandes_en_attente(limite=10)
@@ -83,6 +94,9 @@ def executer_action(bot, call, data, user_id):
                 except Exception as e:
                     log_warning(f"Impossible d'envoyer la photo de paiement #{d['id']} : {e}", "ADMIN")
 
+        # =========================================================
+        # BASE DE DONNÉES
+        # =========================================================
         elif data == "admin_taille_bdd":
             try:
                 taille = get_taille_base()
@@ -115,6 +129,9 @@ def executer_action(bot, call, data, user_id):
                 log_error("Erreur lors du nettoyage", "ADMIN", exception=e)
                 bot.send_message(call.message.chat.id, "❌ Erreur lors du nettoyage.")
 
+        # =========================================================
+        # ADMINS / LOGS / BANNIS
+        # =========================================================
         elif data == "admin_admins":
             try:
                 admins = get_tous_admins()
@@ -151,6 +168,9 @@ def executer_action(bot, call, data, user_id):
                 texte += f"- {b['user_id']} : {b['raison'] or 'Sans raison'}\n"
             bot.send_message(call.message.chat.id, texte)
 
+        # =========================================================
+        # PARAMÈTRES
+        # =========================================================
         elif data == "admin_params_menu":
             bot.edit_message_text("⚙️ PARAMÈTRES\n\nChoisis un paramètre :", call.message.chat.id, call.message.message_id, reply_markup=menu_parametres())
 
@@ -176,6 +196,9 @@ def executer_action(bot, call, data, user_id):
                 texte += f"- {p['cle']} = {p['valeur']}\n"
             bot.send_message(call.message.chat.id, texte)
 
+        # =========================================================
+        # PREMIUM
+        # =========================================================
         elif data == "admin_premium":
             ADMIN_SESSIONS.pop(user_id, None)
             bot.edit_message_text("💎 GESTION PREMIUM", call.message.chat.id, call.message.message_id, reply_markup=menu_premium())
@@ -196,6 +219,9 @@ def executer_action(bot, call, data, user_id):
             except Exception as e:
                 log_error("Impossible d'enregistrer le handler remove_premium", "ADMIN", exception=e)
 
+        # =========================================================
+        # CODES PREMIUM
+        # =========================================================
         elif data == "admin_codes":
             ADMIN_SESSIONS.pop(user_id, None)
             try:
@@ -241,6 +267,9 @@ def executer_action(bot, call, data, user_id):
                 texte += f"{c['code']} ({c['jours']}j)\n"
             bot.send_message(call.message.chat.id, texte)
 
+        # =========================================================
+        # BROADCAST
+        # =========================================================
         elif data == "admin_broadcast":
             markup = telebot.types.InlineKeyboardMarkup(row_width=1)
             markup.add(
@@ -259,12 +288,15 @@ def executer_action(bot, call, data, user_id):
             except Exception as e:
                 log_error("Impossible d'enregistrer le handler broadcast", "ADMIN", exception=e)
 
+        # =========================================================
+        # BDD
+        # =========================================================
         elif data == "admin_bdd":
             ADMIN_SESSIONS.pop(user_id, None)
             bot.edit_message_text("🗄️ BASE DE DONNÉES", call.message.chat.id, call.message.message_id, reply_markup=menu_bdd())
 
         else:
-            log_info(f"Aucune action trouvée pour '{data}'", "ADMIN")
+            log_warning(f"Action inline inconnue : '{data}'", "ADMIN")
             bot.send_message(call.message.chat.id, f"⚠️ Action '{data}' non reconnue.")
     
     except Exception as e:
@@ -278,6 +310,9 @@ def executer_action_bas(bot, message, text, user_id):
     log_info(f"EXECUTION ACTION BAS : '{text}' demandée par {user_id}", "ADMIN")
 
     try:
+        # =========================================================
+        # STATS / UTILISATEURS / PAIEMENTS
+        # =========================================================
         if text == "📊 Stats":
             try:
                 stats = get_stats_globales()
@@ -322,6 +357,9 @@ def executer_action_bas(bot, message, text, user_id):
                 except Exception as e:
                     log_warning(f"Impossible d'envoyer la photo {d['id']} : {e}", "ADMIN")
 
+        # =========================================================
+        # BASE DE DONNÉES
+        # =========================================================
         elif text == "Taille BDD":
             try:
                 taille = get_taille_base()
@@ -354,6 +392,9 @@ def executer_action_bas(bot, message, text, user_id):
                 log_error("Erreur lors du nettoyage", "ADMIN", exception=e)
                 bot.send_message(message.chat.id, "❌ Erreur lors du nettoyage.")
 
+        # =========================================================
+        # ADMINS / LOGS / BANNIS
+        # =========================================================
         elif text == "👑 Admins":
             try:
                 admins = get_tous_admins()
@@ -390,6 +431,9 @@ def executer_action_bas(bot, message, text, user_id):
                 texte += f"- {b['user_id']} : {b['raison'] or 'Sans raison'}\n"
             bot.send_message(message.chat.id, texte)
 
+        # =========================================================
+        # PARAMÈTRES
+        # =========================================================
         elif text.startswith("Heure notifs") or text.startswith("Limite Free") or text.startswith("Prix Stars") or text.startswith("Message accueil") or text.startswith("Mode maintenance"):
             cle = text.lower().replace(" ", "_")
             ADMIN_SESSIONS[user_id] = {"action": "param", "cle": cle}
@@ -411,6 +455,9 @@ def executer_action_bas(bot, message, text, user_id):
                 texte += f"- {p['cle']} = {p['valeur']}\n"
             bot.send_message(message.chat.id, texte)
 
+        # =========================================================
+        # PREMIUM
+        # =========================================================
         elif text == "➕ Ajouter Premium":
             ADMIN_SESSIONS[user_id] = {"action": "add_premium"}
             try:
@@ -427,6 +474,9 @@ def executer_action_bas(bot, message, text, user_id):
             except Exception as e:
                 log_error("Impossible d'enregistrer le handler remove_premium", "ADMIN", exception=e)
 
+        # =========================================================
+        # CODES PREMIUM
+        # =========================================================
         elif text in ["Gen 10 jours", "Gen 30 jours", "Gen 90 jours"]:
             jours = int(text.split()[1])
             try:
@@ -463,6 +513,9 @@ def executer_action_bas(bot, message, text, user_id):
                 texte += f"{c['code']} ({c['jours']}j)\n"
             bot.send_message(message.chat.id, texte)
 
+        # =========================================================
+        # BROADCAST
+        # =========================================================
         elif text == "📢 Broadcast":
             markup = telebot.types.InlineKeyboardMarkup(row_width=1)
             markup.add(
@@ -473,7 +526,7 @@ def executer_action_bas(bot, message, text, user_id):
             bot.send_message(message.chat.id, "Où veux-tu envoyer l'annonce ?", reply_markup=markup)
 
         else:
-            log_info(f"Aucune action trouvée pour '{text}'", "ADMIN")
+            log_warning(f"Action bas inconnue : '{text}'", "ADMIN")
             bot.send_message(message.chat.id, f"⚠️ Action '{text}' non reconnue.")
     
     except Exception as e:
