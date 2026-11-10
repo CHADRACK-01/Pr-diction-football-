@@ -7,18 +7,18 @@ from users import (
 from core.translations import get_text
 from core.ml_model import global_model_data
 from core.prediction import predire_match, sauvegarder_historique
-from core.utils.logs import log_info
+from core.utils.logs import log_info, log_error, log_warning
 from core.session import get_session_competition, clear_session_competition
 from config import MAPPING_COMPETITIONS
 
 
 def _charger_modele():
+    """Charge les modèles si nécessaire (log en cas d'échec)."""
     if global_model_data.get('modeles_par_competition') is not None:
         return True
     log_info("Chargement des modèles depuis la BDD...", "PREDICTION")
     from core.ml_model import charger_et_entrainer
-    charger_et_entrainer()
-    return global_model_data.get('modeles_par_competition') is not None
+    return charger_et_entrainer()
 
 
 def _formater_bulletin_free(resultat, langue="fr"):
@@ -111,24 +111,39 @@ def enregistrer_prediction_handlers(bot):
 
     @bot.message_handler(func=lambda m: m.text and ' vs ' in m.text.lower())
     def prediction_texte(message):
-        print(f"[PREDICTION] Message reçu : {message.text}")
         user_id = message.from_user.id
         langue = get_langue(user_id)
+        
+        log_info(f"Demande de prédiction de {user_id} : '{message.text}'", "PREDICTION")
 
-        if est_banni(user_id):
-            bot.reply_to(message, get_text("banni", langue))
+        # 1. Vérification banni
+        try:
+            if est_banni(user_id):
+                bot.reply_to(message, get_text("banni", langue))
+                return
+        except Exception as e:
+            log_error(f"Impossible de vérifier si {user_id} est banni", "PREDICTION", exception=e)
             return
 
+        # 2. Chargement des modèles
         if not _charger_modele():
-            bot.reply_to(message, "⚠️ Le modèle est en cours de chargement. Réessaie dans quelques instants.")
+            bot.reply_to(message, "⚠️ Le modèle est en cours de chargement ou indisponible. Réessaie dans quelques instants.")
             return
 
-        if not peut_faire_pronostic(user_id):
-            bot.reply_to(message, get_text("limite_atteinte", langue, limite=get_limite_jour(user_id)))
+        # 3. Vérification de la limite
+        try:
+            if not peut_faire_pronostic(user_id):
+                limite = get_limite_jour(user_id)
+                bot.reply_to(message, get_text("limite_atteinte", langue, limite=limite))
+                return
+        except Exception as e:
+            log_error(f"Impossible de vérifier la limite de {user_id}", "PREDICTION", exception=e)
+            bot.reply_to(message, "❌ Erreur lors de la vérification de tes limites. Réessaie.")
             return
 
+        # 4. Parsing du match
         parts = message.text.lower().split(' vs ')
-        if len(parts) < 2:
+        if len(parts) != 2:
             bot.reply_to(message, "Format invalide. Tape par exemple : Paris SG vs Marseille")
             return
 
@@ -139,35 +154,63 @@ def enregistrer_prediction_handlers(bot):
             bot.reply_to(message, "Format invalide. N'oublie pas les noms des deux équipes.")
             return
 
-        # Récupération de la compétition depuis la BDD
-        competition_code = get_session_competition(user_id)
+        # 5. Récupération de la compétition
+        try:
+            competition_code = get_session_competition(user_id)
+        except Exception as e:
+            log_error(f"Impossible de récupérer la compétition de {user_id}", "PREDICTION", exception=e)
+            bot.reply_to(message, "❌ Erreur lors de la récupération de ta compétition. Réessaie.")
+            return
         
         if competition_code == "default":
             bot.reply_to(message, "⚠️ Veuillez d'abord choisir une compétition en cliquant sur '⚽ Faire un Pronostic'.")
             return
         
-        # Conversion : code API (ex: ligue_1) -> nom modèle (ex: Ligue 1)
+        # Conversion : code (ligue_1) -> nom (Ligue 1)
         competition_reelle = MAPPING_COMPETITIONS.get(competition_code, competition_code)
-        
-        print(f"[PREDICTION] Compétition : '{competition_code}' -> '{competition_reelle}'")
 
+        # 6. Prédiction (gère ses propres erreurs en interne)
         resultat = predire_match(equipe_dom, equipe_ext, competition=competition_reelle)
 
         if "erreur" in resultat:
-            bot.reply_to(message, resultat['erreur'])
+            erreur_msg = resultat["erreur"]
+            # Les erreurs "utilisateur" (équipe non trouvée) ne sont pas anormales
+            if "Données insuffisantes" in erreur_msg or "non supportée" in erreur_msg:
+                bot.reply_to(message, erreur_msg)
+            else:
+                # Erreur système : on logge
+                log_error(f"Erreur de prédiction pour {equipe_dom} vs {equipe_ext} : {erreur_msg}", "PREDICTION")
+                bot.reply_to(message, f"❌ {erreur_msg}")
             return
 
-        # On supprime la session en BDD
-        clear_session_competition(user_id)
+        # 7. Suppression de la session (non bloquant)
+        try:
+            clear_session_competition(user_id)
+        except Exception as e:
+            log_warning(f"Impossible de supprimer la session de {user_id} : {e}", "PREDICTION")
 
-        is_prem = est_premium(user_id)
-        bulletin = _formater_bulletin_premium(resultat, langue) if is_prem else _formater_bulletin_free(resultat, langue)
+        # 8. Affichage du bulletin
+        try:
+            is_prem = est_premium(user_id)
+            bulletin = _formater_bulletin_premium(resultat, langue) if is_prem else _formater_bulletin_free(resultat, langue)
+            bot.reply_to(message, bulletin, parse_mode='Markdown')
+        except Exception as e:
+            log_error(f"Impossible d'afficher le bulletin pour {user_id}", "PREDICTION", exception=e)
+            bot.reply_to(message, "❌ Erreur lors de l'affichage du bulletin.")
+            return
 
-        bot.reply_to(message, bulletin, parse_mode='Markdown')
+        # 9. Sauvegarde de l'historique
+        try:
+            sauvegarder_historique(
+                resultat['home_team'], resultat['away_team'],
+                resultat['p_h'], resultat['p_d'], resultat['p_a'],
+                resultat['best_score'][0], resultat['best_score'][1]
+            )
+        except Exception as e:
+            log_error(f"Impossible de sauvegarder l'historique pour {user_id}", "PREDICTION", exception=e)
 
-        sauvegarder_historique(
-            resultat['home_team'], resultat['away_team'],
-            resultat['p_h'], resultat['p_d'], resultat['p_a'],
-            resultat['best_score'][0], resultat['best_score'][1]
-        )
-        incrementer_compteur(user_id)
+        # 10. Incrémentation du compteur
+        try:
+            incrementer_compteur(user_id)
+        except Exception as e:
+            log_error(f"Impossible d'incrémenter le compteur de {user_id}", "PREDICTION", exception=e)
