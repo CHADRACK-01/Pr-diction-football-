@@ -13,7 +13,7 @@ from flask import Flask, request
 from core.utils.error_handler import activer_capture_globale
 activer_capture_globale()
 
-from config import TOKEN, MODE_VITRINE
+from config import TOKEN, MODE_VITRINE, TURSO_URL, TURSO_TOKEN
 from users import (
     initialiser_tables, get_utilisateurs_notifies, est_banni, 
     est_administrateur, get_parametre
@@ -72,7 +72,6 @@ def _envoyer_notifications():
         print("Notifications : aucun match disponible.")
         return
 
-    # On prend les 3 meilleurs matchs par confiance DC
     top_3 = sorted(matchs, key=lambda x: x['dc_pct'], reverse=True)[:3]
     
     date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
@@ -91,10 +90,7 @@ def _envoyer_notifications():
                 texte += f"   🔥 VALUE BET !\n"
         texte += "\n"
         
-    texte += (
-        "Tape une affiche pour plus de détails.\n"
-        "Pour désactiver : /notif_off"
-    )
+    texte += "Tape une affiche pour plus de détails.\nPour désactiver : /notif_off"
 
     users = get_utilisateurs_notifies()
     succes = 0
@@ -126,14 +122,18 @@ def _envoyer_coupons_premium():
         print("Aucun coupon à envoyer.")
         return
 
-    conn = get_connection()
-    cur = conn.execute("""
-        SELECT user_id FROM utilisateurs
-        WHERE status = 'premium'
-        AND (date_expiration IS NULL OR date_expiration > datetime('now'))
-    """)
-    premiums = [row[0] for row in cur.fetchall()]
-    conn.close()
+    try:
+        conn = get_connection()
+        cur = conn.execute("""
+            SELECT user_id FROM utilisateurs
+            WHERE status = 'premium'
+            AND (date_expiration IS NULL OR date_expiration > datetime('now'))
+        """)
+        premiums = [row[0] for row in cur.fetchall()]
+        conn.close()
+    except Exception as e:
+        print(f"Erreur lecture premiums : {e}")
+        return
 
     succes = 0
     for uid in premiums:
@@ -165,7 +165,6 @@ def _scheduler_notifications():
             est_weekend = jour_semaine >= 5
             date_du_jour = now.strftime("%Y-%m-%d")
 
-            # ⚠️ Gestion d'erreur pour la lecture de parametres
             try:
                 heure_notif_val = get_parametre("notif_heure", "8")
             except Exception:
@@ -261,10 +260,13 @@ def _scheduler_notifications():
 
 def _lancer_scheduler_apres_delai():
     """Lance le scheduler après un délai pour laisser la BDD s'initialiser."""
-    time.sleep(60)  # On attend 60 secondes
+    time.sleep(60)
     _scheduler_notifications()
 
 
+# =========================================================
+# ROUTES FLASK
+# =========================================================
 @app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
     """Point d'entrée pour les mises à jour Telegram."""
@@ -274,7 +276,6 @@ def webhook():
     if update.message:
         user_id = update.message.from_user.id
         
-        # ⚠️ Sécurité : on utilise une vérification robuste
         try:
             is_banned = est_banni(user_id)
             is_admin = est_administrateur(user_id)
@@ -291,10 +292,19 @@ def webhook():
             mode_maintenance = "off"
             
         if mode_maintenance == "on" and not is_admin:
-            bot.send_message(user_id, "🛠️ Le bot est actuellement en maintenance. Veuillez réessayer plus tard.")
+            try:
+                bot.send_message(user_id, "🛠️ Le bot est actuellement en maintenance. Veuillez réessayer plus tard.")
+            except Exception:
+                pass
             return "OK", 200
 
-    bot.process_new_updates([update])
+    try:
+        bot.process_new_updates([update])
+    except Exception as e:
+        print(f"❌ Erreur traitement update : {e}")
+        import traceback
+        traceback.print_exc()
+    
     return "OK", 200
 
 
@@ -304,14 +314,70 @@ def index():
     return "Bot operationnel !", 200
 
 
+@app.route('/init_db')
+def init_db():
+    """Route de debug pour créer les tables manuellement."""
+    from users.db import initialiser_tables, get_connection
+    try:
+        initialiser_tables()
+        
+        # Vérification
+        conn = get_connection()
+        result = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        noms = [r[0] for r in result]
+        conn.close()
+        
+        return f"✅ Tables créées !\n\nTables existantes :\n{chr(10).join(noms)}", 200
+    except Exception as e:
+        import traceback
+        return f"❌ Erreur : {e}\n\n{traceback.format_exc()}", 500
+
+
+@app.route('/health')
+def health():
+    """Route de santé avancée : vérifie la connexion Turso."""
+    from users.db import get_connection
+    try:
+        conn = get_connection()
+        result = conn.execute("SELECT 1").fetchone()
+        conn.close()
+        
+        if result and result[0] == 1:
+            return "✅ Turso OK", 200
+        else:
+            return "❌ Turso ne répond pas", 500
+    except Exception as e:
+        return f"❌ Turso erreur : {e}", 500
+
+
+@app.route('/debug_env')
+def debug_env():
+    """Route de debug pour vérifier les variables d'environnement."""
+    url_ok = "✅" if TURSO_URL else "❌"
+    token_ok = "✅" if TURSO_TOKEN else "❌"
+    token_ok_short = "✅" if TOKEN else "❌"
+    
+    return f"""
+    Variables d'environnement :
+    
+    TURSO_URL : {url_ok} (longueur={len(TURSO_URL)})
+    TURSO_TOKEN : {token_ok} (longueur={len(TURSO_TOKEN)})
+    TELEGRAM_TOKEN : {token_ok_short} (longueur={len(TOKEN)})
+    MODE_VITRINE : {MODE_VITRINE}
+    """, 200
+
+
 # =========================================================
 # INITIALISATION AU DÉMARRAGE
 # =========================================================
 print("🔄 Initialisation de la base de données...")
-initialiser_tables()
-print("✅ Tables prêtes.")
+try:
+    initialiser_tables()
+    print("✅ Initialisation terminée.")
+except Exception as e:
+    print(f"❌ Erreur initialisation : {e}")
 
-# ⚠️ Le scheduler démarre APRÈS un délai de 60s (via le thread)
+# ⚠️ Le scheduler démarre APRÈS un délai de 60s
 if not MODE_VITRINE:
     threading.Thread(target=_lancer_scheduler_apres_delai, daemon=True).start()
     print("✅ Scheduler programmé (démarrage dans 60s).")
