@@ -74,27 +74,70 @@ def compter_matchs():
 
 def get_equipes_saison_en_cours(competition):
     """
-    Récupère les équipes de la saison en cours (matchs des 365 derniers jours).
-    Cela inclut les matchs futurs (calendrier déjà téléchargé).
+    Récupère les équipes de la saison en cours.
+    
+    Stratégie :
+    1. PRIORITÉ : on cherche les équipes avec un match PROGRAMMÉ dans 
+       les 365 prochains jours. C'est le calendrier de la saison en cours,
+       donc uniquement les équipes qui jouent réellement cette saison.
+       Cela exclut automatiquement les équipes reléguées.
+    2. FALLBACK : si aucune équipe trouvée dans le futur (début de saison 
+       avant publication du calendrier), on utilise les équipes des 365 
+       derniers jours.
     """
     try:
         conn = get_connection()
         
-        date_limite = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
+        # =========================================================
+        # 1. FENÊTRE FUTURE (prioritaire)
+        # =========================================================
+        date_debut = datetime.now().strftime("%Y-%m-%d")
+        date_fin = (datetime.now() + timedelta(days=365)).strftime("%Y-%m-%d")
         
         cur = conn.execute("""
             SELECT DISTINCT home_team FROM matchs 
-            WHERE competition = ? AND date >= ?
+            WHERE competition = ? AND date >= ? AND date <= ?
             UNION
             SELECT DISTINCT away_team FROM matchs 
-            WHERE competition = ? AND date >= ?
+            WHERE competition = ? AND date >= ? AND date <= ?
             ORDER BY home_team ASC
-        """, (competition, date_limite, competition, date_limite))
+        """, (competition, date_debut, date_fin, competition, date_debut, date_fin))
         
         equipes = [row[0] for row in cur.fetchall()]
+        source = "calendrier futur"
+        
+        # =========================================================
+        # 2. FALLBACK (si future vide)
+        # =========================================================
+        if not equipes:
+            log_warning(
+                f"Aucune équipe trouvée pour {competition} dans le futur. "
+                f"Fallback sur les 365 derniers jours.",
+                "MATCHS"
+            )
+            
+            date_limite = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
+            cur = conn.execute("""
+                SELECT DISTINCT home_team FROM matchs 
+                WHERE competition = ? AND date >= ?
+                UNION
+                SELECT DISTINCT away_team FROM matchs 
+                WHERE competition = ? AND date >= ?
+                ORDER BY home_team ASC
+            """, (competition, date_limite, competition, date_limite))
+            equipes = [row[0] for row in cur.fetchall()]
+            source = "fallback passé (365j)"
+        
         conn.close()
         
-        log_info(f"{len(equipes)} équipes trouvées pour {competition} (saison en cours).", "MATCHS")
+        if not equipes:
+            log_warning(f"Aucune équipe trouvée pour {competition} (base vide ?)", "MATCHS")
+            return []
+        
+        log_info(
+            f"{len(equipes)} équipes trouvées pour {competition} (source: {source}).",
+            "MATCHS"
+        )
         return equipes
     except Exception as e:
         log_error(f"Impossible de récupérer les équipes de {competition}", "MATCHS", exception=e)
@@ -104,7 +147,8 @@ def get_equipes_saison_en_cours(competition):
 def nettoyer_vieilles_donnees(annees=5):
     """
     Supprime les matchs de plus de X années (5 ans par défaut).
-    C'est la norme en modélisation football.
+    C'est la norme en modélisation football : au-delà, les données
+    ne sont plus représentatives (effectifs, règles, style de jeu).
     """
     try:
         conn = get_connection()
