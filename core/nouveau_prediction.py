@@ -4,13 +4,15 @@ import io
 import os
 import libsql
 from core.ml_model import global_model_data
-from core.utils.logs import log_info, log_error
+from core.utils.logs import log_info, log_error, log_warning
 
 TURSO_URL = os.environ.get("TURSO_URL", "")
 TURSO_TOKEN = os.environ.get("TURSO_TOKEN", "")
 
+
 def get_connection():
     return libsql.connect(database=TURSO_URL, auth_token=TURSO_TOKEN)
+
 
 def _charger_modeles():
     """Charge les modèles depuis Turso si pas déjà en mémoire."""
@@ -18,14 +20,18 @@ def _charger_modeles():
         return global_model_data['modeles_par_competition']
     
     log_info("Chargement des modèles depuis Turso...", "PREDICTION")
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT data FROM models_cache ORDER BY id DESC LIMIT 1")
-    row = cur.fetchone()
-    conn.close()
+    
+    try:
+        conn = get_connection()
+        cur = conn.execute("SELECT data FROM models_cache ORDER BY id DESC LIMIT 1")
+        row = cur.fetchone()
+        conn.close()
+    except Exception as e:
+        log_error("Impossible de lire la table models_cache", "PREDICTION", exception=e)
+        return None
     
     if not row:
-        log_error("Aucun modèle trouvé dans Turso.", "PREDICTION")
+        log_error("Aucun modèle trouvé dans la table models_cache", "PREDICTION")
         return None
     
     try:
@@ -34,23 +40,28 @@ def _charger_modeles():
         log_info(f"{len(modeles)} compétitions chargées.", "PREDICTION")
         return modeles
     except Exception as e:
-        log_error(f"Erreur chargement modèle : {e}", "PREDICTION")
+        log_error("Erreur lors du chargement des modèles (joblib)", "PREDICTION", exception=e)
         return None
+
 
 def _get_team_stats(competition, team, n=5):
     """Récupère les stats récentes d'une équipe."""
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT fthg, ftag, ftr, hthg, htag, htr, home_team, away_team, date
-        FROM matchs_features
-        WHERE competition = ? AND (home_team = ? OR away_team = ?)
-        ORDER BY date DESC LIMIT ?
-    """, (competition, team, team, n))
-    rows = cur.fetchall()
-    conn.close()
+    try:
+        conn = get_connection()
+        cur = conn.execute("""
+            SELECT fthg, ftag, ftr, hthg, htag, htr, home_team, away_team, date
+            FROM matchs_features
+            WHERE competition = ? AND (home_team = ? OR away_team = ?)
+            ORDER BY date DESC LIMIT ?
+        """, (competition, team, team, n))
+        rows = cur.fetchall()
+        conn.close()
+    except Exception as e:
+        log_error(f"Impossible de récupérer les stats pour l'équipe '{team}' en '{competition}'", "PREDICTION", exception=e)
+        return None
     
     if not rows:
+        log_warning(f"Aucun historique trouvé pour '{team}' en '{competition}'", "PREDICTION")
         return None
     
     ft_scored, ft_conceded = [], []
@@ -91,20 +102,27 @@ def _get_team_stats(competition, team, n=5):
         'ft_form': wf(ft_results), 'ht_form': wf(ht_results),
     }
 
+
 def _get_elo(competition, team):
     """Récupère l'Elo actuel d'une équipe."""
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT h_elo_ft, a_elo_ft, home_team FROM matchs_features
-        WHERE competition = ? AND (home_team = ? OR away_team = ?)
-        ORDER BY date DESC LIMIT 1
-    """, (competition, team, team))
-    row = cur.fetchone()
-    conn.close()
-    if not row: 
+    try:
+        conn = get_connection()
+        cur = conn.execute("""
+            SELECT h_elo_ft, a_elo_ft, home_team FROM matchs_features
+            WHERE competition = ? AND (home_team = ? OR away_team = ?)
+            ORDER BY date DESC LIMIT 1
+        """, (competition, team, team))
+        row = cur.fetchone()
+        conn.close()
+    except Exception as e:
+        log_error(f"Impossible de récupérer l'Elo pour '{team}' en '{competition}'", "PREDICTION", exception=e)
+        return 1500.0
+    
+    if not row:
+        log_warning(f"Aucun Elo trouvé pour '{team}' en '{competition}', on utilise 1500 par défaut", "PREDICTION")
         return 1500.0
     return row[0] if row[2] == team else row[1]
+
 
 def predire_match_v2(home_team, away_team, competition, cotes_book=None):
     """
@@ -115,6 +133,7 @@ def predire_match_v2(home_team, away_team, competition, cotes_book=None):
         return {"erreur": "Modèle non chargé."}
     
     if competition not in modeles:
+        log_error(f"Compétition '{competition}' non supportée par le modèle", "PREDICTION")
         return {"erreur": f"⚠️ Compétition '{competition}' non supportée."}
     
     h_feat = _get_team_stats(competition, home_team)
@@ -125,13 +144,14 @@ def predire_match_v2(home_team, away_team, competition, cotes_book=None):
     h_elo = _get_elo(competition, home_team)
     a_elo = _get_elo(competition, away_team)
     
+    # Normalisation des cotes bookmaker
     p_h, p_d, p_a = 1/3, 1/3, 1/3
     if cotes_book and all(cotes_book.get(k) for k in ['h','d','a']):
         try:
             s = sum(1/cotes_book[k] for k in ['h','d','a'])
             p_h, p_d, p_a = (1/cotes_book['h'])/s, (1/cotes_book['d'])/s, (1/cotes_book['a'])/s
-        except ZeroDivisionError:
-            pass
+        except ZeroDivisionError as e:
+            log_error("Cotes bookmaker invalides (division par zéro)", "PREDICTION", exception=e)
     
     ft_f = np.array([[
         h_elo, a_elo, h_elo - a_elo,
@@ -157,7 +177,7 @@ def predire_match_v2(home_team, away_team, competition, cotes_book=None):
             proba = info['model'].predict_proba(X_scaled)[0]
             preds[nom] = proba
         except Exception as e:
-            log_error(f"Erreur prédiction {nom} : {e}", "PREDICTION")
+            log_error(f"Erreur de prédiction pour le marché '{nom}'", "PREDICTION", exception=e)
             preds[nom] = None
     
     res = {
