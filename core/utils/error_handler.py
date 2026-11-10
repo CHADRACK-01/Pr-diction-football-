@@ -1,48 +1,51 @@
 import sys
 import traceback
-import telebot
-from datetime import datetime
+import threading
+from core.utils.logs import log_error
 
-# ⚠️ Identifiants pour les alertes
-ADMIN_ID = 8653408729 
-BOT_TOKEN = "8443191637:AAGcCknBZDg1o0NBeL8czLt0SsQ4c2LEMvY"
+# On garde une référence à l'ancien excepthook pour ne pas le casser
+_ancien_excepthook = sys.excepthook
 
-def envoyer_erreur_admin(message_erreur, context="Global"):
-    """Envoie une alerte d'erreur directement sur le Telegram de l'admin."""
-    bot_alerte = telebot.TeleBot(BOT_TOKEN, threaded=False)
-    date_str = datetime.now().strftime("%d/%m/%Y à %H:%M:%S")
-    
-    # On tronque pour ne pas dépasser la limite de Telegram (4096 caractères)
-    erreur_courte = message_erreur[:3500]
-    
-    texte = (
-        f"🚨 **ALERTE ERREUR** 🚨\n\n"
-        f"📅 Date : {date_str}\n"
-        f"📌 Contexte : {context}\n\n"
-        f"```python\n{erreur_courte}\n```"
-    )
-    bot_alerte.send_message(ADMIN_ID, texte, parse_mode="Markdown")
 
-def gerer_exception_non_geree(exc_type, exc_value, exc_traceback):
+def _gerer_exception_non_geree(exc_type, exc_value, exc_traceback):
     """
     Capture TOUTES les erreurs non gérées par le bot.
-    Empêche le bot de crasher et envoie l'erreur sur Telegram.
+    Envoie l'erreur à l'admin via Telegram.
     """
     # Si c'est une interruption clavier (Ctrl+C), on laisse faire
     if issubclass(exc_type, KeyboardInterrupt):
-        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        _ancien_excepthook(exc_type, exc_value, exc_traceback)
         return
 
-    # On formate la trace de l'erreur
+    # On formate la trace complète
     tb = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
     
-    # On l'affiche dans les logs Render
+    # On affiche dans les logs Render (pour le débogage local)
     print(f"🔥 ERREUR GLOBALE NON GÉRÉE :\n{tb}")
     
-    # On envoie sur Telegram
-    envoyer_erreur_admin(tb, context="Erreur Globale (Non gérée)")
+    # On envoie à l'admin via notre fonction centralisée de logs.py
+    log_error(
+        message=f"Erreur non gérée : {exc_type.__name__} - {exc_value}",
+        module="GLOBAL",
+        exception=exc_value
+    )
+
+
+def _gerer_exception_thread(args):
+    """Capture les erreurs dans les threads séparés."""
+    exc_type, exc_value, exc_traceback = args
+    _gerer_exception_non_geree(exc_type, exc_value, exc_traceback)
+
 
 def activer_capture_globale():
-    """À appeler UNE SEULE FOIS au démarrage du bot pour activer le filet de sécurité."""
-    sys.excepthook = gerer_exception_non_geree
+    """
+    Active le filet de sécurité global.
+    À appeler UNE SEULE FOIS au démarrage du bot (dans app.py).
+    """
+    # 1. Capture les erreurs du thread principal
+    sys.excepthook = _gerer_exception_non_geree
+    
+    # 2. Capture les erreurs des threads (scheduler, etc.)
+    threading.excepthook = _gerer_exception_thread
+    
     print("✅ Système de capture globale des erreurs activé.")
