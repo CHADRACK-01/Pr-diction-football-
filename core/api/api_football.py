@@ -35,6 +35,31 @@ def _get_headers(key):
     return {"x-apisports-key": key}
 
 
+def _faire_requete(url, timeout=15):
+    """
+    Fait une requête avec gestion automatique du round-robin 
+    et du fallback en cas de quota dépassé (429).
+    """
+    key = _get_next_key()
+    if not key:
+        return None
+    
+    try:
+        res = requests.get(url, headers=_get_headers(key), timeout=timeout)
+        
+        # Si quota dépassé, on tente avec la clé suivante
+        if res.status_code == 429:
+            log_warning("API-Football : quota dépassé (429), bascule sur la clé suivante", "API_FOOTBALL")
+            key = _get_next_key()
+            if key:
+                res = requests.get(url, headers=_get_headers(key), timeout=timeout)
+        
+        return res
+    except Exception as e:
+        log_error(f"Erreur réseau API-Football sur {url}", "API_FOOTBALL", exception=e)
+        return None
+
+
 def tester_api():
     """Vérifie si au moins une clé API-Football répond."""
     for i, key in enumerate(config.API_FOOTBALL_KEYS):
@@ -62,27 +87,17 @@ def get_live_matches():
     Utilise le round-robin sur les clés pour éviter le quota.
     """
     try:
-        key = _get_next_key()
-        if not key:
-            return []
-        
         url = f"{BASE_URL}/fixtures?live=all"
-        res = requests.get(url, headers=_get_headers(key), timeout=15)
+        res = _faire_requete(url)
         
-        if res.status_code == 429:
-            log_warning("API-Football live : quota dépassé, on tente la clé suivante", "API_FOOTBALL")
-            key = _get_next_key()
-            if key:
-                res = requests.get(url, headers=_get_headers(key), timeout=15)
-        
-        if res.status_code != 200:
-            log_error(f"API-Football live : erreur {res.status_code}", "API_FOOTBALL")
+        if not res or res.status_code != 200:
+            log_error(f"API-Football live : erreur", "API_FOOTBALL")
             return []
         
         data = res.json()
         matchs = data.get("response", [])
         
-        # On filtre uniquement le football (pas les autres sports)
+        # On filtre uniquement le football
         matchs = [m for m in matchs if m.get("league", {}).get("sport") == "football"]
         
         log_info(f"{len(matchs)} matchs live récupérés depuis API-Football.", "API_FOOTBALL")
@@ -98,21 +113,11 @@ def get_match_stats(fixture_id):
     Utilise le round-robin sur les clés.
     """
     try:
-        key = _get_next_key()
-        if not key:
-            return {}
-        
         url = f"{BASE_URL}/fixtures/statistics?fixture={fixture_id}"
-        res = requests.get(url, headers=_get_headers(key), timeout=15)
+        res = _faire_requete(url)
         
-        if res.status_code == 429:
-            log_warning("API-Football stats : quota dépassé, on tente la clé suivante", "API_FOOTBALL")
-            key = _get_next_key()
-            if key:
-                res = requests.get(url, headers=_get_headers(key), timeout=15)
-        
-        if res.status_code != 200:
-            log_error(f"API-Football stats : erreur {res.status_code} pour fixture {fixture_id}", "API_FOOTBALL")
+        if not res or res.status_code != 200:
+            log_error(f"API-Football stats : erreur pour fixture {fixture_id}", "API_FOOTBALL")
             return {}
         
         data = res.json()
@@ -143,25 +148,39 @@ def get_fixtures_by_date(date_str):
     Utile pour les résultats historiques.
     """
     try:
-        key = _get_next_key()
-        if not key:
-            return []
-        
         url = f"{BASE_URL}/fixtures?date={date_str}"
-        res = requests.get(url, headers=_get_headers(key), timeout=15)
+        res = _faire_requete(url)
         
-        if res.status_code == 429:
-            log_warning("API-Football fixtures : quota dépassé, on tente la clé suivante", "API_FOOTBALL")
-            key = _get_next_key()
-            if key:
-                res = requests.get(url, headers=_get_headers(key), timeout=15)
-        
-        if res.status_code != 200:
-            log_error(f"API-Football fixtures : erreur {res.status_code} pour {date_str}", "API_FOOTBALL")
+        if not res or res.status_code != 200:
+            log_error(f"API-Football fixtures : erreur pour {date_str}", "API_FOOTBALL")
             return []
         
         data = res.json()
         return data.get("response", [])
     except Exception as e:
         log_error(f"Erreur API-Football fixtures pour {date_str}", "API_FOOTBALL", exception=e)
+        return []
+
+
+def get_fixtures_by_league(league_id, season, date_from=None, date_to=None):
+    """
+    Récupère les matchs d'une ligue et d'une saison.
+    """
+    try:
+        url = f"{BASE_URL}/fixtures?league={league_id}&season={season}"
+        if date_from:
+            url += f"&from={date_from}"
+        if date_to:
+            url += f"&to={date_to}"
+        
+        res = _faire_requete(url)
+        
+        if not res or res.status_code != 200:
+            log_error(f"API-Football fixtures : erreur pour league {league_id} saison {season}", "API_FOOTBALL")
+            return []
+        
+        data = res.json()
+        return data.get("response", [])
+    except Exception as e:
+        log_error(f"Erreur API-Football fixtures pour league {league_id}", "API_FOOTBALL", exception=e)
         return []
