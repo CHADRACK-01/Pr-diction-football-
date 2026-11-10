@@ -66,17 +66,7 @@ from users.account_referral import (
 # =========================================================
 from users.matchs import (
     inserer_matchs,
-    charger_tous_les_matchs,
     compter_matchs
-)
-
-# =========================================================
-# CACHE DU MODÈLE
-# =========================================================
-from users.model_cache import (
-    sauvegarder_modele_cache,
-    charger_modele_cache,
-    vider_modele_cache
 )
 
 # =========================================================
