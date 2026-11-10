@@ -1,7 +1,7 @@
 import libsql
 import os
 
-from core.utils.logs import log_info
+from core.utils.logs import log_info, log_error, log_warning
 
 TURSO_URL = os.environ.get("TURSO_URL", "")
 TURSO_TOKEN = os.environ.get("TURSO_TOKEN", "")
@@ -12,15 +12,23 @@ def get_connection():
     return libsql.connect(database=TURSO_URL, auth_token=TURSO_TOKEN)
 
 
-def _executer_et_commit(conn, sql):
-    """Exécute une requête SQL et force le commit."""
-    conn.execute(sql)
-    conn.commit()
+def _executer_et_commit(conn, sql, nom_table):
+    """Exécute une requête SQL et force le commit (avec log d'erreur explicite)."""
+    try:
+        conn.execute(sql)
+        conn.commit()
+        log_info(f"Table '{nom_table}' créée ou vérifiée.", "DATABASE")
+    except Exception as e:
+        log_error(
+            message=f"Impossible de créer la table '{nom_table}'",
+            module="DATABASE",
+            exception=e
+        )
 
 
 def initialiser_tables():
     """Initialise toutes les tables de la base de données au démarrage."""
-    print("🔧 Début de création des tables...")
+    log_info("Début de la création des tables...", "DATABASE")
     conn = get_connection()
     
     tables = {
@@ -143,44 +151,38 @@ def initialiser_tables():
         """,
     }
     
-    erreurs = 0
     for nom, sql in tables.items():
-        try:
-            _executer_et_commit(conn, sql)
-            print(f"  ✅ Table '{nom}' OK")
-        except Exception as e:
-            erreurs += 1
-            print(f"  ❌ Erreur table '{nom}' : {e}")
+        _executer_et_commit(conn, sql, nom)
     
     # Vérification finale : est-ce que les tables existent vraiment ?
-    print("🔍 Vérification...")
     try:
         result = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
         noms_tables = [r[0] for r in result]
-        print(f"  📋 Tables existantes : {noms_tables}")
+        log_info(f"Tables existantes : {noms_tables}", "DATABASE")
     except Exception as e:
-        print(f"  ❌ Impossible de vérifier : {e}")
+        log_error("Impossible de vérifier les tables existantes", "DATABASE", exception=e)
+    finally:
+        conn.close()
     
-    conn.close()
-    
-    if erreurs == 0:
-        log_info("Tables Turso prêtes (12 tables).", "DATABASE")
-        print("✅ Toutes les tables sont créées.")
-    else:
-        print(f"⚠️ {erreurs} table(s) en erreur.")
+    log_info("Initialisation de la base de données terminée.", "DATABASE")
 
 
 def get_taille_base():
     """Retourne la taille de la base en MB."""
     conn = get_connection()
-    result = conn.execute("""
-        SELECT page_count * page_size as size 
-        FROM pragma_page_count(), pragma_page_size()
-    """).fetchone()
-    conn.close()
-    if result and result[0]:
-        return f"{result[0] / 1024 / 1024:.2f} MB"
-    return "Inconnue"
+    try:
+        result = conn.execute("""
+            SELECT page_count * page_size as size 
+            FROM pragma_page_count(), pragma_page_size()
+        """).fetchone()
+        if result and result[0]:
+            return f"{result[0] / 1024 / 1024:.2f} MB"
+        return "Inconnue"
+    except Exception as e:
+        log_error("Impossible de calculer la taille de la base", "DATABASE", exception=e)
+        return "Erreur"
+    finally:
+        conn.close()
 
 
 def get_detail_tables():
@@ -188,41 +190,48 @@ def get_detail_tables():
     conn = get_connection()
     tables = ["utilisateurs", "matchs", "models_cache", "paiements_attente", "codes_premium", "logs_admin"]
     resultats = []
+    
     for table in tables:
         try:
             res = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
             resultats.append({"table_name": table, "size": f"{res[0]} lignes"})
-        except Exception:
+        except Exception as e:
+            log_warning(f"Impossible de lire la table '{table}'", "DATABASE")
             resultats.append({"table_name": table, "size": "❌ n'existe pas"})
+    
     conn.close()
     return resultats
 
 
 def nettoyer_logs_anciens(jours=30):
     """Supprime les logs admin de plus de X jours."""
+    conn = get_connection()
     try:
-        conn = get_connection()
         conn.execute(f"DELETE FROM logs_admin WHERE date_action < datetime('now', '-{jours} days')")
         conn.commit()
-        conn.close()
         log_info(f"Logs de plus de {jours} jours supprimés.", "DATABASE")
         return True
-    except Exception:
+    except Exception as e:
+        log_error(f"Impossible de supprimer les logs de plus de {jours} jours", "DATABASE", exception=e)
         return False
+    finally:
+        conn.close()
 
 
 def nettoyer_paiements_anciens(jours=90):
     """Supprime les paiements traités de plus de X jours."""
+    conn = get_connection()
     try:
-        conn = get_connection()
         conn.execute(f"""
             DELETE FROM paiements_attente
             WHERE statut != 'en_attente'
             AND date_validation < datetime('now', '-{jours} days')
         """)
         conn.commit()
-        conn.close()
         log_info(f"Paiements de plus de {jours} jours supprimés.", "DATABASE")
         return True
-    except Exception:
+    except Exception as e:
+        log_error(f"Impossible de supprimer les paiements de plus de {jours} jours", "DATABASE", exception=e)
         return False
+    finally:
+        conn.close()
