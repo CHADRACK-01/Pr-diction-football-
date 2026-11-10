@@ -22,7 +22,7 @@ def _charger_modele():
 
 
 def _formater_bulletin_free(resultat, langue="fr"):
-    """Bulletin pour les utilisateurs Free (limité aux 3 marchés principaux)."""
+    """Bulletin pour les utilisateurs Free (3 marchés principaux)."""
     h = resultat['home_team']
     a = resultat['away_team']
     
@@ -66,11 +66,9 @@ def _formater_bulletin_premium(resultat, langue="fr"):
     btts = resultat.get('btts_yes', 0.5)
     over = resultat.get('over_25', 0.5)
     
-    # Récupération des marchés mi-temps
     ht_prolific = resultat.get('ht_prolific', {})
     htr = resultat.get('htr', {})
     
-    # Analyse Value Bet
     analyse_txt = ""
     analyse = resultat.get('analyse_pari')
     if analyse:
@@ -104,14 +102,14 @@ def _formater_bulletin_premium(resultat, langue="fr"):
         f"• 1 : {round(htr.get('1', 0.33)*100,1)}% | N : {round(htr.get('N', 0.33)*100,1)}% | 2 : {round(htr.get('2', 0.33)*100,1)}%\n"
         f"{analyse_txt}\n"
         f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"⚠️ _Les marchés Mi-temps sont indicatifs (modèle en amélioration)._\n"
+        f"⚠️ _Les marchés Mi-temps sont indicatifs._\n"
         f"Jouez de manière responsable."
     )
 
 
 def enregistrer_prediction_handlers(bot):
 
-    @bot.message_handler(func=lambda m: m.text and 'vs' in m.text.lower())
+    @bot.message_handler(func=lambda m: m.text and ' vs ' in m.text.lower())
     def prediction_texte(message):
         print(f"[PREDICTION] Message reçu : {message.text}")
         user_id = message.from_user.id
@@ -129,9 +127,9 @@ def enregistrer_prediction_handlers(bot):
             bot.reply_to(message, get_text("limite_atteinte", langue, limite=get_limite_jour(user_id)))
             return
 
-        parts = message.text.lower().split('vs')
+        parts = message.text.lower().split(' vs ')
         if len(parts) < 2:
-            bot.reply_to(message, "Format invalide. Tape par exemple : PSG vs Marseille")
+            bot.reply_to(message, "Format invalide. Tape par exemple : Paris SG vs Marseille")
             return
 
         equipe_dom = parts[0].strip()
@@ -141,14 +139,14 @@ def enregistrer_prediction_handlers(bot):
             bot.reply_to(message, "Format invalide. N'oublie pas les noms des deux équipes.")
             return
 
-        # ⚠️ On récupère la compétition depuis la BDD
+        # Récupération de la compétition depuis la BDD
         competition_code = get_session_competition(user_id)
         
         if competition_code == "default":
-            bot.reply_to(message, "⚠️ Veuillez d'abord choisir une compétition en cliquant sur 'Faire un Pronostic'.")
+            bot.reply_to(message, "⚠️ Veuillez d'abord choisir une compétition en cliquant sur '⚽ Faire un Pronostic'.")
             return
         
-        # ⚠️ CONVERSION : on passe du code (ligue_1) au nom propre (Ligue 1)
+        # Conversion : code API (ex: ligue_1) -> nom modèle (ex: Ligue 1)
         competition_reelle = MAPPING_COMPETITIONS.get(competition_code, competition_code)
         
         print(f"[PREDICTION] Compétition : '{competition_code}' -> '{competition_reelle}'")
