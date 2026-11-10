@@ -12,6 +12,7 @@ except ImportError:
 # ⚠️ Identifiant de l'administrateur principal
 ADMIN_ID = 8653408729
 
+
 def _envoyer_telegram(message_texte):
     """Envoie un message brut à l'admin via l'API Telegram."""
     if not TOKEN:
@@ -21,7 +22,7 @@ def _envoyer_telegram(message_texte):
         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
         payload = {
             "chat_id": ADMIN_ID,
-            "text": message_texte[:4000],  # On tronque pour éviter l'erreur 400
+            "text": message_texte[:4000],  # Tronqué pour respecter la limite Telegram
             "parse_mode": "HTML"
         }
         requests.post(url, json=payload, timeout=5)
@@ -41,14 +42,27 @@ def log_info(message, module="BOT"):
 
 
 def log_warning(message, module="BOT"):
-    """Log un avertissement."""
+    """
+    Log un avertissement.
+    ⚠️ Par défaut, on notifie quand même l'admin (car on veut zéro surprise).
+    """
     print(f"[{module}] ⚠️ {message}")
+    
+    date_str = datetime.now().strftime("%d/%m/%Y à %H:%M:%S")
+    message_secu = message.replace("<", "&lt;").replace(">", "&gt;")
+    texte = (
+        f"⚠️ <b>AVERTISSEMENT</b>\n\n"
+        f"📅 {date_str}\n"
+        f"📌 Module : <b>{module}</b>\n\n"
+        f"📝 {message_secu}"
+    )
+    _executer_en_arriere_plan(_envoyer_telegram, texte)
 
 
-def log_error(message, module="BOT", exception=None, envoyer_admin=True):
+def log_error(message, module="BOT", exception=None):
     """
     Log une erreur avec la trace complète.
-    Envoie l'erreur à l'admin via Telegram en arrière-plan.
+    Envoie TOUJOURS l'erreur à l'admin via Telegram.
     """
     print(f"[{module}] ❌ {message}")
     
@@ -56,25 +70,49 @@ def log_error(message, module="BOT", exception=None, envoyer_admin=True):
     if exception:
         trace = traceback.format_exc()
         print(f"[{module}] 🔥 TRACEBACK:\n{trace}")
-        
-    if envoyer_admin:
-        date_str = datetime.now().strftime("%d/%m/%Y à %H:%M:%S")
-        
-        # On échappe le HTML pour éviter les problèmes de parsing
-        message_secu = message.replace("<", "&lt;").replace(">", "&gt;")
-        trace_secu = trace.replace("<", "&lt;").replace(">", "&gt;") if trace else ""
-        
-        texte = (
-            f"🚨 <b>ERREUR DÉTECTÉE</b>\n\n"
-            f"📅 {date_str}\n"
-            f"📌 Module : <b>{module}</b>\n\n"
-            f"📝 <b>Message :</b>\n{message_secu}\n"
-        )
-        if trace_secu:
-            texte += f"\n🔍 <b>Trace :</b>\n<pre>{trace_secu[:3000]}</pre>"
-        
-        # Envoi en arrière-plan pour ne pas ralentir le bot
-        _executer_en_arriere_plan(_envoyer_telegram, texte)
+    
+    date_str = datetime.now().strftime("%d/%m/%Y à %H:%M:%S")
+    message_secu = message.replace("<", "&lt;").replace(">", "&gt;")
+    trace_secu = trace.replace("<", "&lt;").replace(">", "&gt;") if trace else ""
+    
+    texte = (
+        f"🚨 <b>ERREUR DÉTECTÉE</b>\n\n"
+        f"📅 {date_str}\n"
+        f"📌 Module : <b>{module}</b>\n\n"
+        f"📝 <b>Message :</b>\n{message_secu}\n"
+    )
+    if trace_secu:
+        texte += f"\n🔍 <b>Trace :</b>\n<pre>{trace_secu[:3000]}</pre>"
+    
+    _executer_en_arriere_plan(_envoyer_telegram, texte)
+
+
+def log_critical(message, module="BOT", exception=None):
+    """
+    Log une erreur critique (bot peut s'arrêter).
+    Envoie TOUJOURS avec un préfixe visuel fort.
+    """
+    print(f"[{module}] 🚨 CRITIQUE : {message}")
+    
+    trace = ""
+    if exception:
+        trace = traceback.format_exc()
+        print(f"[{module}] 🔥 TRACEBACK:\n{trace}")
+    
+    date_str = datetime.now().strftime("%d/%m/%Y à %H:%M:%S")
+    message_secu = message.replace("<", "&lt;").replace(">", "&gt;")
+    trace_secu = trace.replace("<", "&lt;").replace(">", "&gt;") if trace else ""
+    
+    texte = (
+        f"🚨🚨 <b>ERREUR CRITIQUE</b> 🚨🚨\n\n"
+        f"📅 {date_str}\n"
+        f"📌 Module : <b>{module}</b>\n\n"
+        f"📝 <b>Message :</b>\n{message_secu}\n"
+    )
+    if trace_secu:
+        texte += f"\n🔍 <b>Trace :</b>\n<pre>{trace_secu[:3000]}</pre>"
+    
+    _executer_en_arriere_plan(_envoyer_telegram, texte)
 
 
 def log_canal_action(action, succes, details=""):
