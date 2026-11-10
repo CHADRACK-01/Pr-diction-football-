@@ -1,7 +1,7 @@
 import telebot
 from users import get_langue
 from core.ml_model import global_model_data
-from core.utils.logs import log_warning
+from core.utils.logs import log_info, log_error, log_warning
 
 
 def enregistrer_statistiques_handlers(bot):
@@ -9,7 +9,13 @@ def enregistrer_statistiques_handlers(bot):
     @bot.message_handler(func=lambda m: m.text == "📊 Statistiques")
     def handle_statistiques(message):
         user_id = message.from_user.id
-        langue = get_langue(user_id)
+        
+        # Récupération de la langue (avec fallback)
+        try:
+            langue = get_langue(user_id)
+        except Exception as e:
+            log_error(f"Impossible de récupérer la langue de {user_id}", "STATS", exception=e)
+            langue = "fr"
         
         # Vérifier que les modèles sont chargés
         modeles = global_model_data.get('modeles_par_competition')
@@ -52,9 +58,9 @@ def enregistrer_statistiques_handlers(bot):
         try:
             bot.reply_to(message, texte, parse_mode="Markdown")
         except Exception as e:
-            log_warning(f"Impossible d'afficher les stats en Markdown pour {user_id} : {e}", "STATS")
+            log_error(f"Impossible d'afficher les stats en Markdown pour {user_id}", "STATS", exception=e)
             # Fallback sans Markdown
             try:
                 bot.reply_to(message, texte.replace("**", "").replace("_", ""))
             except Exception as e2:
-                log_warning(f"Impossible d'afficher les stats (fallback) pour {user_id} : {e2}", "STATS")
+                log_error(f"Impossible d'afficher les stats (fallback) pour {user_id}", "STATS", exception=e2)
