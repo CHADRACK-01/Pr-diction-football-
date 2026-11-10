@@ -1,4 +1,5 @@
 import os
+from core.utils.logs import log_warning
 
 # =========================================================
 # TELEGRAM (Sécurisé via variables d'environnement)
@@ -30,7 +31,7 @@ os.makedirs(DOSSIER_ACTUEL, exist_ok=True)
 # CHAMPIONNATS (Anciens codes -> Noms propres de nos modèles)
 # =========================================================
 # C'est ce mapping qui permet au bot de faire le lien
-# entre les boutons (#PRONO_LIGUE_1) et nos modèles ("Ligue 1")
+# entre les boutons ("Ligue 1") et nos modèles ("Ligue 1")
 MAPPING_COMPETITIONS = {
     "premier_league": "Premier League",
     "championship": "Championship",
@@ -99,6 +100,32 @@ LIMITE_FREE_JOUR = 3
 LIMITE_PREMIUM_JOUR = 100
 
 # =========================================================
-# MODE VITRINE (True = Bot bloqué sauf inscription, False = Bot complet)
+# MODE VITRINE
 # =========================================================
 MODE_VITRINE = False
+
+
+# =========================================================
+# VÉRIFICATION DES VARIABLES CRITIQUES AU DÉMARRAGE
+# =========================================================
+def verifier_configuration():
+    """Vérifie que les variables critiques sont définies. Prévoit l'admin."""
+    problemes = []
+    
+    if not TOKEN:
+        problemes.append("TELEGRAM_TOKEN manquant")
+    if not TURSO_URL:
+        problemes.append("TURSO_URL manquant")
+    if not TURSO_TOKEN:
+        problemes.append("TURSO_TOKEN manquant")
+    
+    if problemes:
+        message = "Configuration incomplète : " + ", ".join(problemes)
+        print(f"⚠️ {message}")
+        log_warning(message, "CONFIG")
+        return False
+    return True
+
+
+# On exécute la vérification immédiatement à l'import
+verifier_configuration()
