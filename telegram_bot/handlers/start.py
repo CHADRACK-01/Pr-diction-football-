@@ -27,15 +27,11 @@ def envoyer_menu_principal(chat_id, user_id, bot):
             f"👇 Clique sur le bouton ci-dessous pour rejoindre le canal et ne rien rater :"
         )
         
-        # On garde uniquement les boutons essentiels
         markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
-        markup.add(
-            telebot.types.KeyboardButton("#LANGUE"),
-        )
+        markup.add(telebot.types.KeyboardButton("🌍 Langue"))
         
         bot.send_message(chat_id, presentation, reply_markup=markup, parse_mode="Markdown")
 
-        # Bouton pour rejoindre le canal
         inline_markup = telebot.types.InlineKeyboardMarkup(row_width=1)
         inline_markup.add(
             telebot.types.InlineKeyboardButton("📢 REJOINDRE LE CANAL (Pronostics Gratuits)", url=config.CANAL_LIEN)
@@ -43,7 +39,7 @@ def envoyer_menu_principal(chat_id, user_id, bot):
         bot.send_message(chat_id, "👇 Clique ici pour rejoindre :", reply_markup=inline_markup)
         return
 
-    # ⚠️ SINON (MODE NORMAL - ton code habituel)
+    # ⚠️ MODE NORMAL
     statut_label = get_statut_label(user_id)
     compteur = get_compteur_jour(user_id)
     limite = get_limite_jour(user_id)
@@ -56,28 +52,32 @@ def envoyer_menu_principal(chat_id, user_id, bot):
         f"👇 Utilise les boutons ci-dessous pour commencer :"
     )
 
+    # ⚠️ LE NOUVEAU MENU AVEC LES BOUTONS PRO
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(
-        telebot.types.KeyboardButton("#PRONO"),
-        telebot.types.KeyboardButton("#MATCHS"),
-        telebot.types.KeyboardButton("#COUPONS"),
-        telebot.types.KeyboardButton("#TOP"),
-        telebot.types.KeyboardButton("#HISTO"),
-        telebot.types.KeyboardButton("#STATS"),
-        telebot.types.KeyboardButton("#NOTIFS"),
-        telebot.types.KeyboardButton("#PREMIUM"),
-        telebot.types.KeyboardButton("#PARRAINAGE"),
-        telebot.types.KeyboardButton("#LANGUE"),
+        telebot.types.KeyboardButton("⚽ Faire un Pronostic"),
+        telebot.types.KeyboardButton("📅 Matchs du Jour"),
+        telebot.types.KeyboardButton("🎟️ Coupons"),
+        telebot.types.KeyboardButton("🏆 Top Affiches"),
+        telebot.types.KeyboardButton("📜 Historique"),
+        telebot.types.KeyboardButton("📊 Statistiques"),
+        telebot.types.KeyboardButton("🔔 Notifications"),
+        telebot.types.KeyboardButton("💎 Premium"),
+        telebot.types.KeyboardButton("🤝 Parrainage"),
+        telebot.types.KeyboardButton("🌍 Langue"),
     )
     
     if est_administrateur(user_id):
-        markup.add(telebot.types.KeyboardButton("#ADMIN"))
+        markup.add(telebot.types.KeyboardButton("👑 Panneau Admin"))
 
     bot.send_message(chat_id, presentation, reply_markup=markup)
 
     inline_markup = telebot.types.InlineKeyboardMarkup(row_width=1)
-    member = bot.get_chat_member(config.CANAL_ID, user_id)
-    is_member = member.status in ['member', 'administrator', 'creator']
+    try:
+        member = bot.get_chat_member(config.CANAL_ID, user_id)
+        is_member = member.status in ['member', 'administrator', 'creator']
+    except Exception:
+        is_member = True # Si l'API échoue, on ne spamme pas avec le bouton
 
     if not is_member:
         inline_markup.add(
@@ -103,16 +103,19 @@ def enregistrer_start_handlers(bot):
         if not existe_avant:
             parts = message.text.split()
             if len(parts) >= 2 and parts[1].startswith("REF"):
-                parrain_id = int(parts[1].replace("REF", ""))
-                if parrain_id != user.id and get_user_info(parrain_id):
-                    if set_parrain(user.id, parrain_id):
-                        ajouter_jours_premium(user.id, 1)
-                        ajouter_jours_premium(parrain_id, 1)
+                try:
+                    parrain_id = int(parts[1].replace("REF", ""))
+                    if parrain_id != user.id and get_user_info(parrain_id):
+                        if set_parrain(user.id, parrain_id):
+                            ajouter_jours_premium(user.id, 1)
+                            ajouter_jours_premium(parrain_id, 1)
+                except ValueError:
+                    pass
 
         envoyer_menu_principal(message.chat.id, user.id, bot)
 
     @bot.message_handler(commands=['langue', 'language'])
-    @bot.message_handler(func=lambda m: m.text == "#LANGUE")
+    @bot.message_handler(func=lambda m: m.text == "🌍 Langue")
     def cmd_langue(message):
         user_id = message.from_user.id
         langue = get_langue(user_id)
