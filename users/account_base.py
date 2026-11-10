@@ -86,19 +86,28 @@ def set_premium(user_id, date_expiration):
 
 
 def est_premium(user_id):
-    """Vérifie si un utilisateur est Premium (avec gestion d'erreur)."""
+    """Vérifie si un utilisateur est Premium (avec parsing tolérant des dates)."""
     status, expiration = get_user_status(user_id)
     if status != 'premium' or not expiration:
         return False
-    try:
-        if isinstance(expiration, str):
-            expiration_dt = datetime.strptime(expiration, "%Y-%m-%d %H:%M:%S")
-        else:
-            expiration_dt = expiration
-        return expiration_dt > datetime.now()
-    except Exception as e:
-        log_warning(f"Erreur parsing date expiration pour {user_id} : {e}", "ACCOUNTS")
-        return False
+    
+    # On essaie plusieurs formats de date
+    formats_possibles = [
+        "%Y-%m-%d %H:%M:%S",  # 2026-11-20 20:38:00
+        "%Y-%m-%d %H:%M",     # 2026-11-20 20:38
+        "%Y-%m-%d",           # 2026-11-20
+    ]
+    
+    for fmt in formats_possibles:
+        try:
+            expiration_dt = datetime.strptime(expiration, fmt)
+            return expiration_dt > datetime.now()
+        except ValueError:
+            continue
+    
+    # Si aucun format ne fonctionne, on log et on considère non-premium
+    log_warning(f"Format de date d'expiration invalide pour {user_id} : '{expiration}'", "ACCOUNTS")
+    return False
 
 
 def get_statut_label(user_id):
