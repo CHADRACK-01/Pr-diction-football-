@@ -3,17 +3,20 @@ import libsql
 from datetime import datetime
 
 from core.nouveau_prediction import predire_match_v2
-from core.utils.logs import log_info, log_error
+from core.utils.logs import log_info, log_error, log_warning
 
 TURSO_URL = os.environ.get("TURSO_URL", "")
 TURSO_TOKEN = os.environ.get("TURSO_TOKEN", "")
 
+
 def get_connection():
     return libsql.connect(database=TURSO_URL, auth_token=TURSO_TOKEN)
+
 
 def predire_match(home_input, away_input, competition="default", cotes_book=None):
     """
     Wrapper : appelle la nouvelle fonction de prédiction (5 modèles LightGBM).
+    Cette fonction est protégée par le filet de sécurité global (app.py).
     """
     log_info(f"Prédiction demandée : {home_input} vs {away_input} ({competition})", "PREDICTION")
     
@@ -31,6 +34,7 @@ def predire_match(home_input, away_input, competition="default", cotes_book=None
 def sauvegarder_historique(home_team, away_team, p_h, p_d, p_a, best_i, best_j):
     """
     Sauvegarde le pronostic dans l'historique (table resultats_pronostics).
+    Si l'insertion échoue, on le sait immédiatement (log_error).
     """
     options = [("1X", p_h + p_d), ("X2", p_d + p_a), ("12", p_h + p_a)]
     meilleure = max(options, key=lambda x: x[1])[0]
@@ -50,4 +54,8 @@ def sauvegarder_historique(home_team, away_team, p_h, p_d, p_a, best_i, best_j):
         
         log_info(f"Historique sauvegardé : {home_team} vs {away_team} ({meilleure})", "PREDICTION")
     except Exception as e:
-        log_error(f"Erreur sauvegarde historique : {e}", "PREDICTION")
+        log_error(
+            message=f"Impossible de sauvegarder l'historique pour {home_team} vs {away_team}",
+            module="PREDICTION",
+            exception=e
+        )
