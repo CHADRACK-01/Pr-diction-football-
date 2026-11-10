@@ -365,6 +365,98 @@ def debug_env():
     TELEGRAM_TOKEN : {token_ok_short} (longueur={len(TOKEN)})
     MODE_VITRINE : {MODE_VITRINE}
     """, 200
+    @app.route('/webhook_info')
+def webhook_info():
+    """Affiche les informations du webhook actuel (messages en attente)."""
+    import requests
+    try:
+        url = f"https://api.telegram.org/bot{TOKEN}/getWebhookInfo"
+        res = requests.get(url, timeout=10)
+        data = res.json()
+        
+        if not data.get('ok'):
+            return f"❌ Erreur API Telegram : {data}", 500
+        
+        info = data.get('result', {})
+        
+        texte = "📡 **INFORMATIONS DU WEBHOOK**\n\n"
+        texte += f"🔗 URL : {info.get('url', '❌ Non définie')}\n"
+        texte += f"📥 Messages en attente : {info.get('pending_update_count', 0)}\n"
+        texte += f"🔧 Dernière erreur : {info.get('last_error_message', 'Aucune')}\n"
+        texte += f"📅 Date dernière erreur : {info.get('last_error_date', 'N/A')}\n"
+        texte += f"✅ Certificat : {info.get('has_custom_certificate', False)}\n"
+        
+        # Les mises à jour autorisées
+        allowed = info.get('allowed_updates', [])
+        if allowed:
+            texte += f"\n📋 Mises à jour autorisées :\n"
+            for u in allowed:
+                texte += f"   • {u}\n"
+        else:
+            texte += f"\n📋 Mises à jour autorisées : Toutes\n"
+        
+        # Les dernières erreurs (10 max)
+        if info.get('last_error_message'):
+            texte += f"\n⚠️ **Dernière erreur :**\n{info['last_error_message']}\n"
+        
+        return texte, 200
+    except Exception as e:
+        return f"❌ Erreur : {e}", 500
+
+
+@app.route('/delete_webhook')
+def delete_webhook():
+    """Supprime le webhook actuel."""
+    import requests
+    try:
+        url = f"https://api.telegram.org/bot{TOKEN}/deleteWebhook?drop_pending_updates=false"
+        res = requests.get(url, timeout=10)
+        data = res.json()
+        
+        if data.get('ok'):
+            return "✅ Webhook supprimé avec succès !\n\nLe bot ne recevra plus les messages via webhook.\n⚠️ Pour le redéfinir, redéploie sur Render ou envoie /set_webhook", 200
+        else:
+            return f"❌ Erreur : {data}", 500
+    except Exception as e:
+        return f"❌ Erreur : {e}", 500
+
+
+@app.route('/delete_webhook_pending')
+def delete_webhook_pending():
+    """Supprime le webhook ET les messages en attente."""
+    import requests
+    try:
+        url = f"https://api.telegram.org/bot{TOKEN}/deleteWebhook?drop_pending_updates=true"
+        res = requests.get(url, timeout=10)
+        data = res.json()
+        
+        if data.get('ok'):
+            return "✅ Webhook supprimé ET messages en attente supprimés !", 200
+        else:
+            return f"❌ Erreur : {data}", 500
+    except Exception as e:
+        return f"❌ Erreur : {e}", 500
+
+
+@app.route('/set_webhook')
+def set_webhook():
+    """Redéfinit le webhook avec l'URL actuelle de Render."""
+    import requests
+    try:
+        # Détection automatique de l'URL (fonctionne sur Render)
+        host = request.headers.get('Host', 'prediction-football-209y.onrender.com')
+        webhook_url = f"https://{host}/{TOKEN}"
+        
+        url = f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={webhook_url}"
+        res = requests.get(url, timeout=10)
+        data = res.json()
+        
+        if data.get('ok'):
+            return f"✅ Webhook défini :\n{webhook_url}\n\n📥 Les nouveaux messages arriveront ici.", 200
+        else:
+            return f"❌ Erreur : {data}", 500
+    except Exception as e:
+        return f"❌ Erreur : {e}", 500
 
 
 # =========================================================
