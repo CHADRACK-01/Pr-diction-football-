@@ -7,7 +7,6 @@ Flask
 gunicorn
 joblib
 scikit-learn
-soccerdata
 xgboost
 lightgbm
 libsql
