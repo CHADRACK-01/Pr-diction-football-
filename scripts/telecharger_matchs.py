@@ -2,12 +2,9 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from datetime import datetime, timedelta, timezone
 from core.utils.logs import log_info, log_error, log_warning
-from core.api import football_data, bzzoiro, openligadb
+from core.api.orchestrator import collecter_tous_les_matchs
 from users.db import get_connection
-
-TZ_KINSHASA = timezone(timedelta(hours=1))
 
 
 def _inserer_matchs_en_base(matchs, competition):
@@ -66,141 +63,50 @@ def _inserer_matchs_en_base(matchs, competition):
     return inseres
 
 
-def telecharger_via_football_data():
-    """Télécharge les matchs via Football-Data.org."""
-    log_info("Début du téléchargement via Football-Data...", "SCRIPTS")
-    
-    try:
-        matchs_bruts = football_data.recuperer_matchs_bruts()
-    except Exception as e:
-        log_error("Erreur lors de l'appel à Football-Data", "SCRIPTS", exception=e)
-        return 0
-    
-    if not matchs_bruts:
-        log_warning("Aucun match récupéré via Football-Data.", "SCRIPTS")
-        return 0
-
-    par_competition = {}
-    for m in matchs_bruts:
-        comp = m.get('competition', 'inconnu')
-        if comp not in par_competition:
-            par_competition[comp] = []
-        par_competition[comp].append({
-            'date': m.get('heure', '')[:10] if m.get('heure') else None,
-            'home_team': m.get('home'),
-            'away_team': m.get('away'),
-            'fthg': None, 'ftag': None, 'ftr': None,
-            'hthg': None, 'htag': None, 'htr': None,
-            'hs': None, 'as_shots': None, 'hst': None, 'ast': None,
-            'hc': None, 'ac': None, 'hf': None, 'af': None,
-            'hy': None, 'ay': None, 'hr': None, 'ar': None,
-            'b365h': None, 'b365d': None, 'b365a': None,
-        })
-
-    total = 0
-    for comp, matchs in par_competition.items():
-        inseres = _inserer_matchs_en_base(matchs, comp)
-        log_info(f"Football-Data / {comp} : {inseres} matchs insérés.", "SCRIPTS")
-        total += inseres
-
-    return total
-
-
-def telecharger_via_bzzoiro():
-    """Télécharge les matchs via Bzzoiro."""
-    log_info("Début du téléchargement via Bzzoiro...", "SCRIPTS")
-    
-    try:
-        matchs_bruts = bzzoiro.get_matchs_du_jour()
-    except Exception as e:
-        log_error("Erreur lors de l'appel à Bzzoiro", "SCRIPTS", exception=e)
-        return 0
-    
-    if not matchs_bruts:
-        log_warning("Aucun match récupéré via Bzzoiro.", "SCRIPTS")
-        return 0
-
-    par_competition = {}
-    for m in matchs_bruts:
-        comp = m.get('competition', 'inconnu')
-        if comp not in par_competition:
-            par_competition[comp] = []
-        par_competition[comp].append({
-            'date': m.get('heure', '')[:10] if m.get('heure') else None,
-            'home_team': m.get('home'),
-            'away_team': m.get('away'),
-            'fthg': None, 'ftag': None, 'ftr': None,
-            'hthg': None, 'htag': None, 'htr': None,
-            'hs': None, 'as_shots': None, 'hst': None, 'ast': None,
-            'hc': None, 'ac': None, 'hf': None, 'af': None,
-            'hy': None, 'ay': None, 'hr': None, 'ar': None,
-            'b365h': None, 'b365d': None, 'b365a': None,
-        })
-
-    total = 0
-    for comp, matchs in par_competition.items():
-        inseres = _inserer_matchs_en_base(matchs, comp)
-        log_info(f"Bzzoiro / {comp} : {inseres} matchs insérés.", "SCRIPTS")
-        total += inseres
-
-    return total
-
-
-def telecharger_via_openligadb():
-    """Télécharge les matchs via OpenLigaDB."""
-    log_info("Début du téléchargement via OpenLigaDB...", "SCRIPTS")
-    
-    try:
-        matchs_bruts = openligadb.get_matchs_du_jour()
-    except Exception as e:
-        log_error("Erreur lors de l'appel à OpenLigaDB", "SCRIPTS", exception=e)
-        return 0
-    
-    if not matchs_bruts:
-        log_warning("Aucun match récupéré via OpenLigaDB.", "SCRIPTS")
-        return 0
-
-    par_competition = {}
-    for m in matchs_bruts:
-        comp = m.get('competition', 'inconnu')
-        if comp not in par_competition:
-            par_competition[comp] = []
-        par_competition[comp].append({
-            'date': m.get('heure', '')[:10] if m.get('heure') else None,
-            'home_team': m.get('home'),
-            'away_team': m.get('away'),
-            'fthg': None, 'ftag': None, 'ftr': None,
-            'hthg': None, 'htag': None, 'htr': None,
-            'hs': None, 'as_shots': None, 'hst': None, 'ast': None,
-            'hc': None, 'ac': None, 'hf': None, 'af': None,
-            'hy': None, 'ay': None, 'hr': None, 'ar': None,
-            'b365h': None, 'b365d': None, 'b365a': None,
-        })
-
-    total = 0
-    for comp, matchs in par_competition.items():
-        inseres = _inserer_matchs_en_base(matchs, comp)
-        log_info(f"OpenLigaDB / {comp} : {inseres} matchs insérés.", "SCRIPTS")
-        total += inseres
-
-    return total
-
-
 def telecharger_tout():
-    """Télécharge les matchs de toutes les sources disponibles."""
+    """Télécharge les matchs via l'orchestrateur multi-sources."""
     log_info("=== DÉBUT DU TÉLÉCHARGEMENT AUTOMATIQUE ===", "SCRIPTS")
     
-    total_fd = telecharger_via_football_data()
-    total_bz = telecharger_via_bzzoiro()
-    total_ol = telecharger_via_openligadb()
+    try:
+        matchs = collecter_tous_les_matchs()
+    except Exception as e:
+        log_error("Erreur lors de l'appel à l'orchestrateur", "SCRIPTS", exception=e)
+        return 0
     
-    total = total_fd + total_bz + total_ol
-    
-    if total > 0:
-        log_info(f"=== FIN DU TÉLÉCHARGEMENT : {total} matchs traités ===", "SCRIPTS")
-    else:
-        log_warning("=== FIN DU TÉLÉCHARGEMENT : aucun match récupéré ===", "SCRIPTS")
-    
+    if not matchs:
+        log_warning("Aucun match récupéré par l'orchestrateur.", "SCRIPTS")
+        return 0
+
+    # On regroupe par compétition
+    par_competition = {}
+    for m in matchs:
+        comp = m.get('competition', 'inconnu')
+        if comp not in par_competition:
+            par_competition[comp] = []
+        
+        # On normalise le format pour l'insertion
+        par_competition[comp].append({
+            'date': m.get('heure', '')[:10] if m.get('heure') else None,
+            'home_team': m.get('home'),
+            'away_team': m.get('away'),
+            'fthg': m.get('fthg'), 'ftag': m.get('ftag'), 'ftr': m.get('ftr'),
+            'hthg': m.get('hthg'), 'htag': m.get('htag'), 'htr': m.get('htr'),
+            'hs': m.get('hs'), 'as_shots': m.get('as_shots'),
+            'hst': m.get('hst'), 'ast': m.get('ast'),
+            'hc': m.get('hc'), 'ac': m.get('ac'),
+            'hf': m.get('hf'), 'af': m.get('af'),
+            'hy': m.get('hy'), 'ay': m.get('ay'),
+            'hr': m.get('hr'), 'ar': m.get('ar'),
+            'b365h': m.get('b365h'), 'b365d': m.get('b365d'), 'b365a': m.get('b365a'),
+        })
+
+    total = 0
+    for comp, matchs_comp in par_competition.items():
+        inseres = _inserer_matchs_en_base(matchs_comp, comp)
+        log_info(f"{comp} : {inseres} matchs insérés.", "SCRIPTS")
+        total += inseres
+
+    log_info(f"=== FIN DU TÉLÉCHARGEMENT : {total} matchs traités ===", "SCRIPTS")
     return total
 
 
