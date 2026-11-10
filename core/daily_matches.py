@@ -2,7 +2,7 @@ from datetime import datetime, timezone, timedelta
 
 from core.ml_model import global_model_data
 from core.prediction import predire_match
-from core.api.manager import get_matchs_du_jour as manager_get_matchs_du_jour
+from core.api.orchestrator import collecter_tous_les_matchs  # ← MODIFIÉ
 from core.utils.logs import log_info, log_warning, log_error
 from core.utils.markdown import formater_proprement
 from config import CHAMPIONNATS, INFOS_COMPETITIONS, MAPPING_COMPETITIONS
@@ -110,19 +110,19 @@ def _get_info_competition(nom_comp):
 
 
 def get_matchs_du_jour():
-    """Orchestre la récupération via le manager, puis calcule les pronostics."""
+    """Orchestre la récupération via l'orchestrateur, puis calcule les pronostics."""
     if not _charger_modele_si_necessaire():
         log_error("Impossible de charger les modèles, les matchs du jour sont indisponibles.", "MATCHS")
         return []
 
     try:
-        matchs_bruts = manager_get_matchs_du_jour()
+        matchs_bruts = collecter_tous_les_matchs()  # ← MODIFIÉ
     except Exception as e:
-        log_error("Erreur lors de la récupération des matchs via le manager", "MATCHS", exception=e)
+        log_error("Erreur lors de la récupération des matchs via l'orchestrateur", "MATCHS", exception=e)
         return []
 
     if not matchs_bruts:
-        log_warning("Aucun match renvoyé par le manager.", "MATCHS")
+        log_warning("Aucun match renvoyé par l'orchestrateur.", "MATCHS")
         return []
 
     matchs_trouves = []
