@@ -1,19 +1,21 @@
 import telebot
 from users import get_langue, est_banni, peut_faire_pronostic, get_limite_jour, est_administrateur
 from core.translations import get_text
-from config import CHAMPIONNATS, INFOS_COMPETITIONS
+from config import CHAMPIONNATS, INFOS_COMPETITIONS, MAPPING_COMPETITIONS
 from core.session import set_session_competition, clear_session_competition
 
 
 def creer_clavier_competitions(langue="fr"):
+    """Crée le clavier des compétitions avec des boutons propres."""
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     boutons = []
     for code, nom_propre in CHAMPIONNATS.items():
         infos = INFOS_COMPETITIONS.get(nom_propre, {})
         emoji = infos.get("emoji", "🏆")
-        boutons.append(telebot.types.KeyboardButton(f"#PRONO_{code.upper()} {emoji} {nom_propre}"))
+        # On affiche "🏆 Ligue 1" au lieu de "#PRONO_LIGUE_1"
+        boutons.append(telebot.types.KeyboardButton(f"{emoji} {nom_propre}"))
     markup.add(*boutons)
-    markup.add(telebot.types.KeyboardButton("🔙 Retour Menu"))
+    markup.add(telebot.types.KeyboardButton("↩️ Retour au Menu"))
     return markup
 
 
@@ -32,7 +34,7 @@ def afficher_menu_competitions(bot, message):
     markup = creer_clavier_competitions(langue)
     bot.reply_to(
         message,
-        "⚽ **Choisis la compétition** pour ton pronostic :\n\n👇 Utilise les boutons ci-dessous ou clique sur 🔙 Retour Menu.",
+        "⚽ **Choisis la compétition** pour ton pronostic :\n\n👇 Utilise les boutons ci-dessous ou clique sur ↩️ Retour au Menu.",
         reply_markup=markup,
         parse_mode="Markdown"
     )
@@ -40,54 +42,60 @@ def afficher_menu_competitions(bot, message):
 
 def enregistrer_pronostic_handlers(bot):
 
-    @bot.message_handler(func=lambda m: m.text == "#PRONO")
+    @bot.message_handler(func=lambda m: m.text == "⚽ Faire un Pronostic")
     def handle_pronostic(message):
         afficher_menu_competitions(bot, message)
 
-    @bot.message_handler(func=lambda m: m.text == "🔙 Retour Menu")
+    @bot.message_handler(func=lambda m: m.text == "↩️ Retour au Menu")
     def retour_menu(message):
         user_id = message.from_user.id
         clear_session_competition(user_id)
         from telegram_bot.handlers.start import envoyer_menu_principal
         envoyer_menu_principal(message.chat.id, user_id, bot)
 
-    @bot.message_handler(func=lambda m: m.text and m.text.startswith("#PRONO_"))
+    @bot.message_handler(func=lambda m: m.text and any(nom in m.text for nom in CHAMPIONNATS.values()))
     def handle_choix_competition(message):
         user_id = message.from_user.id
         langue = get_langue(user_id)
         texte_bouton = message.text
 
-        cle = texte_bouton.split(" ")[0]
-        comp_code = cle.replace("#PRONO_", "").lower()
+        # On cherche à quelle compétition correspond le texte du bouton
+        comp_code_trouve = None
+        nom_propre_trouve = None
+        
+        for code, nom_propre in CHAMPIONNATS.items():
+            # Le texte du bouton est de la forme "🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League"
+            if nom_propre in texte_bouton:
+                comp_code_trouve = code
+                nom_propre_trouve = nom_propre
+                break
 
-        if comp_code not in CHAMPIONNATS:
+        if not comp_code_trouve:
             return
 
-        nom_propre = CHAMPIONNATS[comp_code]
-        
-        # ⚠️ On sauvegarde dans la BDD maintenant
-        set_session_competition(user_id, comp_code)
+        # On sauvegarde la compétition dans la BDD
+        set_session_competition(user_id, comp_code_trouve)
 
-        # On remet le clavier principal
+        # On remet le clavier principal (pour que l'utilisateur puisse taper le match)
         markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
         markup.add(
-            telebot.types.KeyboardButton("#PRONO"),
-            telebot.types.KeyboardButton("#MATCHS"),
-            telebot.types.KeyboardButton("#COUPONS"),
-            telebot.types.KeyboardButton("#TOP"),
-            telebot.types.KeyboardButton("#HISTO"),
-            telebot.types.KeyboardButton("#STATS"),
-            telebot.types.KeyboardButton("#NOTIFS"),
-            telebot.types.KeyboardButton("#PREMIUM"),
-            telebot.types.KeyboardButton("#PARRAINAGE"),
-            telebot.types.KeyboardButton("#LANGUE"),
+            telebot.types.KeyboardButton("⚽ Faire un Pronostic"),
+            telebot.types.KeyboardButton("📅 Matchs du Jour"),
+            telebot.types.KeyboardButton("🎟️ Coupons"),
+            telebot.types.KeyboardButton("🏆 Top Affiches"),
+            telebot.types.KeyboardButton("📜 Historique"),
+            telebot.types.KeyboardButton("📊 Statistiques"),
+            telebot.types.KeyboardButton("🔔 Notifications"),
+            telebot.types.KeyboardButton("💎 Premium"),
+            telebot.types.KeyboardButton("🤝 Parrainage"),
+            telebot.types.KeyboardButton("🌍 Langue"),
         )
         if est_administrateur(user_id):
-            markup.add(telebot.types.KeyboardButton("#ADMIN"))
+            markup.add(telebot.types.KeyboardButton("👑 Panneau Admin"))
         
         bot.send_message(
             message.chat.id,
-            f"⚽ Tu as choisi **{nom_propre}**.\n\nTape maintenant ton pronostic :\nFormat : `Equipe A vs Equipe B`",
+            f"⚽ Tu as choisi **{nom_propre_trouve}**.\n\nTape maintenant ton pronostic :\nFormat : `Equipe A vs Equipe B`\nExemple : `Paris SG vs Marseille`",
             reply_markup=markup,
             parse_mode="Markdown"
         )
