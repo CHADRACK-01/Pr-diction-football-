@@ -1,13 +1,18 @@
 import traceback
 import threading
 import requests
+import os
 from datetime import datetime
 
-# ⚠️ On importe config ici pour éviter les imports circulaires
+# ⚠️ On importe config avec fallback
 try:
     from config import TOKEN
 except ImportError:
     TOKEN = None
+
+# Si TOKEN est None ou vide, on essaie depuis os.environ
+if not TOKEN:
+    TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
 
 # ⚠️ Identifiant de l'administrateur principal
 ADMIN_ID = 8653408729
