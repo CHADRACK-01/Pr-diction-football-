@@ -1,4 +1,4 @@
-from datetime import datetime
+import unicodedata
 from core.api import bzzoiro, openligadb, football_data
 from config import MAPPING_COMPETITIONS
 from core.utils.logs import log_info, log_warning, log_error
@@ -6,25 +6,21 @@ from core.utils.logs import log_info, log_warning, log_error
 
 # Système de boost : plus le score est élevé, plus la source est fiable
 BOOST_SOURCES = {
-    "bzzoiro": 3,        # Cotes + xG + live
-    "football_data": 2,  # Fiable, mais pas de cotes
-    "openligadb": 1,     # Basique (Bundesliga uniquement)
+    "bzzoiro": 3,
+    "football_data": 2,
+    "openligadb": 1,
 }
 
-# Liste des compétitions supportées (noms propres)
+# Liste des noms propres de compétitions supportées
 COMPETITIONS_SUPPORTEES = set(MAPPING_COMPETITIONS.values())
 
 
 def _normaliser_cle_match(match):
-    """
-    Crée une clé unique pour dédupliquer les matchs.
-    Ex: "2026-11-10|Paris SG|Marseille"
-    """
+    """Crée une clé unique pour dédupliquer les matchs."""
     try:
-        # On extrait la date (au format YYYY-MM-DD)
         date_str = str(match.get('heure', ''))[:10]
-        home = str(match.get('home', '')).lower().strip()
-        away = str(match.get('away', '')).lower().strip()
+        home = unicodedata.normalize('NFKD', match.get('home', '')).encode('ascii', 'ignore').decode('utf-8').lower().strip()
+        away = unicodedata.normalize('NFKD', match.get('away', '')).encode('ascii', 'ignore').decode('utf-8').lower().strip()
         return f"{date_str}|{home}|{away}"
     except Exception:
         return None
@@ -33,17 +29,27 @@ def _normaliser_cle_match(match):
 def _extraire_competition_supportee(match):
     """
     Vérifie si le match appartient à une compétition supportée.
-    Retourne le nom propre de la compétition (ex: "Ligue 1") ou None.
+    Retourne le nom propre (ex: "Ligue 1") ou None.
     """
-    comp_code = match.get('competition', '')
+    comp = str(match.get('competition', '')).strip()
     
-    # On essaie d'abord le mapping direct (code -> nom propre)
-    if comp_code in MAPPING_COMPETITIONS:
-        return MAPPING_COMPETITIONS[comp_code]
+    # 1. Si c'est un code connu (ex: "ligue_1")
+    if comp in MAPPING_COMPETITIONS:
+        return MAPPING_COMPETITIONS[comp]
     
-    # Si c'est déjà un nom propre (ex: "Ligue 1"), on vérifie qu'il est supporté
-    if comp_code in COMPETITIONS_SUPPORTEES:
-        return comp_code
+    # 2. Si c'est déjà un nom propre connu (ex: "Ligue 1")
+    if comp in COMPETITIONS_SUPPORTEES:
+        return comp
+    
+    # 3. Correspondance insensible à la casse et aux accents
+    try:
+        comp_norm = unicodedata.normalize('NFKD', comp).encode('ascii', 'ignore').decode('utf-8').lower().strip()
+        for nom_propre in COMPETITIONS_SUPPORTEES:
+            nom_norm = unicodedata.normalize('NFKD', nom_propre).encode('ascii', 'ignore').decode('utf-8').lower().strip()
+            if comp_norm == nom_norm:
+                return nom_propre
+    except Exception:
+        pass
     
     return None
 
@@ -55,7 +61,6 @@ def get_matchs_du_jour():
     """
     log_info("Début de la récupération multi-sources des matchs...", "MANAGER")
     
-    # Dictionnaire : clé_match -> (match, boost)
     matchs_collectes = {}
     stats_sources = {}
     
@@ -71,7 +76,6 @@ def get_matchs_du_jour():
                 cle = _normaliser_cle_match(m)
                 if not cle:
                     continue
-                # Si déjà présent, on garde la version avec le meilleur boost
                 if cle in matchs_collectes:
                     _, boost_existant = matchs_collectes[cle]
                     if BOOST_SOURCES['bzzoiro'] > boost_existant:
@@ -139,15 +143,16 @@ def get_matchs_du_jour():
     # =========================================================
     matchs_finaux = []
     filtres_par_competition = 0
+    comps_filtrees = set()
     
     for cle, (match, boost) in matchs_collectes.items():
         comp_supportee = _extraire_competition_supportee(match)
         
         if comp_supportee is None:
             filtres_par_competition += 1
+            comps_filtrees.add(match.get('competition', 'Inconnu'))
             continue
         
-        # On stocke le nom propre et la source
         match['competition_reelle'] = comp_supportee
         matchs_finaux.append(match)
 
@@ -160,9 +165,12 @@ def get_matchs_du_jour():
         f"Football-Data={stats_sources.get('football_data', 0)}, "
         f"OpenLigaDB={stats_sources.get('openligadb', 0)} "
         f"→ {len(matchs_finaux)} matchs retenus "
-        f"({filtres_par_competition} filtrés car compétition non supportée).",
+        f"({filtres_par_competition} filtrés).",
         "MANAGER"
     )
+
+    if comps_filtrees:
+        log_info(f"Compétitions ignorées : {list(comps_filtrees)[:10]}", "MANAGER")
 
     if not matchs_finaux:
         log_warning(
