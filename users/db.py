@@ -26,11 +26,36 @@ def _executer_et_commit(conn, sql, nom_table):
         )
 
 
+def _ajouter_colonnes_manquantes(conn, table, colonnes):
+    """
+    Vérifie si les colonnes existent dans la table.
+    Si elles manquent, les ajoute avec ALTER TABLE.
+    """
+    try:
+        # Récupérer les colonnes existantes
+        cur = conn.execute(f"PRAGMA table_info({table})")
+        colonnes_existantes = [row[1] for row in cur.fetchall()]
+        
+        for nom_col, type_col in colonnes.items():
+            if nom_col not in colonnes_existantes:
+                try:
+                    conn.execute(f"ALTER TABLE {table} ADD COLUMN {nom_col} {type_col}")
+                    conn.commit()
+                    log_info(f"Colonne '{nom_col}' ajoutée à la table '{table}'.", "DATABASE")
+                except Exception as e:
+                    log_warning(f"Impossible d'ajouter la colonne '{nom_col}' à '{table}' : {e}", "DATABASE")
+    except Exception as e:
+        log_error(f"Impossible de vérifier les colonnes de '{table}'", "DATABASE", exception=e)
+
+
 def initialiser_tables():
-    """Initialise toutes les tables de la base de données au démarrage."""
-    log_info("Début de la création des tables...", "DATABASE")
+    """Initialise toutes les tables de la base de données (sans les supprimer)."""
+    log_info("Début de la création/vérification des tables...", "DATABASE")
     conn = get_connection()
     
+    # =========================================================
+    # 1. Création des tables (IF NOT EXISTS = ne supprime jamais)
+    # =========================================================
     tables = {
         "utilisateurs": """
             CREATE TABLE IF NOT EXISTS utilisateurs (
@@ -154,7 +179,33 @@ def initialiser_tables():
     for nom, sql in tables.items():
         _executer_et_commit(conn, sql, nom)
     
-    # Vérification finale : est-ce que les tables existent vraiment ?
+    # =========================================================
+    # 2. Vérification des colonnes manquantes (ALTER TABLE)
+    # =========================================================
+    # Si la table matchs existe mais avec une ancienne structure,
+    # on ajoute les colonnes manquantes sans supprimer les données.
+    colonnes_matchs = {
+        "hs": "INTEGER",
+        "as_shots": "INTEGER",
+        "hst": "INTEGER",
+        "ast": "INTEGER",
+        "hc": "INTEGER",
+        "ac": "INTEGER",
+        "hf": "INTEGER",
+        "af": "INTEGER",
+        "hy": "INTEGER",
+        "ay": "INTEGER",
+        "hr": "INTEGER",
+        "ar": "INTEGER",
+        "b365h": "REAL",
+        "b365d": "REAL",
+        "b365a": "REAL",
+    }
+    _ajouter_colonnes_manquantes(conn, "matchs", colonnes_matchs)
+    
+    # =========================================================
+    # 3. Vérification finale
+    # =========================================================
     try:
         result = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
         noms_tables = [r[0] for r in result]
