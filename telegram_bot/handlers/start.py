@@ -1,7 +1,8 @@
 # telegram_bot/handlers/start.py
 """
 Handler /start + menu principal.
-- Parrainage atomique (vérif enregistrement avant ajout premium)
+- Gestion forcée de la langue après changement
+- Parrainage atomique (vérif enregistrement)
 - Logs enrichis
 """
 
@@ -29,10 +30,11 @@ def _contexte(user, chat_id=None):
     }
 
 
-def envoyer_menu_principal(chat_id, user_id, bot):
+def envoyer_menu_principal(chat_id, user_id, bot, force_langue=None):
     """Affiche le menu principal (normal ou vitrine)."""
     try:
-        langue = get_langue(user_id)
+        # ⚠️ CORRECTION : Si force_langue est fourni, on l'utilise
+        langue = force_langue if force_langue else get_langue(user_id)
         user_info = get_user_info(user_id)
         nom = user_info["first_name"] if user_info else "Utilisateur"
     except Exception as e:
@@ -43,6 +45,7 @@ def envoyer_menu_principal(chat_id, user_id, bot):
             exception=e,
         )
         nom = "Utilisateur"
+        langue = "fr"
 
     # MODE VITRINE
     if config.MODE_VITRINE:
@@ -200,7 +203,6 @@ def enregistrer_start_handlers(bot):
                     parrain_id = int(parts[1].replace("REF", ""))
                     if parrain_id != user_id and get_user_info(parrain_id):
                         if set_parrain(user_id, parrain_id):
-                            # ⚠️ Vérification : utilisateur bien créé avant ajout premium
                             if utilisateur_existe(user_id):
                                 ajouter_jours_premium(user_id, 1)
                                 ajouter_jours_premium(parrain_id, 1)
@@ -254,8 +256,14 @@ def enregistrer_start_handlers(bot):
             langue = call.data.split("|", 1)[1]
             if set_langue(user.id, langue):
                 bot.answer_callback_query(call.id, "OK")
-                bot.send_message(call.message.chat.id, get_text("langue_changee", langue))
-                envoyer_menu_principal(call.message.chat.id, user.id, bot)
+                
+                # ⚠️ CORRECTION : On force la relecture de la langue depuis la BDD
+                nouvelle_langue = get_langue(user.id)
+                
+                bot.send_message(call.message.chat.id, get_text("langue_changee", nouvelle_langue))
+                
+                # On passe la nouvelle langue au menu pour qu'il s'affiche correctement
+                envoyer_menu_principal(call.message.chat.id, user.id, bot, force_langue=nouvelle_langue)
             else:
                 bot.answer_callback_query(call.id, "Langue non supportée")
         except Exception as e:
