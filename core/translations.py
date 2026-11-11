@@ -1,61 +1,47 @@
+# core/translations.py
+"""
+Traductions FR / EN / Lingala.
+- Clé manquante : log_warning explicite (plus de retour de la clé brute silencieux)
+- Variables manquantes : log_warning détaillé
+"""
+
 from core.utils.logs import log_warning
 
-# =========================================================
-# LANGUES DISPONIBLES
-# =========================================================
 LANGUES_DISPONIBLES = {
     "fr": "Français",
     "en": "English",
     "ln": "Lingala",
 }
 
-# =========================================================
-# TEXTES
-# =========================================================
 TEXTES = {
     "fr": {
-        # --- Bienvenue / Menu ---
         "welcome": "ASSISTANT PRO\n\nBienvenue {nom} !\n\nStatut : {statut}\nPronostics : {compteur}/{limite}\n\nMatchs analysés : {nb_matchs}\nPrécision : {precision}%\n\nChoisis une option :",
         "fallback": "Je n'ai pas compris ta demande.\n\nUtilise les boutons du menu ci-dessous pour naviguer.",
         "banni": "🚫 Tu es banni de ce bot.",
-        "aide": "📖 AIDE\n\nCommandes disponibles :\n/start : Menu principal\n/langue : Changer de langue\n/notif_on : Activer les notifications\n/notif_off : Désactiver les notifications\n/myid : Ton ID",
-
-        # --- Pronostic ---
+        "aide": "📖 AIDE\n\nCommandes :\n/start : Menu principal\n/langue : Changer de langue\n/notif_on : Activer les notifications\n/notif_off : Désactiver les notifications\n/myid : Ton ID",
         "demande_affiche": "Tape l'affiche du match :\n\nEquipeDom vs EquipeExt\n\nExemples :\npsg vs marseille\nbarca vs real",
         "limite_atteinte": "⚠️ Limite atteinte ({limite}/jour).\n\nPasse en Premium pour des pronostics illimités !",
         "modele_chargement": "Chargement du modèle...",
         "modele_charge": "Modèle chargé !\n{nb_matchs} matchs | Précision : {precision}%",
         "erreur_equipe": "Erreur : {erreur}\n\nEssaie : psg vs marseille",
-
-        # --- Statistiques ---
         "stats_ia": "📊 STATISTIQUES IA\n\nMatchs analysés : {nb_matchs}\nPrécision : {precision}%",
-
-        # --- Historique ---
         "historique_vide": "📜 Aucun historique pour l'instant.\n\nFais ton premier pronostic avec ⚽ Faire un Pronostic !",
         "historique_titre": "📜 Tes 5 derniers pronostics\n\n",
-
-        # --- Premium ---
         "premium_actif": "💎 Tu es déjà Premium !",
         "premium_titre": "💎 ABONNEMENT PREMIUM\n\nAvantages :\n• Pronostics illimités\n• Score exact + Over/BTTS\n• Support prioritaire\n\nFormules :\nJournalier : 2 000 CDF\nHebdomadaire : 6 000 CDF\nMensuel : 10 000 CDF",
         "premium_choix_titre": "💎 ABONNEMENT PREMIUM\n\nChoisis ton mode de paiement :",
         "btn_pay_stars": "Payer avec Telegram Stars",
         "btn_pay_mobile": "Payer par Mobile Money",
         "btn_pay_code": "J'ai un code Premium",
-
-        # --- Notifications ---
         "notifs_titre": "🔔 NOTIFICATIONS\n\nChaque matin à 8h, tu recevras les 3 meilleurs pronostics.\n\nChoisis une option :",
         "notifs_activees": "✅ Notifications ACTIVÉES",
         "notifs_desactivees": "❌ Notifications DÉSACTIVÉES",
         "bouton_activer": "Activer",
         "bouton_desactiver": "Désactiver",
-
-        # --- Langue ---
         "choix_langue": "🌍 Choisis ta langue :",
         "langue_changee": "✅ Langue changée en Français",
-
-        # --- Parrainage ---
         "parrainage_titre": "🤝 PARRAINAGE\n\nInvite tes amis et gagne des jours Premium gratuits !\n\nGains :\n- 1 ami inscrit = 1 jour Premium pour toi ET ton ami\n- 5 amis inscrits = 7 jours Premium bonus\n\nTon lien :\n{lien}\n\nTes stats :\n- Filleuls : {nb_filleuls}\n- Ton code : {code}",
-        "parrainage_bienvenue": "Bienvenue ! Tu as été parrainé par un ami.\n\n+1 jour Premium pour toi et ton parrain !",
+        "parrainage_bienvenue": "Bienvenue ! Tu as été parrainé.\n\n+1 jour Premium pour toi et ton parrain !",
         "parrainage_bonus_5": "Félicitations ! Tu as atteint 5 filleuls.\n\n+7 jours Premium bonus !",
         "parrainage_classement_titre": "🏆 CLASSEMENT DES PARRAINS",
         "parrainage_mes_filleuls": "👥 MES FILLEULS",
@@ -63,8 +49,6 @@ TEXTES = {
         "parrainage_palier_actuel": "🏆 Palier atteint : {nom} (bonus +{bonus}j)",
         "parrainage_prochain_palier": "🎯 Prochain palier : {nom} dans {restant} filleul(s) (+{bonus}j bonus)",
         "parrainage_bonus_palier": "Félicitations ! Tu as atteint le palier {nom}.\n\n+{bonus} jours Premium bonus !",
-
-        # --- Paiement ---
         "pay_mobile_titre": "📱 PAIEMENT MOBILE MONEY\n\nEnvoie le montant de {montant} CDF pour l'abonnement {abo} sur l'un de ces numéros :\n",
         "pay_code_titre": "🎟️ Tape ton code Premium :",
         "pay_code_ok": "✅ Code valide ! +{jours} jours Premium !",
@@ -72,8 +56,6 @@ TEXTES = {
         "pay_attente_titre": "⏳ Demande envoyée !\n\nL'admin va vérifier ton paiement.\nTu recevras une notification après validation.",
         "pay_valide": "✅ Paiement validé ! +{jours} jours Premium !",
         "pay_refuse": "❌ Ton paiement a été refusé.\nContacte l'admin pour plus d'infos.",
-
-        # --- Matchs / Coupons ---
         "titre_matchs_jour": "📅 MATCHS DU JOUR - {date}",
         "aucun_match_jour": "📅 Aucun match aujourd'hui ({date}).",
         "tip_matchs_jour": "Choisis '⚽ Faire un Pronostic' pour plus de détails.",
@@ -82,8 +64,6 @@ TEXTES = {
         "aucun_coupon": "🎟️ Aucun coupon disponible aujourd'hui.",
         "aucune_affiche": "🏆 Aucune affiche à fort potentiel aujourd'hui.",
         "coupons_free_hint": "⭐ Passe Premium pour voir tous les coupons et les détails complets !",
-
-        # --- Boutons (anciens, gardés pour compatibilité) ---
         "btn_pronostic": "⚽ Faire un Pronostic",
         "btn_historique": "📜 Historique",
         "btn_stats": "📊 Statistiques",
@@ -95,7 +75,6 @@ TEXTES = {
         "btn_coupons": "🎟️ Coupons",
         "btn_top_affiches": "🏆 Top Affiches",
     },
-
     "en": {
         "welcome": "PRO ASSISTANT\n\nWelcome {nom}!\n\nStatus: {statut}\nPredictions: {compteur}/{limite}\n\nMatches analyzed: {nb_matchs}\nAccuracy: {precision}%\n\nChoose an option:",
         "fallback": "I didn't understand.\n\nUse the menu buttons below.",
@@ -157,7 +136,6 @@ TEXTES = {
         "btn_coupons": "🎟️ Coupons",
         "btn_top_affiches": "🏆 Top Matches",
     },
-
     "ln": {
         "welcome": "MOSALISI PRO\n\nMbote {nom}!\n\nStatut: {statut}\nBakano: {compteur}/{limite}\n\nMasano: {nb_matchs}\nBosembo: {precision}%\n\nPona eloko:",
         "fallback": "Nazangi ntina.\n\nSalela ba boutons ya menu.",
@@ -224,27 +202,47 @@ TEXTES = {
 
 def get_text(cle, langue="fr", **kwargs):
     """
-    Retourne le texte traduit avec les variables remplacées.
-    Si une variable manque, on logge un warning (l'admin est prévenu) 
-    mais on renvoie quand même le texte pour ne pas bloquer l'utilisateur.
+    Retourne le texte traduit.
+    - Si la clé n'existe pas : log_warning + fallback FR + retour de la clé
+    - Si une variable manque : log_warning + retour du texte brut
     """
     if langue not in TEXTES:
         langue = "fr"
 
-    texte = TEXTES[langue].get(cle, TEXTES["fr"].get(cle, cle))
+    texte = TEXTES[langue].get(cle)
+    if texte is None:
+        texte_fr = TEXTES["fr"].get(cle)
+        if texte_fr is None:
+            log_warning(
+                message=f"Clé de traduction introuvable dans TOUTES les langues : '{cle}'",
+                module="TRANSLATIONS",
+                extra={"cle": cle, "langue_demandee": langue},
+            )
+            return cle
+        log_warning(
+            message=f"Clé '{cle}' absente en '{langue}', fallback FR",
+            module="TRANSLATIONS",
+            extra={"cle": cle, "langue": langue},
+        )
+        texte = texte_fr
 
     if kwargs:
         try:
-            texte = texte.format(**kwargs)
+            return texte.format(**kwargs)
         except KeyError as e:
             log_warning(
-                f"Variable manquante '{e}' dans la traduction '{cle}' (langue={langue})",
-                "TRANSLATIONS"
+                message=f"Variable '{e}' manquante pour la clé '{cle}' (langue={langue})",
+                module="TRANSLATIONS",
+                extra={"cle": cle, "langue": langue, "manquante": str(e)},
             )
+            return texte
         except Exception as e:
             log_warning(
-                f"Erreur de formatage de la traduction '{cle}' (langue={langue}) : {e}",
-                "TRANSLATIONS"
+                message=f"Erreur de formatage de '{cle}' (langue={langue})",
+                module="TRANSLATIONS",
+                extra={"cle": cle, "langue": langue},
+                exception=e,
             )
+            return texte
 
     return texte
