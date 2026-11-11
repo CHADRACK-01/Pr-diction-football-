@@ -1,19 +1,76 @@
+# core/canal_manager.py
+"""
+Publication sur le canal.
+- Cache CPU : évite de recalculer les pronostics 2x/jour
+- Logs enrichis
+"""
+
 import time
+from datetime import datetime, timezone, timedelta
+
 from config import CANAL_ID
 from core.daily_matches import get_matchs_du_jour, formater_matchs_du_jour
 from core.paris_builder import generer_coupons_du_jour, formater_coupon
 from core.utils.logs import log_info, log_error, log_warning
 
+TZ_KINSHASA = timezone(timedelta(hours=1))
+
+# Cache : date (YYYY-MM-DD) -> matchs calculés
+_CACHE_MATCHS = {"date": None, "matchs": []}
+_CACHE_COUPONS = {"date": None, "data": None}
+
+
+def _invalider_si_nouveau_jour():
+    """Invalide le cache si on change de jour."""
+    aujourd_hui = datetime.now(TZ_KINSHASA).strftime("%Y-%m-%d")
+    if _CACHE_MATCHS["date"] != aujourd_hui:
+        _CACHE_MATCHS["date"] = aujourd_hui
+        _CACHE_MATCHS["matchs"] = []
+    if _CACHE_COUPONS["date"] != aujourd_hui:
+        _CACHE_COUPONS["date"] = aujourd_hui
+        _CACHE_COUPONS["data"] = None
+
+
+def _get_matchs_avec_cache():
+    """Retourne les matchs du jour (avec cache par date)."""
+    _invalider_si_nouveau_jour()
+    if _CACHE_MATCHS["matchs"]:
+        return _CACHE_MATCHS["matchs"]
+    try:
+        matchs = get_matchs_du_jour()
+        _CACHE_MATCHS["matchs"] = matchs or []
+        return _CACHE_MATCHS["matchs"]
+    except Exception as e:
+        log_error(
+            message="Erreur récupération matchs pour canal",
+            module="CANAL",
+            exception=e,
+        )
+        return []
+
+
+def _get_coupons_avec_cache():
+    """Retourne les coupons du jour (avec cache par date)."""
+    _invalider_si_nouveau_jour()
+    if _CACHE_COUPONS["data"] is not None:
+        return _CACHE_COUPONS["data"]
+    try:
+        data = generer_coupons_du_jour()
+        _CACHE_COUPONS["data"] = data
+        return data
+    except Exception as e:
+        log_error(
+            message="Erreur génération coupons pour canal",
+            module="CANAL",
+            exception=e,
+        )
+        return {"weekend": False, "coupons": []}
+
 
 def _envoyer_au_canal_securise(bot, texte, dry_run=False, chat_debug=None):
-    """
-    Envoie un message sur le canal.
-    - Tronque si le texte dépasse 4000 caractères
-    - En dry_run : envoie à chat_debug au lieu du canal
-    - Logge les erreurs
-    """
+    """Envoie un message au canal (tronqué si besoin)."""
     if not texte:
-        log_warning("Tentative d'envoi d'un message vide sur le canal", "CANAL")
+        log_warning(message="Message vide ignoré", module="CANAL")
         return False
 
     if len(texte) > 4000:
@@ -24,7 +81,12 @@ def _envoyer_au_canal_securise(bot, texte, dry_run=False, chat_debug=None):
             try:
                 bot.send_message(chat_debug, f"🧪 MODE TEST (Dry Run)\n\n{texte}")
             except Exception as e:
-                log_error(f"Impossible d'envoyer le message test à {chat_debug}", "CANAL", exception=e)
+                log_error(
+                    message="Impossible d'envoyer le test",
+                    module="CANAL",
+                    extra={"chat_id": chat_debug},
+                    exception=e,
+                )
         return True
 
     try:
@@ -32,18 +94,18 @@ def _envoyer_au_canal_securise(bot, texte, dry_run=False, chat_debug=None):
         log_info("Message publié sur le canal.", "CANAL")
         return True
     except Exception as e:
-        log_error(f"Impossible de publier sur le canal {CANAL_ID}", "CANAL", exception=e)
+        log_error(
+            message=f"Impossible de publier sur le canal {CANAL_ID}",
+            module="CANAL",
+            extra={"chat_id": CANAL_ID},
+            exception=e,
+        )
         return False
 
 
 def publier_matchs_sur_canal(bot, dry_run=False, chat_debug=None):
-    """Publie les matchs du jour sur le canal."""
-    try:
-        matchs = get_matchs_du_jour()
-    except Exception as e:
-        log_error("Erreur lors de la récupération des matchs pour le canal", "CANAL", exception=e)
-        return False
-
+    """Publie les matchs du jour (confiance >= 60%)."""
+    matchs = _get_matchs_avec_cache()
     if not matchs:
         log_info("Aucun match à publier sur le canal.", "CANAL")
         if chat_debug and dry_run:
@@ -53,11 +115,9 @@ def publier_matchs_sur_canal(bot, dry_run=False, chat_debug=None):
                 pass
         return False
 
-    # On filtre sur la confiance de la Double Chance
-    matchs_filtres = [m for m in matchs if m.get('dc_pct', 0) >= 0.60]
-    
+    matchs_filtres = [m for m in matchs if m.get("dc_pct", 0) >= 0.60]
     if not matchs_filtres:
-        log_info("Aucun match avec confiance ≥ 60% à publier.", "CANAL")
+        log_info("Aucun match avec confiance ≥ 60%.", "CANAL")
         if chat_debug and dry_run:
             try:
                 bot.send_message(chat_debug, "⏸️ Aucun match avec confiance ≥ 60%.")
@@ -70,23 +130,22 @@ def publier_matchs_sur_canal(bot, dry_run=False, chat_debug=None):
         texte += formater_matchs_du_jour(matchs_filtres, langue="fr", est_premium=True)
         texte += "\n\n👉 Rejoignez le bot : @MonPronosticFootball_bot"
     except Exception as e:
-        log_error("Erreur lors du formatage des matchs pour le canal", "CANAL", exception=e)
+        log_error(
+            message="Erreur formatage matchs canal",
+            module="CANAL",
+            exception=e,
+        )
         return False
-    
+
     return _envoyer_au_canal_securise(bot, texte, dry_run, chat_debug)
 
 
 def publier_coupons_sur_canal(bot, dry_run=False, chat_debug=None):
-    """Publie un coupon gratuit sur le canal."""
-    try:
-        data = generer_coupons_du_jour()
-        coupons = data['coupons']
-    except Exception as e:
-        log_error("Erreur lors de la génération des coupons pour le canal", "CANAL", exception=e)
-        return False
-
+    """Publie un coupon gratuit (modéré de préférence)."""
+    data = _get_coupons_avec_cache()
+    coupons = data.get("coupons", [])
     if not coupons:
-        log_info("Aucun coupon à publier sur le canal.", "CANAL")
+        log_info("Aucun coupon à publier.", "CANAL")
         if chat_debug and dry_run:
             try:
                 bot.send_message(chat_debug, "❌ Aucun coupon généré.")
@@ -94,57 +153,59 @@ def publier_coupons_sur_canal(bot, dry_run=False, chat_debug=None):
                 pass
         return False
 
-    # On prend le coupon modéré en priorité (ou le premier disponible)
-    coupon_a_publier = next((c for c in coupons if c['niveau'] == 'modere'), None)
-    if not coupon_a_publier:
-        coupon_a_publier = coupons[0]
+    coupon = next((c for c in coupons if c["niveau"] == "modere"), coupons[0])
 
     try:
         texte = "🎟️ COUPON DU JOUR (Gratuit) 🎟️\n\n"
-        texte += formater_coupon(coupon_a_publier, langue="fr", montrer_details=False)
-        texte += "\n\n⭐ Passe Premium sur le bot : @MonPronosticFootball_bot"
+        texte += formater_coupon(coupon, langue="fr", montrer_details=False)
+        texte += "\n\n⭐ Passe Premium : @MonPronosticFootball_bot"
     except Exception as e:
-        log_error("Erreur lors du formatage du coupon pour le canal", "CANAL", exception=e)
+        log_error(
+            message="Erreur formatage coupon canal",
+            module="CANAL",
+            exception=e,
+        )
         return False
-    
+
     return _envoyer_au_canal_securise(bot, texte, dry_run, chat_debug)
 
 
 def publier_bilan_veille(bot, texte, dry_run=False, chat_debug=None):
-    """Publie le bilan de la veille sur le canal."""
+    """Publie le bilan de la veille."""
     if not texte:
-        log_warning("Tentative de publier un bilan vide sur le canal", "CANAL")
+        log_warning(message="Bilan vide", module="CANAL")
         return False
     return _envoyer_au_canal_securise(bot, texte, dry_run, chat_debug)
 
 
 def publier_teasing(bot):
-    """Publie un teasing en soirée pour rappeler les pronostics."""
+    """Teasing de soirée."""
     texte = (
         "👀 Les matchs de ce soir approchent !\n\n"
         "Nos experts ont analysé les rencontres du jour. "
         "Les abonnés Premium ont déjà leurs pronostics exclusifs.\n\n"
         "👉 Passe Premium : @MonPronosticFootball_bot"
     )
-    return _envoyer_au_canal_securise(bot, texte, dry_run=False)
+    return _envoyer_au_canal_securise(bot, texte)
 
 
 def publier_message_custom(bot, texte):
-    """
-    Permet aux admins d'envoyer un message personnalisé sur le canal.
-    Cette fonction est utilisée par le broadcast_manager.
-    """
+    """Message personnalisé (broadcast admin)."""
     if not texte:
-        log_warning("Tentative d'envoyer un message vide sur le canal", "CANAL")
+        log_warning(message="Message custom vide", module="CANAL")
         return False
 
     if len(texte) > 4000:
         texte = texte[:3990] + "\n\n[...Message tronqué...]"
-    
+
     try:
         bot.send_message(CANAL_ID, texte)
-        log_info("Message personnalisé publié sur le canal.", "CANAL")
+        log_info("Message custom publié sur le canal.", "CANAL")
         return True
     except Exception as e:
-        log_error(f"Impossible d'envoyer le message custom sur le canal {CANAL_ID}", "CANAL", exception=e)
+        log_error(
+            message=f"Impossible de publier message custom sur {CANAL_ID}",
+            module="CANAL",
+            exception=e,
+        )
         return False
