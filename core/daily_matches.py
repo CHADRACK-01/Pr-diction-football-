@@ -1,8 +1,15 @@
+# core/daily_matches.py
+"""
+Récupération et formatage des matchs du jour.
+- Logs agrégés (plus de log_warning par match)
+- Gestion des dates propre
+"""
+
 from datetime import datetime, timezone, timedelta
 
 from core.ml_model import global_model_data
 from core.prediction import predire_match
-from core.api.orchestrator import collecter_tous_les_matchs  # ← MODIFIÉ
+from core.api.orchestrator import collecter_tous_les_matchs
 from core.utils.logs import log_info, log_warning, log_error
 from core.utils.markdown import formater_proprement
 from config import CHAMPIONNATS, INFOS_COMPETITIONS, MAPPING_COMPETITIONS
@@ -11,7 +18,7 @@ TZ_KINSHASA = timezone(timedelta(hours=1))
 
 
 def _normaliser(nom):
-    """Dictionnaire de correspondance entre les noms des API et les noms du modèle."""
+    """Normalise les noms d'équipes (mapping manuel)."""
     special = {
         "Manchester City FC": "Man City", "Manchester United FC": "Man United",
         "Newcastle United FC": "Newcastle", "Nottingham Forest FC": "Nott'm Forest",
@@ -57,7 +64,7 @@ def _normaliser(nom):
         "SV Werder Bremen": "Werder Bremen", "VfL Bochum 1848": "Bochum",
         "1. FC Köln": "FC Koln", "SV Darmstadt 98": "Darmstadt",
         "1. FC Heidenheim 1846": "Heidenheim", "FC St. Pauli": "St Pauli",
-        "Holstein Kiel": "Holstein Kiel", 
+        "Holstein Kiel": "Holstein Kiel",
         "Paris Saint-Germain FC": "Paris SG", "Olympique de Marseille": "Marseille",
         "Olympique Lyonnais": "Lyon", "AS Monaco FC": "Monaco", "LOSC Lille": "Lille",
         "OGC Nice": "Nice", "Stade Rennais FC 1901": "Rennes", "Racing Club de Lens": "Lens",
@@ -76,33 +83,34 @@ def _normaliser(nom):
     }
     if nom in special:
         return special[nom]
-    for suf in [" FC", " AFC", " CF", " SC", " AC", " Balompie", " Balompié"]:
+    for suf in (" FC", " AFC", " CF", " SC", " AC", " Balompie", " Balompié"):
         if nom.endswith(suf):
-            return nom[:-len(suf)]
+            return nom[: -len(suf)]
     return nom
 
 
 def _charger_modele_si_necessaire():
-    """Charge les modèles depuis Turso si la mémoire est vide."""
-    if global_model_data.get('modeles_par_competition') is not None:
+    """Charge les modèles si nécessaire."""
+    if global_model_data.get("modeles_par_competition") is not None:
         return True
-    
-    log_info("Modèles absents en mémoire. Chargement depuis Turso...", "MATCHS")
+    log_info("Modèles absents, chargement...", "MATCHS")
     try:
         from core.ml_model import charger_et_entrainer
         return charger_et_entrainer()
     except Exception as e:
-        log_error("Impossible de charger les modèles pour les matchs du jour", "MATCHS", exception=e)
+        log_error(
+            message="Impossible de charger les modèles",
+            module="MATCHS",
+            exception=e,
+        )
         return False
 
 
 def _nom_competition(code):
-    """Renvoie le nom propre de la compétition à partir de son code."""
     return CHAMPIONNATS.get(code, code)
 
 
 def _get_info_competition(nom_comp):
-    """Renvoie l'emoji et le pays de la compétition."""
     infos = INFOS_COMPETITIONS.get(nom_comp)
     if infos:
         return f"{infos['emoji']} {infos['pays']}"
@@ -110,54 +118,68 @@ def _get_info_competition(nom_comp):
 
 
 def get_matchs_du_jour():
-    """Orchestre la récupération via l'orchestrateur, puis calcule les pronostics."""
+    """Orchestre la récupération et calcule les pronostics."""
     if not _charger_modele_si_necessaire():
-        log_error("Impossible de charger les modèles, les matchs du jour sont indisponibles.", "MATCHS")
+        log_error(
+            message="Modèles non chargés, matchs du jour indisponibles",
+            module="MATCHS",
+        )
         return []
 
     try:
-        matchs_bruts = collecter_tous_les_matchs()  # ← MODIFIÉ
+        matchs_bruts = collecter_tous_les_matchs()
     except Exception as e:
-        log_error("Erreur lors de la récupération des matchs via l'orchestrateur", "MATCHS", exception=e)
+        log_error(
+            message="Erreur collecte des matchs",
+            module="MATCHS",
+            exception=e,
+        )
         return []
 
     if not matchs_bruts:
-        log_warning("Aucun match renvoyé par l'orchestrateur.", "MATCHS")
+        log_warning(message="Aucun match renvoyé par l'orchestrateur", module="MATCHS")
         return []
 
     matchs_trouves = []
     matchs_ignores = 0
-    
+
     for m in matchs_bruts:
         try:
             home = _normaliser(m.get("home", ""))
             away = _normaliser(m.get("away", ""))
             competition_code = m.get("competition", "default")
-            
+
             if not home or not away:
                 matchs_ignores += 1
                 continue
-            
-            # Le manager a déjà mis "competition_reelle" (nom propre)
-            competition_reelle = m.get("competition_reelle") or MAPPING_COMPETITIONS.get(competition_code, competition_code)
-            
+
+            competition_reelle = m.get("competition_reelle") or MAPPING_COMPETITIONS.get(
+                competition_code, competition_code
+            )
+
             try:
-                prono = predire_match(home, away, competition=competition_reelle, cotes_book=m.get("cotes_book"))
+                prono = predire_match(
+                    home, away, competition=competition_reelle,
+                    cotes_book=m.get("cotes_book"),
+                )
             except Exception as e:
-                log_error(f"Erreur de prédiction pour {home} vs {away}", "MATCHS", exception=e)
-                matchs_ignores += 1
-                continue
-            
-            if not isinstance(prono, dict) or 'erreur' in prono:
-                log_warning(f"Skip {home} vs {away} : {prono.get('erreur', 'erreur inconnue') if isinstance(prono, dict) else 'réponse invalide'}", "MATCHS")
+                log_error(
+                    message="Erreur de prédiction individuelle",
+                    module="MATCHS",
+                    extra={"home": home, "away": away, "competition": competition_reelle},
+                    exception=e,
+                )
                 matchs_ignores += 1
                 continue
 
-            # Filtre sur la Double Chance (notre marché le plus fiable)
-            dc_1x = float(prono.get('dc_1x', 0.5))
-            dc_x2 = float(prono.get('dc_x2', 0.5))
-            dc_12 = float(prono.get('dc_12', 0.5))
+            if not isinstance(prono, dict) or "erreur" in prono:
+                matchs_ignores += 1
+                continue
 
+            # Filtre DC
+            dc_1x = float(prono.get("dc_1x", 0.5))
+            dc_x2 = float(prono.get("dc_x2", 0.5))
+            dc_12 = float(prono.get("dc_12", 0.5))
             options = [("1X", dc_1x), ("X2", dc_x2), ("12", dc_12)]
             meilleure = max(options, key=lambda x: x[1])
 
@@ -174,30 +196,38 @@ def get_matchs_du_jour():
                 "away": away,
                 "dc_label": meilleure[0],
                 "dc_pct": float(meilleure[1]),
-                "btts": float(prono.get('btts_yes', 0.5)),
-                "over_25": float(prono.get('over_25', 0.5)),
-                "ht_prolific": prono.get('ht_prolific'),
-                "htr": prono.get('htr'),
+                "btts": float(prono.get("btts_yes", 0.5)),
+                "over_25": float(prono.get("over_25", 0.5)),
+                "ht_prolific": prono.get("ht_prolific"),
+                "htr": prono.get("htr"),
                 "confiance": float(meilleure[1]),
-                "analyse_pari": prono.get('analyse_pari')
+                "analyse_pari": prono.get("analyse_pari"),
             })
-            
         except Exception as e:
-            log_error(f"Erreur de traitement d'un match", "MATCHS", exception=e)
+            log_error(
+                message="Erreur traitement match",
+                module="MATCHS",
+                extra={"home": m.get("home"), "away": m.get("away")},
+                exception=e,
+            )
             matchs_ignores += 1
             continue
 
-    matchs_trouves.sort(key=lambda x: (x.get('heure') or '', -x['confiance']))
-    
-    log_info(f"{len(matchs_trouves)} matchs retenus, {matchs_ignores} ignorés.", "MATCHS")
+    matchs_trouves.sort(key=lambda x: (x.get("heure") or "", -x["confiance"]))
+
+    log_info(
+        f"{len(matchs_trouves)} matchs retenus, {matchs_ignores} ignorés.",
+        "MATCHS",
+        extra={"retenus": len(matchs_trouves), "ignores": matchs_ignores},
+    )
     return matchs_trouves
 
 
 def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None):
-    """Formate la liste des matchs pour Telegram avec les nouveaux marchés."""
+    """Formate les matchs pour Telegram."""
     date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
 
-    if matchs is None or len(matchs) == 0:
+    if not matchs:
         return f"📅 Aucun match disponible pour le {date_str}."
 
     if nb_max is not None:
@@ -205,21 +235,28 @@ def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None)
 
     jours = {}
     matchs_affiches = 0
+    erreurs_parse = 0
 
     for m in matchs:
-        if not m.get('heure'):
+        if not m.get("heure"):
             continue
         try:
-            dt = datetime.fromisoformat(str(m['heure']).replace("Z", "+00:00")).astimezone(TZ_KINSHASA)
+            dt = datetime.fromisoformat(
+                str(m["heure"]).replace("Z", "+00:00")
+            ).astimezone(TZ_KINSHASA)
             jour_key = dt.strftime("%A %d/%m/%Y")
-            
-            if jour_key not in jours:
-                jours[jour_key] = []
-            jours[jour_key].append(m)
+            jours.setdefault(jour_key, []).append(m)
             matchs_affiches += 1
-        except Exception as e:
-            log_warning(f"Impossible de parser la date '{m.get('heure')}' : {e}", "MATCHS")
+        except Exception:
+            erreurs_parse += 1
             continue
+
+    if erreurs_parse > 0:
+        log_warning(
+            message=f"{erreurs_parse} dates non parsables (ignorées)",
+            module="MATCHS",
+            extra={"erreurs_parse": erreurs_parse},
+        )
 
     if matchs_affiches == 0:
         return f"📅 Aucun match avec une cote intéressante aujourd'hui."
@@ -229,7 +266,8 @@ def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None)
 
     jours_fr = {
         "Monday": "Lundi", "Tuesday": "Mardi", "Wednesday": "Mercredi",
-        "Thursday": "Jeudi", "Friday": "Vendredi", "Saturday": "Samedi", "Sunday": "Dimanche"
+        "Thursday": "Jeudi", "Friday": "Vendredi", "Saturday": "Samedi",
+        "Sunday": "Dimanche",
     }
 
     for jour_label, matchs_jour in jours.items():
@@ -237,54 +275,69 @@ def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None)
         jour_en = jour_parts[0]
         jour_trad = jours_fr.get(jour_en, jour_en)
         date_part = jour_parts[1] if len(jour_parts) > 1 else ""
-        
-        texte += f"━━━━━━━━━━━━━━━━━━━━\n"
+
+        texte += "━━━━━━━━━━━━━━━━━━━━\n"
         texte += f"📅 {jour_trad} {date_part}\n"
-        texte += f"━━━━━━━━━━━━━━━━━━━━\n\n"
+        texte += "━━━━━━━━━━━━━━━━━━━━\n\n"
 
         for m in matchs_jour:
             try:
                 heure_local = datetime.fromisoformat(
-                    str(m['heure']).replace("Z", "+00:00")
+                    str(m["heure"]).replace("Z", "+00:00")
                 ).astimezone(TZ_KINSHASA).strftime("%H:%M")
             except Exception:
                 heure_local = "?"
 
-            nom_comp = m.get('nom_competition', m.get('competition', '?'))
+            nom_comp = m.get("nom_competition", m.get("competition", "?"))
             info_pays = _get_info_competition(nom_comp)
 
             try:
                 texte += formater_proprement(f"⚽ {m['home']} vs {m['away']}\n")
                 texte += formater_proprement(f"   🕐 {heure_local} | 🏆 {nom_comp}\n")
-                
                 if info_pays:
                     texte += formater_proprement(f"   📍 {info_pays}\n")
 
                 if est_premium:
-                    texte += formater_proprement(f"   🛡️ DC : {m['dc_label']} ({round(m['dc_pct']*100, 1)}%)\n")
-                    texte += formater_proprement(f"   🎯 BTTS : {round(m['btts']*100, 1)}%\n")
-                    texte += formater_proprement(f"   🥅 Over 2.5 : {round(m['over_25']*100, 1)}%\n")
-                    
-                    if m.get('ht_prolific'):
-                        ht = m['ht_prolific']
-                        texte += formater_proprement(f"   ⏱️ MT : 1ère={round(ht.get('1ere_mt',0.33)*100,1)}% | 2ème={round(ht.get('2eme_mt',0.33)*100,1)}%\n")
-                    
-                    analyse = m.get('analyse_pari')
+                    texte += formater_proprement(
+                        f"   🛡️ DC : {m['dc_label']} ({round(m['dc_pct'] * 100, 1)}%)\n"
+                    )
+                    texte += formater_proprement(
+                        f"   🎯 BTTS : {round(m['btts'] * 100, 1)}%\n"
+                    )
+                    texte += formater_proprement(
+                        f"   🥅 Over 2.5 : {round(m['over_25'] * 100, 1)}%\n"
+                    )
+                    if m.get("ht_prolific"):
+                        ht = m["ht_prolific"]
+                        texte += formater_proprement(
+                            f"   ⏱️ MT : 1ère={round(ht.get('1ere_mt', 0.33) * 100, 1)}% | "
+                            f"2ème={round(ht.get('2eme_mt', 0.33) * 100, 1)}%\n"
+                        )
+                    analyse = m.get("analyse_pari")
                     if analyse:
                         texte += formater_proprement(f"   💰 Cote Bot : {analyse['cote_bot']}\n")
-                        if analyse.get('cote_book'):
-                            texte += formater_proprement(f"   🏢 Cote Book : {analyse['cote_book']}\n")
-                            if analyse.get('is_value'):
-                                texte += formater_proprement(f"   🔥 VALUE BET !\n")
+                        if analyse.get("cote_book"):
+                            texte += formater_proprement(
+                                f"   🏢 Cote Book : {analyse['cote_book']}\n"
+                            )
+                            if analyse.get("is_value"):
+                                texte += formater_proprement("   🔥 VALUE BET !\n")
                 else:
-                    texte += formater_proprement(f"   🛡️ DC : {m['dc_label']} ({round(m['dc_pct']*100, 1)}%)\n")
+                    texte += formater_proprement(
+                        f"   🛡️ DC : {m['dc_label']} ({round(m['dc_pct'] * 100, 1)}%)\n"
+                    )
             except Exception as e:
-                log_warning(f"Erreur de formatage d'un match : {e}", "MATCHS")
+                log_warning(
+                    message="Erreur formatage match",
+                    module="MATCHS",
+                    extra={"home": m.get("home"), "away": m.get("away")},
+                    exception=e,
+                )
 
             texte += "\n"
 
     if not est_premium:
         texte += "\n━━━━━━━━━━━━━━━━━━━━\n"
-        texte += "⭐ Passe Premium pour voir les recommandations complètes (BTTS, Over, Mi-temps, Value Bets) !\n"
+        texte += "⭐ Passe Premium pour les recommandations complètes !\n"
 
     return texte
