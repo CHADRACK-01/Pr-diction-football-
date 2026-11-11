@@ -1,147 +1,328 @@
-import libsql
-from datetime import datetime
+# users/account_base.py
+"""
+Gestion de base des comptes utilisateurs.
+- set_premium et ajouter_jours_premium sont UNIFIÉS (cumulables)
+- Parsing de dates robuste (multi-format)
+- Logs enrichis avec contexte utilisateur
+"""
 
-from users.db import get_connection
+from datetime import datetime, timedelta
+
+from users.db import db_execute, db_fetchone, db_fetchone_dict
 from core.utils.logs import log_info, log_error, log_warning
 
 
-def utilisateur_existe(user_id):
-    """Vérifie si un utilisateur existe (avec gestion d'erreur)."""
+# =========================================================
+# PARSING DE DATES ROBUSTE
+# =========================================================
+_FORMATS_DATE = [
+    "%Y-%m-%d %H:%M:%S.%f",   # 2026-11-20 20:38:00.123456
+    "%Y-%m-%d %H:%M:%S",      # 2026-11-20 20:38:00
+    "%Y-%m-%d %H:%M",         # 2026-11-20 20:38
+    "%Y-%m-%dT%H:%M:%S",      # 2026-11-20T20:38:00
+    "%Y-%m-%dT%H:%M:%S.%f",   # 2026-11-20T20:38:00.123456
+    "%Y-%m-%d",               # 2026-11-20
+]
+
+
+def _parser_date(date_str):
+    """
+    Parse une date au format string vers datetime.
+    Retourne None si aucun format ne fonctionne.
+    """
+    if not date_str:
+        return None
+    if isinstance(date_str, datetime):
+        return date_str
     try:
-        conn = get_connection()
-        result = conn.execute("SELECT 1 FROM utilisateurs WHERE user_id = ?", (user_id,)).fetchone()
-        conn.close()
-        return result is not None
+        for fmt in _FORMATS_DATE:
+            try:
+                return datetime.strptime(str(date_str), fmt)
+            except ValueError:
+                continue
     except Exception as e:
-        log_error(f"Impossible de vérifier l'existence de {user_id}", "ACCOUNTS", exception=e)
+        log_warning(
+            message="Impossible de parser une date",
+            module="ACCOUNTS",
+            extra={"date_str": str(date_str)[:50]},
+            exception=e,
+        )
+    return None
+
+
+# =========================================================
+# LECTURE UTILISATEUR
+# =========================================================
+def utilisateur_existe(user_id):
+    """Vérifie si un utilisateur existe."""
+    if not isinstance(user_id, int):
+        log_warning(
+            message="user_id invalide pour utilisateur_existe",
+            module="ACCOUNTS",
+            extra={"user_id": user_id},
+        )
         return False
+    row = db_fetchone(
+        "SELECT 1 FROM utilisateurs WHERE user_id = ?",
+        params=[user_id],
+        db_context={"table": "utilisateurs", "operation": "exists"},
+    )
+    return row is not None
 
 
 def get_user_info(user_id):
-    """Récupère les infos d'un utilisateur (avec gestion d'erreur)."""
-    try:
-        conn = get_connection()
-        cur = conn.execute("SELECT * FROM utilisateurs WHERE user_id = ?", (user_id,))
-        row = cur.fetchone()
-        if row:
-            columns = [desc[0] for desc in cur.description]
-            info = dict(zip(columns, row))
-            conn.close()
-            return info
-        conn.close()
+    """Récupère toutes les infos d'un utilisateur sous forme de dict."""
+    if not isinstance(user_id, int):
+        log_warning(
+            message="user_id invalide pour get_user_info",
+            module="ACCOUNTS",
+            extra={"user_id": user_id},
+        )
         return None
-    except Exception as e:
-        log_error(f"Impossible de récupérer les infos de {user_id}", "ACCOUNTS", exception=e)
-        return None
+    return db_fetchone_dict(
+        "SELECT * FROM utilisateurs WHERE user_id = ?",
+        params=[user_id],
+        db_context={"table": "utilisateurs", "operation": "read"},
+    )
 
 
 def get_user_status(user_id):
-    """Récupère le statut d'un utilisateur."""
+    """Retourne (status, date_expiration) ou ('free', None)."""
     info = get_user_info(user_id)
     if not info:
-        return 'free', None
-    return info.get('status', 'free'), info.get('date_expiration')
+        return "free", None
+    return info.get("status", "free"), info.get("date_expiration")
 
 
+# =========================================================
+# ENREGISTREMENT
+# =========================================================
 def enregistrer_utilisateur(user_id, username, first_name):
-    """Enregistre un nouvel utilisateur (avec gestion d'erreur)."""
-    try:
-        if utilisateur_existe(user_id):
-            return False
-            
-        conn = get_connection()
-        conn.execute("""
-            INSERT INTO utilisateurs (user_id, username, first_name, status)
-            VALUES (?, ?, ?, 'free')
-            ON CONFLICT (user_id) DO NOTHING
-        """, (user_id, username or "", first_name or ""))
-        conn.commit()
-        conn.close()
-        log_info(f"Nouvel utilisateur : {first_name} ({user_id})", "ACCOUNTS")
+    """
+    Enregistre un nouvel utilisateur (idempotent).
+    Retourne True si créé, False si déjà existant ou échec.
+    """
+    if not isinstance(user_id, int):
+        log_warning(
+            message="user_id invalide pour enregistrer_utilisateur",
+            module="ACCOUNTS",
+            extra={"user_id": user_id},
+        )
+        return False
+
+    if utilisateur_existe(user_id):
+        return False
+
+    rowcount = db_execute(
+        """
+        INSERT INTO utilisateurs (user_id, username, first_name, status)
+        VALUES (?, ?, ?, 'free')
+        ON CONFLICT (user_id) DO NOTHING
+        """,
+        params=[user_id, username or "", first_name or ""],
+        db_context={"table": "utilisateurs", "operation": "insert"},
+    )
+    if rowcount and rowcount > 0:
+        log_info(
+            f"Nouvel utilisateur enregistré : {first_name} ({user_id})",
+            "ACCOUNTS",
+            user_context={"user_id": user_id, "user_name": first_name, "username": username},
+        )
         return True
-    except Exception as e:
-        log_error(f"Impossible d'enregistrer l'utilisateur {user_id}", "ACCOUNTS", exception=e)
-        return False
-
-
-def set_premium(user_id, date_expiration):
-    """Passe un utilisateur en Premium (avec gestion d'erreur)."""
-    if isinstance(date_expiration, datetime):
-        date_expiration = date_expiration.strftime("%Y-%m-%d %H:%M:%S")
-    
-    try:
-        conn = get_connection()
-        conn.execute("""
-            UPDATE utilisateurs
-            SET status = 'premium', date_expiration = ?
-            WHERE user_id = ?
-        """, (date_expiration, user_id))
-        conn.commit()
-        conn.close()
-        log_info(f"Utilisateur {user_id} passé en PREMIUM (expire {date_expiration})", "ACCOUNTS")
-        return True
-    except Exception as e:
-        log_error(f"Impossible de passer {user_id} en premium", "ACCOUNTS", exception=e)
-        return False
-
-
-def est_premium(user_id):
-    """Vérifie si un utilisateur est Premium (avec parsing tolérant des dates)."""
-    status, expiration = get_user_status(user_id)
-    if status != 'premium' or not expiration:
-        return False
-    
-    # On essaie plusieurs formats de date
-    formats_possibles = [
-        "%Y-%m-%d %H:%M:%S",  # 2026-11-20 20:38:00
-        "%Y-%m-%d %H:%M",     # 2026-11-20 20:38
-        "%Y-%m-%d",           # 2026-11-20
-    ]
-    
-    for fmt in formats_possibles:
-        try:
-            expiration_dt = datetime.strptime(expiration, fmt)
-            return expiration_dt > datetime.now()
-        except ValueError:
-            continue
-    
-    # Si aucun format ne fonctionne, on log et on considère non-premium
-    log_warning(f"Format de date d'expiration invalide pour {user_id} : '{expiration}'", "ACCOUNTS")
     return False
 
 
+# =========================================================
+# GESTION PREMIUM (UNIFIÉE)
+# =========================================================
+def _calculer_nouvelle_expiration(expiration_actuelle, status_actuel, jours_a_ajouter):
+    """
+    Calcule la nouvelle date d'expiration :
+    - Si l'utilisateur est encore Premium et sa date est dans le futur :
+      on ajoute les jours à la date existante (cumul)
+    - Sinon : on part de maintenant + jours
+    """
+    maintenant = datetime.now()
+    expiration_dt = _parser_date(expiration_actuelle)
+
+    if status_actuel == "premium" and expiration_dt and expiration_dt > maintenant:
+        return expiration_dt + timedelta(days=jours_a_ajouter)
+    return maintenant + timedelta(days=jours_a_ajouter)
+
+
+def ajouter_jours_premium(user_id, jours):
+    """
+    Ajoute X jours de Premium à un utilisateur (cumulable).
+    Remplace set_premium dans la majorité des cas.
+    Retourne True si succès, False sinon.
+    """
+    if not isinstance(user_id, int) or not isinstance(jours, int) or jours <= 0:
+        log_warning(
+            message="Paramètres invalides pour ajouter_jours_premium",
+            module="ACCOUNTS",
+            extra={"user_id": user_id, "jours": jours},
+        )
+        return False
+
+    info = get_user_info(user_id)
+    if not info:
+        log_error(
+            message="Impossible d'ajouter du premium : utilisateur introuvable",
+            module="ACCOUNTS",
+            user_context={"user_id": user_id},
+            extra={"jours_demandes": jours},
+        )
+        return False
+
+    expiration_actuelle = info.get("date_expiration")
+    status_actuel = info.get("status", "free")
+
+    nouvelle_date = _calculer_nouvelle_expiration(
+        expiration_actuelle, status_actuel, jours
+    )
+    nouvelle_date_str = nouvelle_date.strftime("%Y-%m-%d %H:%M:%S")
+
+    rowcount = db_execute(
+        """
+        UPDATE utilisateurs
+        SET status = 'premium', date_expiration = ?
+        WHERE user_id = ?
+        """,
+        params=[nouvelle_date_str, user_id],
+        db_context={"table": "utilisateurs", "operation": "add_premium"},
+    )
+
+    if rowcount is None or rowcount == 0:
+        log_error(
+            message="Échec de la mise à jour premium (0 ligne affectée)",
+            module="ACCOUNTS",
+            user_context={"user_id": user_id},
+            extra={"jours": jours, "nouvelle_date": nouvelle_date_str},
+        )
+        return False
+
+    log_info(
+        f"+{jours}j Premium pour {user_id} (expire {nouvelle_date_str})",
+        "ACCOUNTS",
+        user_context={"user_id": user_id, "user_name": info.get("first_name")},
+        extra={"ancienne": expiration_actuelle, "nouvelle": nouvelle_date_str},
+    )
+    return True
+
+
+def set_premium(user_id, date_expiration):
+    """
+    Définit une date d'expiration absolue (admin only).
+    ⚠️ Remplace la date existante, ne cumule PAS.
+    Préférer ajouter_jours_premium pour les ajouts.
+    """
+    if not isinstance(user_id, int):
+        log_warning(
+            message="user_id invalide pour set_premium",
+            module="ACCOUNTS",
+            extra={"user_id": user_id},
+        )
+        return False
+
+    if isinstance(date_expiration, datetime):
+        date_expiration = date_expiration.strftime("%Y-%m-%d %H:%M:%S")
+    else:
+        parsed = _parser_date(date_expiration)
+        if not parsed:
+            log_error(
+                message="Date d'expiration invalide pour set_premium",
+                module="ACCOUNTS",
+                user_context={"user_id": user_id},
+                extra={"date_recue": str(date_expiration)},
+            )
+            return False
+        date_expiration = parsed.strftime("%Y-%m-%d %H:%M:%S")
+
+    info = get_user_info(user_id)
+    if not info:
+        log_error(
+            message="Impossible de définir premium : utilisateur introuvable",
+            module="ACCOUNTS",
+            user_context={"user_id": user_id},
+            extra={"date_demandee": date_expiration},
+        )
+        return False
+
+    rowcount = db_execute(
+        """
+        UPDATE utilisateurs
+        SET status = 'premium', date_expiration = ?
+        WHERE user_id = ?
+        """,
+        params=[date_expiration, user_id],
+        db_context={"table": "utilisateurs", "operation": "set_premium"},
+    )
+
+    if rowcount is None or rowcount == 0:
+        return False
+
+    log_info(
+        f"Utilisateur {user_id} passé en PREMIUM (expire {date_expiration})",
+        "ACCOUNTS",
+        user_context={"user_id": user_id},
+        extra={"ancienne": info.get("date_expiration"), "nouvelle": date_expiration},
+    )
+    return True
+
+
+def est_premium(user_id):
+    """Vérifie si un utilisateur est Premium (parsing robuste)."""
+    status, expiration = get_user_status(user_id)
+    if status != "premium" or not expiration:
+        return False
+
+    expiration_dt = _parser_date(expiration)
+    if expiration_dt is None:
+        log_warning(
+            message="Format de date d'expiration invalide",
+            module="ACCOUNTS",
+            user_context={"user_id": user_id},
+            extra={"date_expiration": str(expiration)},
+        )
+        return False
+
+    return expiration_dt > datetime.now()
+
+
 def get_statut_label(user_id):
-    """Retourne le label du statut ('PREMIUM' ou 'FREE')."""
+    """Retourne 'PREMIUM' ou 'FREE'."""
     return "PREMIUM" if est_premium(user_id) else "FREE"
 
 
+# =========================================================
+# LANGUE
+# =========================================================
 def get_langue(user_id):
-    """Récupère la langue d'un utilisateur (avec gestion d'erreur)."""
-    try:
-        conn = get_connection()
-        result = conn.execute("SELECT langue FROM utilisateurs WHERE user_id = ?", (user_id,)).fetchone()
-        conn.close()
-        return result[0] if result and result[0] else "fr"
-    except Exception as e:
-        log_error(f"Impossible de récupérer la langue de {user_id}", "ACCOUNTS", exception=e)
-        return "fr"
+    """Récupère la langue d'un utilisateur (fallback 'fr')."""
+    row = db_fetchone(
+        "SELECT langue FROM utilisateurs WHERE user_id = ?",
+        params=[user_id],
+        db_context={"table": "utilisateurs", "operation": "get_langue"},
+    )
+    if row and row[0]:
+        return row[0]
+    return "fr"
 
 
 def set_langue(user_id, langue):
-    """Change la langue d'un utilisateur (avec gestion d'erreur)."""
-    if langue not in ["fr", "en", "ln"]:
+    """Change la langue d'un utilisateur."""
+    if langue not in ("fr", "en", "ln"):
+        log_warning(
+            message="Langue non supportée",
+            module="ACCOUNTS",
+            user_context={"user_id": user_id},
+            extra={"langue_demandee": langue},
+        )
         return False
-        
-    try:
-        conn = get_connection()
-        conn.execute("""
-            UPDATE utilisateurs
-            SET langue = ?
-            WHERE user_id = ?
-        """, (langue, user_id))
-        conn.commit()
-        conn.close()
-        return True
-    except Exception as e:
-        log_error(f"Impossible de changer la langue de {user_id}", "ACCOUNTS", exception=e)
-        return False
+
+    rowcount = db_execute(
+        "UPDATE utilisateurs SET langue = ? WHERE user_id = ?",
+        params=[langue, user_id],
+        db_context={"table": "utilisateurs", "operation": "set_langue"},
+    )
+    return rowcount is not None and rowcount > 0
