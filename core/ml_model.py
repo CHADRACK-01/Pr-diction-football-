@@ -1,85 +1,132 @@
+# core/ml_model.py
+"""
+Chargement des modèles IA depuis Turso.
+- Plus de valeurs en dur (precision, total_matchs lus depuis le BLOB)
+- Cache LRU thread-safe
+- Logs enrichis
+"""
+
 import os
-os.environ['LOKY_MAX_CPU_COUNT'] = '1'
+os.environ["LOKY_MAX_CPU_COUNT"] = "1"
 
 import io
+import threading
 import joblib
+
 from core.utils.logs import log_info, log_error, log_warning
 
-# Dictionnaire global : contiendra les données de base et les modèles
+# État global
 global_model_data = {}
 
-# Cache LRU pour les modèles par compétition (évite de recharger tout le temps)
+# Cache LRU thread-safe
 CACHE_MODELES = {}
 TAILLE_MAX_CACHE = 3
+_CACHE_LOCK = threading.Lock()
 
 
 def charger_et_entrainer():
     """
     Charge les modèles depuis Turso (table models_cache).
-    ⚠️ Les modèles sont déjà entraînés et stockés.
-    Retourne True si le chargement a réussi, False sinon.
+    ⚠️ Le nom est conservé pour compatibilité, mais ne fait QUE charger.
+    Retourne True si succès, False sinon.
     """
-    global global_model_data
-
-    if global_model_data.get('modeles_par_competition') is not None:
+    if global_model_data.get("modeles_par_competition") is not None:
         return True
 
-    from users.db import get_connection
-    
+    from users.db import db_fetchone
+
     log_info("Chargement des modèles depuis Turso...", "ML_MODEL")
-    
-    try:
-        conn = get_connection()
-        cur = conn.execute("SELECT data FROM models_cache ORDER BY id DESC LIMIT 1")
-        row = cur.fetchone()
-        conn.close()
-    except Exception as e:
-        log_error("Impossible de lire la table models_cache dans Turso", "ML_MODEL", exception=e)
-        return False
+
+    row = db_fetchone(
+        "SELECT data FROM models_cache ORDER BY id DESC LIMIT 1",
+        db_context={"table": "models_cache", "operation": "load"},
+    )
 
     if not row or not row[0]:
-        log_error("Aucun modèle trouvé dans la table models_cache", "ML_MODEL")
+        log_error(
+            message="Aucun modèle trouvé dans models_cache",
+            module="ML_MODEL",
+            db_context={"table": "models_cache"},
+        )
         return False
 
     try:
-        modeles = joblib.load(io.BytesIO(row[0]))
+        payload = joblib.load(io.BytesIO(row[0]))
     except Exception as e:
-        log_error("Le fichier modèle est corrompu ou illisible", "ML_MODEL", exception=e)
+        log_error(
+            message="Le fichier modèle est corrompu ou illisible",
+            module="ML_MODEL",
+            exception=e,
+        )
         return False
 
-    # On injecte les données dans le dictionnaire global
-    global_model_data['modeles_par_competition'] = modeles
-    global_model_data['precision_moyenne'] = 0.58  # Valeur par défaut (à ajuster)
-    global_model_data['total_matchs'] = 24804
-    global_model_data['_tables_initialisees'] = True
-    
-    log_info(f"Modèle chargé : {len(modeles)} compétitions", "ML_MODEL")
+    # Le payload est soit un dict {comp: {marché: data}}, soit un dict enrichi
+    # {modeles: {...}, precision: X, total_matchs: Y}
+    if isinstance(payload, dict) and "modeles" in payload:
+        modeles = payload["modeles"]
+        precision = payload.get("precision_moyenne")
+        total = payload.get("total_matchs")
+    else:
+        # Ancien format : juste {comp: {marché: data}}
+        modeles = payload
+        precision = None
+        total = None
+
+    if not isinstance(modeles, dict) or not modeles:
+        log_error(
+            message="Le BLOB modèle ne contient pas de dictionnaire valide",
+            module="ML_MODEL",
+            extra={"type_recu": type(modeles).__name__},
+        )
+        return False
+
+    global_model_data["modeles_par_competition"] = modeles
+    global_model_data["precision_moyenne"] = precision  # peut être None
+    global_model_data["total_matchs"] = total  # peut être None
+    global_model_data["_tables_initialisees"] = True
+
+    log_info(
+        f"Modèle chargé : {len(modeles)} compétitions"
+        + (f", précision {precision * 100:.1f}%" if precision else "")
+        + (f", {total} matchs" if total else ""),
+        "ML_MODEL",
+        extra={
+            "nb_competitions": len(modeles),
+            "precision": precision,
+            "total_matchs": total,
+        },
+    )
     return True
 
 
 def charger_modele_competition(competition):
     """
-    Charge le modèle d'une compétition spécifique depuis le dictionnaire global.
-    Utilise un cache LRU pour ne garder que les 3 derniers modèles en RAM.
-    Retourne None si la compétition n'est pas trouvée (et log l'erreur).
+    Charge le modèle d'une compétition (cache LRU thread-safe).
+    Retourne None si introuvable.
     """
-    if competition in CACHE_MODELES:
-        return CACHE_MODELES[competition]
+    with _CACHE_LOCK:
+        if competition in CACHE_MODELES:
+            return CACHE_MODELES[competition]
 
-    modeles = global_model_data.get('modeles_par_competition', {})
-    if competition not in modeles:
-        log_warning(f"Modèle introuvable pour la compétition : {competition}", "ML_MODEL")
-        return None
-    
-    # Gestion du cache LRU
-    if len(CACHE_MODELES) >= TAILLE_MAX_CACHE:
-        plus_ancien = next(iter(CACHE_MODELES))
-        del CACHE_MODELES[plus_ancien]
-        log_info(f"Cache plein. Suppression du modèle '{plus_ancien}' de la RAM.", "ML_MODEL")
-    
-    modele_data = modeles[competition]
-    CACHE_MODELES[competition] = modele_data
-    
-    log_info(f"Modèle '{competition}' chargé en RAM.", "ML_MODEL")
-    
+        modeles = global_model_data.get("modeles_par_competition", {})
+        if competition not in modeles:
+            log_warning(
+                message=f"Modèle introuvable pour la compétition '{competition}'",
+                module="ML_MODEL",
+                extra={"competition": competition},
+            )
+            return None
+
+        # LRU : supprimer le plus ancien si plein
+        if len(CACHE_MODELES) >= TAILLE_MAX_CACHE:
+            plus_ancien = next(iter(CACHE_MODELES))
+            del CACHE_MODELES[plus_ancien]
+            log_info(
+                f"Cache plein, suppression du modèle '{plus_ancien}'",
+                "ML_MODEL",
+            )
+
+        CACHE_MODELES[competition] = modeles[competition]
+        log_info(f"Modèle '{competition}' chargé en RAM", "ML_MODEL")
+
     return CACHE_MODELES[competition]
