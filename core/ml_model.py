@@ -1,9 +1,9 @@
 # core/ml_model.py
 """
 Chargement des modèles IA depuis Turso.
-- Plus de valeurs en dur (precision, total_matchs lus depuis le BLOB)
+- Plus de valeurs en dur (precision, total_matchs lus depuis le BLOB ou None)
 - Cache LRU thread-safe
-- Logs enrichis
+- Logs enrichis (contexte + détails)
 """
 
 import os
@@ -15,7 +15,9 @@ import joblib
 
 from core.utils.logs import log_info, log_error, log_warning
 
-# État global
+# =========================================================
+# ÉTAT GLOBAL
+# =========================================================
 global_model_data = {}
 
 # Cache LRU thread-safe
@@ -24,6 +26,9 @@ TAILLE_MAX_CACHE = 3
 _CACHE_LOCK = threading.Lock()
 
 
+# =========================================================
+# CHARGEMENT DEPUIS TURSO
+# =========================================================
 def charger_et_entrainer():
     """
     Charge les modèles depuis Turso (table models_cache).
@@ -57,6 +62,7 @@ def charger_et_entrainer():
             message="Le fichier modèle est corrompu ou illisible",
             module="ML_MODEL",
             exception=e,
+            extra={"taille_blob": len(row[0]) if row[0] else 0},
         )
         return False
 
@@ -99,6 +105,9 @@ def charger_et_entrainer():
     return True
 
 
+# =========================================================
+# CACHE LRU
+# =========================================================
 def charger_modele_competition(competition):
     """
     Charge le modèle d'une compétition (cache LRU thread-safe).
