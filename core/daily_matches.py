@@ -3,6 +3,7 @@
 Récupération et formatage des matchs du jour.
 - Logs agrégés (plus de log_warning par match)
 - Gestion des dates propre
+- Dictionnaire de normalisation étendu (2. Bundesliga inclus)
 """
 
 from datetime import datetime, timezone, timedelta
@@ -17,6 +18,9 @@ from config import CHAMPIONNATS, INFOS_COMPETITIONS, MAPPING_COMPETITIONS
 TZ_KINSHASA = timezone(timedelta(hours=1))
 
 
+# =========================================================
+# NORMALISATION DES NOMS D'ÉQUIPES
+# =========================================================
 def _normaliser(nom):
     """Normalise les noms d'équipes (mapping manuel)."""
     special = {
@@ -80,6 +84,29 @@ def _normaliser(nom):
         "US Lecce": "Lecce", "Hellas Verona FC": "Verona", "Cagliari Calcio": "Cagliari",
         "Genoa CFC": "Genoa", "US Salernitana 1919": "Salernitana", "Frosinone Calcio": "Frosinone",
         "AC Monza": "Monza", "Parma Calcio 1913": "Parma", "Como 1907": "Como", "Venezia FC": "Venezia",
+
+        # ⚠️ 2. BUNDESLIGA & AUTRES
+        "SC Paderborn 07": "Paderborn",
+        "SV 07 Elversberg": "Elversberg",
+        "Energie Cottbus": "Cottbus",
+        "DSC Arminia Bielefeld": "Bielefeld",
+        "1. FC Magdeburg": "Magdeburg",
+        "Karlsruher SC": "Karlsruher",
+        "VfL Osnabrück": "Osnabruck",
+        "Hannover 96": "Hannover",
+        "SpVgg Greuther Fürth": "Greuther Furth",
+        "Hamburger SV": "Hamburg",
+        "FC Schalke 04": "Schalke 04",
+        "Hertha BSC": "Hertha",
+        "Fortuna Düsseldorf": "Dusseldorf",
+        "SC Preußen Münster": "Preussen Munster",
+        "SSV Ulm 1846": "Ulm",
+        "SSV Jahn Regensburg": "Regensburg",
+        "VfL Bochum": "Bochum",
+        "1. FC Nürnberg": "Nurnberg",
+        "Eintracht Braunschweig": "Braunschweig",
+        "SV Sandhausen": "Sandhausen",
+        "Darmstadt 98": "Darmstadt",
     }
     if nom in special:
         return special[nom]
@@ -89,6 +116,9 @@ def _normaliser(nom):
     return nom
 
 
+# =========================================================
+# CHARGEMENT MODÈLE
+# =========================================================
 def _charger_modele_si_necessaire():
     """Charge les modèles si nécessaire."""
     if global_model_data.get("modeles_par_competition") is not None:
@@ -106,6 +136,9 @@ def _charger_modele_si_necessaire():
         return False
 
 
+# =========================================================
+# HELPERS COMPÉTITION
+# =========================================================
 def _nom_competition(code):
     return CHAMPIONNATS.get(code, code)
 
@@ -117,6 +150,9 @@ def _get_info_competition(nom_comp):
     return ""
 
 
+# =========================================================
+# RÉCUPÉRATION DES MATCHS DU JOUR
+# =========================================================
 def get_matchs_du_jour():
     """Orchestre la récupération et calcule les pronostics."""
     if not _charger_modele_si_necessaire():
@@ -176,7 +212,7 @@ def get_matchs_du_jour():
                 matchs_ignores += 1
                 continue
 
-            # Filtre DC
+            # Filtre DC : on ne garde que les cotes >= 1.30
             dc_1x = float(prono.get("dc_1x", 0.5))
             dc_x2 = float(prono.get("dc_x2", 0.5))
             dc_12 = float(prono.get("dc_12", 0.5))
@@ -223,6 +259,9 @@ def get_matchs_du_jour():
     return matchs_trouves
 
 
+# =========================================================
+# FORMATAGE TELEGRAM
+# =========================================================
 def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None):
     """Formate les matchs pour Telegram."""
     date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
@@ -259,7 +298,7 @@ def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None)
         )
 
     if matchs_affiches == 0:
-        return f"📅 Aucun match avec une cote intéressante aujourd'hui."
+        return "📅 Aucun match avec une cote intéressante aujourd'hui."
 
     texte = f"📅 **MATCHS DU JOUR - {date_str}**\n"
     texte += f"({matchs_affiches} matchs avec cote ≥ 1.30)\n\n"
