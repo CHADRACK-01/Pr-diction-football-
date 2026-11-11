@@ -35,7 +35,7 @@ def _get_matchs_sans_resultat():
 
 
 def _normaliser_nom(nom):
-    """Normalise un nom pour le matching (casse, accents, espaces)."""
+    """Normalise un nom pour le matching (accents, casse, espaces)."""
     if not nom:
         return ""
     try:
@@ -53,8 +53,19 @@ def _recuperer_resultats_football_data(date_str):
         headers = {"X-Auth-Token": FOOTBALL_DATA_KEY}
         res = requests.get(url, headers=headers, timeout=15)
         
-        if res.status_code != 200:
-            log_warning(f"Football-Data a retourné {res.status_code} pour {date_str}", "MAJ_RESULTATS")
+        # Gestion des erreurs HTTP
+        if res.status_code == 400:
+            # Pas de match pour cette date, c'est normal
+            log_info(f"Football-Data / {date_str} : aucun match (400).", "MAJ_RESULTATS")
+            return {}
+        elif res.status_code == 403:
+            log_error("Football-Data : accès refusé (clé invalide)", "MAJ_RESULTATS")
+            return {}
+        elif res.status_code == 429:
+            log_error("Football-Data : quota dépassé (429)", "MAJ_RESULTATS")
+            return {}
+        elif res.status_code != 200:
+            log_error(f"Football-Data : erreur {res.status_code} pour {date_str}", "MAJ_RESULTATS")
             return {}
         
         matchs_api = res.json().get("matches", [])
@@ -79,7 +90,6 @@ def _recuperer_resultats_football_data(date_str):
                 'ftag': ft.get("away"),
                 'hthg': ht.get("home", 0) or 0,
                 'htag': ht.get("away", 0) or 0,
-                # Football-Data gratuit ne fournit pas les stats avancées
                 'hs': None, 'as_shots': None, 'hst': None, 'ast': None,
                 'hc': None, 'ac': None, 'hf': None, 'af': None,
                 'hy': None, 'ay': None, 'hr': None, 'ar': None,
@@ -87,20 +97,23 @@ def _recuperer_resultats_football_data(date_str):
             }
         
         return resultats
+    except requests.exceptions.Timeout:
+        log_error(f"Football-Data : timeout pour {date_str}", "MAJ_RESULTATS")
+        return {}
     except Exception as e:
-        log_error(f"Erreur Football-Data pour {date_str}", "MAJ_RESULTATS", exception=e)
+        log_error(f"Football-Data : erreur pour {date_str}", "MAJ_RESULTATS", exception=e)
         return {}
 
 
 def _recuperer_resultats_bzzoiro():
-    """Récupère les résultats récents via Bzzoiro (avec stats avancées si dispo)."""
+    """Récupère les résultats récents via Bzzoiro."""
     try:
         url = "https://sports.bzzoiro.com/api/v2/events/live/"
         headers = {"Authorization": f"Token {BZZOIRO_API_KEY}"}
         res = requests.get(url, headers=headers, params={"sport": "football"}, timeout=15)
         
         if res.status_code != 200:
-            log_warning(f"Bzzoiro a retourné {res.status_code}", "MAJ_RESULTATS")
+            log_error(f"Bzzoiro : erreur {res.status_code}", "MAJ_RESULTATS")
             return {}
         
         data = res.json()
@@ -130,7 +143,6 @@ def _recuperer_resultats_bzzoiro():
             
             key = f"{_normaliser_nom(home)}_{_normaliser_nom(away)}"
             
-            # Extraction des stats avancées (si disponibles)
             stats = m.get("stats", {}) or {}
             
             resultats[key] = {
@@ -138,36 +150,34 @@ def _recuperer_resultats_bzzoiro():
                 'ftag': int(score_away),
                 'hthg': int(m.get("home_score_ht", 0) or 0),
                 'htag': int(m.get("away_score_ht", 0) or 0),
-                'hs': stats.get("home_shots") or None,
-                'as_shots': stats.get("away_shots") or None,
-                'hst': stats.get("home_shots_on_target") or None,
-                'ast': stats.get("away_shots_on_target") or None,
-                'hc': stats.get("home_corners") or None,
-                'ac': stats.get("away_corners") or None,
-                'hf': stats.get("home_fouls") or None,
-                'af': stats.get("away_fouls") or None,
-                'hy': stats.get("home_yellow_cards") or None,
-                'ay': stats.get("away_yellow_cards") or None,
-                'hr': stats.get("home_red_cards") or None,
-                'ar': stats.get("away_red_cards") or None,
+                'hs': stats.get("home_shots"),
+                'as_shots': stats.get("away_shots"),
+                'hst': stats.get("home_shots_on_target"),
+                'ast': stats.get("away_shots_on_target"),
+                'hc': stats.get("home_corners"),
+                'ac': stats.get("away_corners"),
+                'hf': stats.get("home_fouls"),
+                'af': stats.get("away_fouls"),
+                'hy': stats.get("home_yellow_cards"),
+                'ay': stats.get("away_yellow_cards"),
+                'hr': stats.get("home_red_cards"),
+                'ar': stats.get("away_red_cards"),
                 'b365h': None, 'b365d': None, 'b365a': None,
             }
         
         return resultats
     except Exception as e:
-        log_error("Erreur Bzzoiro résultats", "MAJ_RESULTATS", exception=e)
+        log_error("Bzzoiro : erreur récupération résultats", "MAJ_RESULTATS", exception=e)
         return {}
 
 
 def _calculer_ftr(fthg, ftag):
-    """Calcule le résultat final."""
     if fthg > ftag: return 'H'
     elif fthg < ftag: return 'A'
     else: return 'D'
 
 
 def _calculer_htr(hthg, htag):
-    """Calcule le résultat à la mi-temps."""
     if hthg > htag: return 'H'
     elif hthg < htag: return 'A'
     else: return 'N'
@@ -175,8 +185,7 @@ def _calculer_htr(hthg, htag):
 
 def mettre_a_jour_resultats():
     """
-    Met à jour TOUTES les colonnes de résultats des matchs passés
-    (scores, mi-temps, stats avancées si disponibles).
+    Met à jour TOUTES les colonnes de résultats des matchs passés.
     """
     log_info("=== DÉBUT DE LA MISE À JOUR DES RÉSULTATS ===", "MAJ_RESULTATS")
     
@@ -187,7 +196,6 @@ def mettre_a_jour_resultats():
     
     log_info(f"{len(matchs_sans_resultat)} matchs à mettre à jour.", "MAJ_RESULTATS")
     
-    # On groupe les matchs par date
     matchs_par_date = {}
     for m in matchs_sans_resultat:
         match_id, date_match, home, away, comp = m
@@ -195,21 +203,20 @@ def mettre_a_jour_resultats():
             matchs_par_date[date_match] = []
         matchs_par_date[date_match].append((match_id, home, away, comp))
     
-    # On fusionne les résultats de toutes les sources
     tous_resultats = {}
     
-    # 1. Football-Data (par date)
+    # 1. Football-Data
     for date_str in matchs_par_date.keys():
         resultats_fd = _recuperer_resultats_football_data(date_str)
         tous_resultats.update(resultats_fd)
         log_info(f"Football-Data / {date_str} : {len(resultats_fd)} résultats.", "MAJ_RESULTATS")
     
-    # 2. Bzzoiro (global, avec stats avancées)
+    # 2. Bzzoiro
     resultats_bz = _recuperer_resultats_bzzoiro()
     tous_resultats.update(resultats_bz)
     log_info(f"Bzzoiro : {len(resultats_bz)} résultats.", "MAJ_RESULTATS")
     
-    # On met à jour la base
+    # Mise à jour en base
     conn = get_connection()
     mises_a_jour = 0
     
@@ -242,7 +249,7 @@ def mettre_a_jour_resultats():
                 """, (
                     fthg, ftag, ftr,
                     hthg, htag, htr,
-                    score.get('hs'), score.get('as_shots'), 
+                    score.get('hs'), score.get('as_shots'),
                     score.get('hst'), score.get('ast'),
                     score.get('hc'), score.get('ac'),
                     score.get('hf'), score.get('af'),
