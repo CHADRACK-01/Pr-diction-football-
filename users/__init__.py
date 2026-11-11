@@ -1,3 +1,4 @@
+# users/__init__.py
 # Package users - Gestion des utilisateurs, base de données et paiements
 
 # =========================================================
@@ -13,7 +14,7 @@ from users.db import (
 )
 
 # =========================================================
-# COMPTES UTILISATEURS (BASE)
+# COMPTES UTILISATEURS (BASE + PREMIUM)
 # =========================================================
 from users.account_base import (
     utilisateur_existe,
@@ -21,6 +22,7 @@ from users.account_base import (
     get_user_status,
     enregistrer_utilisateur,
     set_premium,
+    ajouter_jours_premium,  # ⚠️ Déplacé ici depuis account_limits
     est_premium,
     get_statut_label,
     get_langue,
@@ -35,7 +37,7 @@ from users.account_limits import (
     get_compteur_jour,
     get_limite_jour,
     peut_faire_pronostic,
-    ajouter_jours_premium
+    # ⚠️ ajouter_jours_premium retiré d'ici
 )
 
 # =========================================================
