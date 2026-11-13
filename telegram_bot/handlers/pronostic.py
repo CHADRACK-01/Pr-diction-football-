@@ -1,4 +1,10 @@
 # telegram_bot/handlers/pronostic.py
+"""
+Flux de pronostic (compétition -> domicile -> extérieur).
+- Session dédiée (table sessions_pronostic)
+- Intégration du nouveau moteur V2 (top_scores, H2H)
+"""
+
 import telebot
 
 from users import (
@@ -212,10 +218,15 @@ def enregistrer_pronostic_handlers(bot):
 
         # --- SAUVEGARDE HISTORIQUE ---
         try:
+            # ⚠️ CORRECTION ICI : on utilise top_scores au lieu de best_score
+            top_scores = resultat.get("top_scores", [(1, 0, 0)])
+            best_i = top_scores[0][0]
+            best_j = top_scores[0][1]
+            
             sauvegarder_historique(
                 resultat["home_team"], resultat["away_team"], competition_reelle,
                 resultat["p_h"], resultat["p_d"], resultat["p_a"],
-                resultat["best_score"][0], resultat["best_score"][1]
+                best_i, best_j
             )
         except Exception as e:
             log_error("Erreur sauvegarde historique", "PRONOSTIC", exception=e)
