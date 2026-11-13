@@ -9,8 +9,8 @@ from config import CHAMPIONNATS, INFOS_COMPETITIONS, MAPPING_COMPETITIONS
 TZ_KINSHASA = timezone(timedelta(hours=1))
 
 def _normaliser(nom):
-    # (Garder ton dictionnaire de normalisation existant ici)
-    return nom # Remplacer par ta fonction complète
+    # (Garde ton dictionnaire de normalisation existant ici)
+    return nom 
 
 def _charger_modele_si_necessaire():
     if global_model_data.get("models") is not None: return True
@@ -37,6 +37,7 @@ def get_matchs_du_jour():
             away = _normaliser(m.get("away", ""))
             competition_code = m.get("competition", "default")
             if not home or not away: continue
+            
             competition_reelle = m.get("competition_reelle") or MAPPING_COMPETITIONS.get(competition_code, competition_code)
             try:
                 prono = predire_match(home, away, competition=competition_reelle, cotes_book=m.get("cotes_book"))
@@ -106,12 +107,15 @@ def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None)
             texte += f"   🕐 {heure} | 🏆 {m['nom_competition']} {emoji_pays}\n"
             
             if est_premium:
-                # ⚠️ AJOUT DU 1N2 ICI (format compact)
-                texte += f"   📊 1:{round(m['p_h']*100)}% | N:{round(m['p_d']*100)}% | 2:{round(m['p_a']*100)}%\n"
-                texte += f"   🛡️ DC {m['dc_label']} ({round(m['dc_pct']*100,1)}%)\n"
-                texte += f"   🎯 BTTS {round(m['btts']*100,1)}% | 🥅 +2.5 {round(m['over_25']*100,1)}%\n"
+                # Explication claire pour un débutant
+                texte += f"   🏆 **Victoire {m['home']} :** {round(m['p_h']*100)}%\n"
+                texte += f"   🤝 **Match Nul :** {round(m['p_d']*100)}%\n"
+                texte += f"   ✈️ **Victoire {m['away']} :** {round(m['p_a']*100)}%\n"
+                texte += f"   🛡️ **Pari Sûr (Double Chance) :** {m['dc_label']} ({round(m['dc_pct']*100,1)}%)\n"
+                texte += f"   🎯 **Les 2 marquent :** {round(m['btts']*100,1)}%\n"
+                texte += f"   🥅 **Plus de 2.5 buts :** {round(m['over_25']*100,1)}%\n"
             texte += "\n"
 
     if not est_premium:
-        texte += "━━━━━━━━━━━━━━━━━━━━\n⭐ _Passe Premium pour voir les pronostics (1N2, DC, BTTS)._\n"
+        texte += "━━━━━━━━━━━━━━━━━━━━\n⭐ _Passe Premium pour voir les pronostics et les probabilités de chaque match._\n"
     return texte
