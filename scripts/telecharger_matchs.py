@@ -14,15 +14,36 @@ def _inserer_matchs_en_base(matchs, competition):
 
     conn = get_connection()
     inseres = 0
-    TAILLE_LOT = 500
+    erreurs = 0
+    TAILLE_LOT = 100  # Réduit pour éviter les timeouts réseau (Hrana)
+
+    # Requête corrigée : INSERT OR IGNORE au lieu de ON CONFLICT
+    query = """
+        INSERT OR IGNORE INTO matchs (
+            date, home_team, away_team,
+            fthg, ftag, ftr,
+            hthg, htag, htr,
+            hs, as_shots, hst, ast,
+            hc, ac, hf, af,
+            hy, ay, hr, ar,
+            b365h, b365d, b365a,
+            competition
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """
 
     for i in range(0, len(matchs), TAILLE_LOT):
         lot = matchs[i:i + TAILLE_LOT]
         valeurs = []
         
         for m in lot:
+            # Extraction et nettoyage de la date
+            raw_date = m.get('heure', '')
+            date_str = str(raw_date)[:10] if raw_date else None
+
             valeurs.append((
-                m.get('date'), m.get('home_team'), m.get('away_team'),
+                date_str, 
+                m.get('home'), 
+                m.get('away'),
                 m.get('fthg'), m.get('ftag'), m.get('ftr'),
                 m.get('hthg'), m.get('htag'), m.get('htr'),
                 m.get('hs'), m.get('as_shots'), m.get('hst'), m.get('ast'),
@@ -32,34 +53,33 @@ def _inserer_matchs_en_base(matchs, competition):
                 competition
             ))
 
-        query = """
-            INSERT INTO matchs (
-                date, home_team, away_team,
-                fthg, ftag, ftr,
-                hthg, htag, htr,
-                hs, as_shots, hst, ast,
-                hc, ac, hf, af,
-                hy, ay, hr, ar,
-                b365h, b365d, b365a,
-                competition
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT (date, home_team, away_team, competition) DO NOTHING
-        """
-
         for vals in valeurs:
             try:
                 conn.execute(query, vals)
                 inseres += 1
             except Exception as e:
-                log_error(
-                    message=f"Erreur insertion match {vals[1]} vs {vals[2]}",
-                    module="SCRIPTS",
-                    exception=e
-                )
+                erreurs += 1
+                # On n'affiche que les 3 premières erreurs pour ne pas polluer les logs
+                if erreurs <= 3:
+                    log_error(
+                        message=f"Erreur insertion match {vals[1]} vs {vals[2]}",
+                        module="SCRIPTS",
+                        exception=e
+                    )
 
-        conn.commit()
+        try:
+            conn.commit()
+        except Exception as e:
+            log_error("Erreur lors du commit des matchs", "SCRIPTS", exception=e)
 
     conn.close()
+    
+    if erreurs > 3:
+        log_warning(
+            message=f"{erreurs} erreurs d'insertion au total (les 3 premières ont été loggées)",
+            module="SCRIPTS"
+        )
+        
     return inseres
 
 
@@ -80,15 +100,15 @@ def telecharger_tout():
     # On regroupe par compétition
     par_competition = {}
     for m in matchs:
-        comp = m.get('competition', 'inconnu')
+        comp = m.get('competition_reelle', m.get('competition', 'inconnu'))
         if comp not in par_competition:
             par_competition[comp] = []
         
         # On normalise le format pour l'insertion
         par_competition[comp].append({
-            'date': m.get('heure', '')[:10] if m.get('heure') else None,
-            'home_team': m.get('home'),
-            'away_team': m.get('away'),
+            'heure': m.get('heure'),
+            'home': m.get('home'),
+            'away': m.get('away'),
             'fthg': m.get('fthg'), 'ftag': m.get('ftag'), 'ftr': m.get('ftr'),
             'hthg': m.get('hthg'), 'htag': m.get('htag'), 'htr': m.get('htr'),
             'hs': m.get('hs'), 'as_shots': m.get('as_shots'),
