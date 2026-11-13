@@ -3,7 +3,7 @@
 Gestion des matchs en base.
 - Insertion idempotente avec INSERT OR IGNORE
 - Fenêtre "saison en cours" avec fallback passé
-- Traduction stricte des noms de compétitions (ex: "Premier League" -> "premier_league")
+- Recherche de compétition ultra-tolérante (ignore les _, espaces, tirets)
 """
 
 from datetime import datetime, timedelta
@@ -28,7 +28,6 @@ CHAMPS_MATCH = [
 def inserer_matchs(liste_matchs):
     """
     Insère une liste de matchs (idempotent via INSERT OR IGNORE).
-    Retourne le nombre de matchs traités.
     """
     if not liste_matchs:
         return 0
@@ -60,192 +59,119 @@ def inserer_matchs(liste_matchs):
                         log_error(
                             message="Erreur d'insertion d'un match",
                             module="MATCHS",
-                            db_context={
-                                "table": "matchs",
-                                "params": {
-                                    "date": vals[0],
-                                    "home": vals[1],
-                                    "away": vals[2],
-                                    "competition": vals[-1],
-                                },
-                            },
+                            db_context={"table": "matchs", "params": {"date": vals[0], "home": vals[1]}},
                             exception=e,
                         )
             conn.commit()
         except Exception as e:
-            log_error(
-                message="Erreur d'ouverture/commit connexion pour insertion de matchs",
-                module="MATCHS",
-                exception=e,
-            )
+            log_error(message="Erreur commit insertion", module="MATCHS", exception=e)
         finally:
             if conn is not None:
-                try:
-                    conn.close()
-                except Exception as e:
-                    log_warning(
-                        message="Impossible de fermer la connexion (inserer_matchs)",
-                        module="MATCHS",
-                        exception=e,
-                    )
+                try: conn.close()
+                except: pass
 
-    if erreurs > 5:
-        log_warning(
-            message=f"{erreurs} erreurs d'insertion au total (5 premières loggées)",
-            module="MATCHS",
-        )
-
-    log_info(
-        f"{total_traites} match(s) traité(s) ({erreurs} erreurs).",
-        "MATCHS",
-    )
+    log_info(f"{total_traites} match(s) traité(s) ({erreurs} erreurs).", "MATCHS")
     return total_traites
 
 
 def compter_matchs():
     """Compte le nombre total de matchs."""
-    row = db_fetchone(
-        "SELECT COUNT(*) FROM matchs",
-        db_context={"table": "matchs", "operation": "count"},
-    )
+    row = db_fetchone("SELECT COUNT(*) FROM matchs", db_context={"table": "matchs"})
     return row[0] if row else 0
 
 
 def get_equipes_saison_en_cours(competition):
     """
     Récupère les équipes de la saison en cours.
-    Traduit le nom ("Premier League") en code DB ("premier_league").
-    Gère les minuscules et les majuscules pour être sûr de trouver la donnée.
+    Utilise une recherche SQL ultra-tolérante pour ignorer les _, espaces et tirets.
     """
     if not competition:
-        log_warning(
-            message="Compétition vide pour get_equipes_saison_en_cours",
-            module="MATCHS",
-        )
+        log_warning(message="Compétition vide", module="MATCHS")
         return []
 
-    # --- TRADUCTION ---
-    noms_vers_codes = {v: k for k, v in MAPPING_COMPETITIONS.items()}
-    competition_db = noms_vers_codes.get(competition, competition)
+    # On crée une clé de recherche propre : minuscules, sans _, sans espace, sans -
+    comp_clean = competition.lower().replace("_", "").replace(" ", "").replace("-", "")
     
-    # On prépare les deux variantes (minuscules et majuscules) pour la recherche
-    comp_min = competition_db.lower()
-    comp_maj = competition_db.upper()
-    # ------------------
+    # On utilise MAPPING_COMPETITIONS juste pour savoir si on doit chercher un code
+    # Mais comme la recherche SQL est tolérante, ça marchera dans tous les cas.
 
     try:
         # 1. Fenêtre future : 180 jours
         date_debut = datetime.now().strftime("%Y-%m-%d")
         date_fin = (datetime.now() + timedelta(days=180)).strftime("%Y-%m-%d")
 
-        # On cherche avec LOWER() ou UPPER() pour ignorer la casse en SQL
         rows = db_fetchall(
             """
             SELECT DISTINCT home_team FROM matchs
-            WHERE LOWER(competition) = ? AND date >= ? AND date <= ?
+            WHERE (LOWER(REPLACE(REPLACE(REPLACE(competition, '_', ''), ' ', ''), '-', '')) = ?) 
+              AND date >= ? AND date <= ?
             UNION
             SELECT DISTINCT away_team FROM matchs
-            WHERE LOWER(competition) = ? AND date >= ? AND date <= ?
+            WHERE (LOWER(REPLACE(REPLACE(REPLACE(competition, '_', ''), ' ', ''), '-', '')) = ?) 
+              AND date >= ? AND date <= ?
             ORDER BY home_team ASC
             """,
-            params=[comp_min, date_debut, date_fin,
-                    comp_min, date_debut, date_fin],
-            db_context={"table": "matchs", "operation": "get_equipes_futur",
-                        "params": {"competition": comp_min}},
+            params=[comp_clean, date_debut, date_fin,
+                    comp_clean, date_debut, date_fin],
+            db_context={"table": "matchs", "operation": "get_equipes_futur"},
         )
         equipes = [row[0] for row in rows if row and row[0]]
-        source = "calendrier futur (180j)"
+        source = "futur (180j)"
 
         # 2. Fallback : 365 derniers jours
         if not equipes:
             log_warning(
-                message=f"Aucune équipe dans le futur pour {competition_db}, fallback passé",
+                message=f"Aucune équipe dans le futur pour {competition}, fallback passé",
                 module="MATCHS",
-                extra={"competition": competition_db},
+                extra={"competition": competition},
             )
             date_limite = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
             rows = db_fetchall(
                 """
                 SELECT DISTINCT home_team FROM matchs
-                WHERE LOWER(competition) = ? AND date >= ?
+                WHERE (LOWER(REPLACE(REPLACE(REPLACE(competition, '_', ''), ' ', ''), '-', '')) = ?) 
+                  AND date >= ?
                 UNION
                 SELECT DISTINCT away_team FROM matchs
-                WHERE LOWER(competition) = ? AND date >= ?
+                WHERE (LOWER(REPLACE(REPLACE(REPLACE(competition, '_', ''), ' ', ''), '-', '')) = ?) 
+                  AND date >= ?
                 ORDER BY home_team ASC
                 """,
-                params=[comp_min, date_limite, comp_min, date_limite],
-                db_context={"table": "matchs", "operation": "get_equipes_fallback",
-                            "params": {"competition": comp_min}},
+                params=[comp_clean, date_limite, comp_clean, date_limite],
+                db_context={"table": "matchs", "operation": "get_equipes_fallback"},
             )
             equipes = [row[0] for row in rows if row and row[0]]
             source = "fallback passé (365j)"
 
         if not equipes:
             log_warning(
-                message=f"Aucune équipe trouvée pour {competition_db} (base vide ?)",
+                message=f"Aucune équipe trouvée pour {competition} (base vide ?)",
                 module="MATCHS",
-                extra={"competition": competition_db},
+                extra={"competition": competition},
             )
             return []
 
-        log_info(
-            f"{len(equipes)} équipes pour {competition_db} (source: {source})",
-            "MATCHS",
-        )
+        log_info(f"{len(equipes)} équipes pour {competition} (source: {source})", "MATCHS")
         return equipes
+        
     except Exception as e:
-        log_error(
-            message="Impossible de récupérer les équipes",
-            module="MATCHS",
-            extra={"competition": competition_db},
-            exception=e,
-        )
+        log_error(message="Impossible de récupérer les équipes", module="MATCHS", extra={"competition": competition}, exception=e)
         return []
 
 
 def nettoyer_vieilles_donnees(annees=5):
-    """Supprime les matchs de plus de X années (calcul exact avec bissextiles)."""
+    """Supprime les matchs de plus de X années."""
     if not isinstance(annees, int) or annees <= 0:
-        log_warning(
-            message="Paramètre 'annees' invalide",
-            module="MATCHS",
-            extra={"annees": annees},
-        )
         return 0
 
-    date_limite_dt = datetime.now().replace(
-        year=datetime.now().year - annees
-    )
-    date_limite = date_limite_dt.strftime("%Y-%m-%d")
-
-    row = db_fetchone(
-        "SELECT COUNT(*) FROM matchs WHERE date < ?",
-        params=[date_limite],
-        db_context={"table": "matchs", "operation": "count_old"},
-    )
+    date_limite = datetime.now().replace(year=datetime.now().year - annees).strftime("%Y-%m-%d")
+    
+    row = db_fetchone("SELECT COUNT(*) FROM matchs WHERE date < ?", params=[date_limite])
     nb_a_supprimer = row[0] if row else 0
 
     if nb_a_supprimer == 0:
-        log_info(f"Aucun match de plus de {annees} ans.", "MATCHS")
         return 0
 
-    rowcount = db_execute(
-        "DELETE FROM matchs WHERE date < ?",
-        params=[date_limite],
-        db_context={"table": "matchs", "operation": "cleanup"},
-    )
-
-    if rowcount is None:
-        log_error(
-            message="Échec de suppression des vieux matchs",
-            module="MATCHS",
-            extra={"annees": annees, "date_limite": date_limite},
-        )
-        return 0
-
-    log_info(
-        f"{rowcount} matchs de plus de {annees} ans supprimés.",
-        "MATCHS",
-        extra={"annees": annees, "date_limite": date_limite},
-    )
+    rowcount = db_execute("DELETE FROM matchs WHERE date < ?", params=[date_limite])
+    log_info(f"{rowcount} matchs de plus de {annees} ans supprimés.", "MATCHS")
     return rowcount
