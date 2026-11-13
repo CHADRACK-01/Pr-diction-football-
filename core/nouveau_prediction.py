@@ -1,22 +1,137 @@
 # core/nouveau_prediction.py
 """
 Moteur de prédiction V2.
-- Utilise les 6 modèles globaux (1N2, DC_1X, Over25, BTTS, HT_Prolific, HTR).
-- Reconstruit les features (Elo, forme, moyennes de buts).
+- Traduction des noms d'équipes (Telegram -> Base de données)
+- Reconstruit les features (Elo, forme, moyennes de buts)
+- Utilise les 6 modèles globaux
 """
 
 import numpy as np
-from collections import defaultdict, deque
 from core.ml_model import global_model_data
 from core.utils.logs import log_info, log_error, log_warning
 from users.db import db_fetchall
 
+# =========================================================
+# DICTIONNAIRE DE CORRESPONDANCE DES NOMS
+# =========================================================
+NOMS_EQUIPES_MAPPING = {
+    # Allemagne
+    "FC Bayern München": "Bayern Munich",
+    "Bayern München": "Bayern Munich",
+    "Borussia Dortmund": "Dortmund",
+    "Borussia Mönchengladbach": "M'gladbach",
+    "Bayer 04 Leverkusen": "Leverkusen",
+    "Eintracht Frankfurt": "Ein Frankfurt",
+    "VfB Stuttgart": "Stuttgart",
+    "VfL Wolfsburg": "Wolfsburg",
+    "1. FC Union Berlin": "Union Berlin",
+    "SC Freiburg": "Freiburg",
+    "TSG 1899 Hoffenheim": "Hoffenheim",
+    "FC Augsburg": "Augsburg",
+    "1. FSV Mainz 05": "Mainz",
+    "SV Werder Bremen": "Werder Bremen",
+    "VfL Bochum 1848": "Bochum",
+    "1. FC Köln": "FC Koln",
+    "SV Darmstadt 98": "Darmstadt",
+    "1. FC Heidenheim 1846": "Heidenheim",
+    "FC St. Pauli": "St Pauli",
+    "Holstein Kiel": "Holstein Kiel",
+    
+    # France
+    "Paris Saint-Germain FC": "Paris SG",
+    "Paris Saint-Germain": "Paris SG",
+    "Olympique de Marseille": "Marseille",
+    "Olympique Lyonnais": "Lyon",
+    "AS Monaco FC": "Monaco",
+    "LOSC Lille": "Lille",
+    "OGC Nice": "Nice",
+    "Stade Rennais FC 1901": "Rennes",
+    "Racing Club de Lens": "Lens",
+    "Stade de Reims": "Reims",
+    "Montpellier HSC": "Montpellier",
+    "FC Nantes": "Nantes",
+    "Stade Brestois 29": "Brest",
+    "RC Strasbourg Alsace": "Strasbourg",
+    "Toulouse FC": "Toulouse",
+    "FC Metz": "Metz",
+    "Le Havre AC": "Le Havre",
+    "Clermont Foot 63": "Clermont",
+    "FC Lorient": "Lorient",
+    "Angers SCO": "Angers",
+    "AS Saint-Etienne": "St Etienne",
+    "AJ Auxerre": "Auxerre",
+    
+    # Espagne
+    "Real Madrid CF": "Real Madrid",
+    "FC Barcelona": "Barcelona",
+    "Atletico de Madrid": "Ath Madrid",
+    "Atlético Madrid": "Ath Madrid",
+    "Athletic Club": "Ath Bilbao",
+    "Real Sociedad de Futbol": "Sociedad",
+    "Real Betis Balompie": "Betis",
+    "Sevilla FC": "Sevilla",
+    "Valencia CF": "Valencia",
+    "Villarreal CF": "Villarreal",
+    "Getafe CF": "Getafe",
+    "RCD Espanyol de Barcelona": "Espanol",
+    "Rayo Vallecano de Madrid": "Vallecano",
+    "RC Celta de Vigo": "Celta",
+    "RCD Mallorca": "Mallorca",
+    "CA Osasuna": "Osasuna",
+    "Granada CF": "Granada",
+    "Deportivo Alaves": "Alaves",
+    "Cadiz CF": "Cadiz",
+    "UD Las Palmas": "Las Palmas",
+    "Girona FC": "Girona",
+    "Real Valladolid CF": "Valladolid",
+    "Levante UD": "Levante",
+    "Elche CF": "Elche",
+    "CD Leganes": "Leganes",
+    "Real Zaragoza": "Zaragoza",
+    "Real Oviedo": "Oviedo",
+    "Sporting Gijon": "Sp Gijon",
+    
+    # Angleterre
+    "Manchester City FC": "Man City",
+    "Manchester United FC": "Man United",
+    "Newcastle United FC": "Newcastle",
+    "Nottingham Forest FC": "Nott'm Forest",
+    "Tottenham Hotspur FC": "Tottenham",
+    "Wolverhampton Wanderers FC": "Wolves",
+    "Brighton & Hove Albion FC": "Brighton",
+    "West Ham United FC": "West Ham",
+    
+    # Italie
+    "AS Roma": "Roma",
+    "SS Lazio": "Lazio",
+    "Juventus FC": "Juventus",
+    "AC Milan": "Milan",
+    "FC Internazionale Milano": "Inter",
+    "SSC Napoli": "Napoli",
+    "ACF Fiorentina": "Fiorentina",
+    "Atalanta BC": "Atalanta",
+    "Bologna FC 1909": "Bologna",
+    "Torino FC": "Torino",
+    "Udinese Calcio": "Udinese",
+    "US Sassuolo Calcio": "Sassuolo",
+    "Empoli FC": "Empoli",
+    "US Lecce": "Lecce",
+    "Hellas Verona FC": "Verona",
+    "Cagliari Calcio": "Cagliari",
+    "Genoa CFC": "Genoa",
+    "US Salernitana 1919": "Salernitana",
+    "Frosinone Calcio": "Frosinone",
+    "AC Monza": "Monza",
+    "Parma Calcio 1913": "Parma",
+    "Como 1907": "Como",
+    "Venezia FC": "Venezia"
+}
+
+
 def _get_team_features(home_team, away_team):
     """
     Calcule les features pour un match en interrogeant l'historique.
-    ⚠️ Version optimisée : approximation de l'Elo via l'historique récent.
     """
-    # On récupère les 30 derniers matchs de chaque équipe
     rows = db_fetchall(
         """
         SELECT date, home_team, away_team, fthg, ftag, ftr
@@ -43,8 +158,7 @@ def _get_team_features(home_team, away_team):
         return None
 
     # --- Calcul des stats Home ---
-    wins_h, bm_h, be_h = 0, [], []
-    forme_h = []
+    bm_h, be_h, forme_h = [], [], []
     for r in rows:
         h, a, fthg, ftag, ftr = r[1], r[2], r[3], r[4], r[5]
         if h == home_team:
@@ -55,8 +169,7 @@ def _get_team_features(home_team, away_team):
             forme_h.append(1 if ftr == 'A' else 0.5 if ftr == 'D' else 0)
 
     # --- Calcul des stats Away ---
-    bm_a, be_a = [], []
-    forme_a = []
+    bm_a, be_a, forme_a = [], [], []
     for r in rows_away:
         h, a, fthg, ftag, ftr = r[1], r[2], r[3], r[4], r[5]
         if h == away_team:
@@ -83,7 +196,7 @@ def _get_team_features(home_team, away_team):
         "be_a": sum(be_a) / len(be_a) if be_a else 1.4,
         "diff_attaque": (sum(bm_h)/len(bm_h) if bm_h else 1.3) - (sum(bm_a)/len(bm_a) if bm_a else 1.1),
         "diff_defense": (sum(be_a)/len(be_a) if be_a else 1.4) - (sum(be_h)/len(be_h) if be_h else 1.3),
-        "h2h_goals_home": 0, "h2h_goals_away": 0, "h2h_n": 0, # À compléter si besoin
+        "h2h_goals_home": 0, "h2h_goals_away": 0, "h2h_n": 0,
         "repos_h": 7, "repos_a": 7,
         "home_adv_ratio": 0.45,
     }
@@ -92,11 +205,17 @@ def _get_team_features(home_team, away_team):
 
 def predire_match_v2(home_team, away_team, competition="default", cotes_book=None):
     """Fonction principale de prédiction."""
+    
+    # --- TRADUCTION DES NOMS ---
+    home_team_db = NOMS_EQUIPES_MAPPING.get(home_team, home_team)
+    away_team_db = NOMS_EQUIPES_MAPPING.get(away_team, away_team)
+    # ---------------------------
+
     models = global_model_data.get("models")
     if not models:
         return {"erreur": "Modèle IA non chargé. Réessaie dans un instant."}
 
-    feats = _get_team_features(home_team, away_team)
+    feats = _get_team_features(home_team_db, away_team_db)
     if not feats:
         return {"erreur": f"Pas assez d'historique pour {home_team} vs {away_team}."}
 
