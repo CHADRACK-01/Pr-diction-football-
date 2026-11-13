@@ -72,7 +72,7 @@ def _initialiser_bdd_si_necessaire():
         return
 
     with _db_lock:
-        if _db_initialisee:  # double-check
+        if _db_initialisee:
             return
         try:
             from users.db import initialiser_tables
@@ -96,7 +96,6 @@ def _secret_ok():
     """Vérifie le secret admin dans le header/query."""
     secret_attendu = os.environ.get("ADMIN_SECRET", "")
     if not secret_attendu:
-        # Pas de secret configuré : routes debug désactivées
         return False
     fourni = request.args.get("secret") or request.headers.get("X-Admin-Secret")
     return fourni == secret_attendu
@@ -122,7 +121,7 @@ def admin_required(f):
 
 
 # =========================================================
-# MIDDLEWARE FLASK : capture TOUTES les erreurs HTTP
+# MIDDLEWARE FLASK
 # =========================================================
 @app.errorhandler(Exception)
 def gerer_erreur_globale(e):
@@ -146,45 +145,20 @@ def _envoyer_message_securise(chat_id, texte, parse_mode=None):
             bot.send_message(chat_id, texte, parse_mode=parse_mode)
             return True
         except Exception as e:
-            log_warning(
-                message="Échec envoi message (fallback sans parse_mode)",
-                module="NOTIFS",
-                extra={"chat_id": chat_id, "parse_mode": parse_mode},
-                exception=e,
-            )
+            log_warning(message="Échec envoi message (fallback)", module="NOTIFS", exception=e)
             try:
                 bot.send_message(chat_id, texte)
                 return True
-            except Exception as e2:
-                log_error(
-                    message="Échec envoi message (double fallback)",
-                    module="NOTIFS",
-                    extra={"chat_id": chat_id},
-                    exception=e2,
-                )
+            except Exception:
                 return False
 
     morceaux = [texte[i:i + limite] for i in range(0, len(texte), limite)]
     for morceau in morceaux:
         try:
             bot.send_message(chat_id, morceau, parse_mode=parse_mode)
-        except Exception as e:
-            log_warning(
-                message="Échec envoi morceau",
-                module="NOTIFS",
-                extra={"chat_id": chat_id},
-                exception=e,
-            )
-            try:
-                bot.send_message(chat_id, morceau)
-            except Exception as e2:
-                log_error(
-                    message="Échec envoi morceau (fallback)",
-                    module="NOTIFS",
-                    extra={"chat_id": chat_id},
-                    exception=e2,
-                )
-                return False
+        except Exception:
+            try: bot.send_message(chat_id, morceau)
+            except Exception: return False
         time.sleep(0.3)
     return True
 
@@ -192,17 +166,11 @@ def _envoyer_message_securise(chat_id, texte, parse_mode=None):
 def charger_modele_universel():
     """Charge les modèles si nécessaire."""
     from core.ml_model import global_model_data, charger_et_entrainer
-
-    if global_model_data.get("modeles_par_competition") is not None:
+    if global_model_data.get("models") is not None:
         return True
-
     if charger_et_entrainer():
-        log_info(
-            f"Modèles chargés : {len(global_model_data['modeles_par_competition'])} compétitions",
-            "BOOT",
-        )
+        log_info(f"Modèles chargés.", "BOOT")
         return True
-
     log_warning("Impossible de charger les modèles.", "BOOT")
     return False
 
@@ -211,29 +179,17 @@ def charger_modele_universel():
 # PERSISTANCE DES DERNIÈRES EXÉCUTIONS (scheduler)
 # =========================================================
 def _get_derniere_execution(cle, defaut=None):
-    """Récupère la dernière date d'exécution d'une tâche (stockée en BDD)."""
     try:
-        val = get_parametre(f"sched_{cle}", defaut)
-        return val
-    except Exception as e:
-        log_warning(
-            message=f"Impossible de lire sched_{cle}",
-            module="SCHEDULER",
-            exception=e,
-        )
+        return get_parametre(f"sched_{cle}", defaut)
+    except Exception:
         return defaut
 
 
 def _set_derniere_execution(cle, date_str):
-    """Enregistre la date d'exécution en BDD."""
     try:
         set_parametre(f"sched_{cle}", date_str, f"Dernière exécution {cle}")
-    except Exception as e:
-        log_warning(
-            message=f"Impossible d'écrire sched_{cle}",
-            module="SCHEDULER",
-            exception=e,
-        )
+    except Exception:
+        pass
 
 
 # =========================================================
@@ -245,11 +201,7 @@ def _mettre_a_jour_resultats():
         total = mettre_a_jour_resultats()
         log_info(f"Résultats mis à jour : {total} matchs.", "SCHEDULER")
     except Exception as e:
-        log_error(
-            message="Erreur lors de la mise à jour des résultats",
-            module="SCHEDULER",
-            exception=e,
-        )
+        log_error(message="Erreur maj résultats", module="SCHEDULER", exception=e)
 
 
 def _telecharger_nouveaux_matchs():
@@ -258,11 +210,7 @@ def _telecharger_nouveaux_matchs():
         total = telecharger_tout()
         log_info(f"Matchs téléchargés : {total}.", "SCHEDULER")
     except Exception as e:
-        log_error(
-            message="Erreur lors du téléchargement des matchs",
-            module="SCHEDULER",
-            exception=e,
-        )
+        log_error(message="Erreur téléchargement matchs", module="SCHEDULER", exception=e)
 
 
 def _nettoyer_vieilles_donnees():
@@ -271,32 +219,20 @@ def _nettoyer_vieilles_donnees():
         total = nettoyer_vieilles_donnees(annees=5)
         log_info(f"Matchs de plus de 5 ans supprimés : {total}.", "SCHEDULER")
     except Exception as e:
-        log_error(
-            message="Erreur nettoyage vieilles données",
-            module="SCHEDULER",
-            exception=e,
-        )
+        log_error(message="Erreur nettoyage vieilles données", module="SCHEDULER", exception=e)
 
 
 def _envoyer_notifications():
-    """Envoie les 3 meilleurs pronostics aux abonnés."""
     if not charger_modele_universel():
         return
-
     try:
         from core.daily_matches import get_matchs_du_jour
         matchs = get_matchs_du_jour()
     except Exception as e:
-        log_error(
-            message="Erreur récupération matchs pour notifications",
-            module="NOTIFS",
-            exception=e,
-        )
+        log_error(message="Erreur récupération matchs notifs", module="NOTIFS", exception=e)
         return
-
     if not matchs:
         return
-
     top_3 = sorted(matchs, key=lambda x: x["dc_pct"], reverse=True)[:3]
     date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
     texte = f"🔥 **TOP 3 PRONOSTICS DU JOUR** 🔥\nDate : {date_str}\n\n"
@@ -304,47 +240,30 @@ def _envoyer_notifications():
         texte += (
             f"{i}. **{m['home']} vs {m['away']}**\n"
             f"   🛡️ DC : {m['dc_label']} ({round(m['dc_pct'] * 100, 1)}%)\n"
-            f"   🎯 BTTS : {round(m['btts'] * 100, 1)}% | "
-            f"🥅 Over 2.5 : {round(m['over_25'] * 100, 1)}%\n\n"
+            f"   🎯 BTTS : {round(m['btts'] * 100, 1)}% | 🥅 Over 2.5 : {round(m['over_25'] * 100, 1)}%\n\n"
         )
-
     users = get_utilisateurs_notifies()
     succes = 0
-    echecs = 0
     for uid in users:
         if _envoyer_message_securise(uid, texte, parse_mode="Markdown"):
             succes += 1
-        else:
-            echecs += 1
         time.sleep(0.1)
-
-    log_info(
-        f"Notifications envoyées : {succes} succès, {echecs} échecs",
-        "NOTIFS",
-        extra={"succes": succes, "echecs": echecs},
-    )
+    log_info(f"Notifications envoyées : {succes}", "NOTIFS")
 
 
 def _envoyer_coupons_premium():
-    """Envoie les coupons aux Premium."""
     if not charger_modele_universel():
         return
     try:
         from core.paris_builder import generer_coupons_du_jour, formater_coupon
         from users import get_langue
         from users.db import db_fetchall
-
         data = generer_coupons_du_jour()
         coupons = data["coupons"]
         if not coupons:
             return
-
-        rows = db_fetchall(
-            "SELECT user_id FROM utilisateurs WHERE status = 'premium'",
-            db_context={"table": "utilisateurs", "operation": "list_premium"},
-        )
+        rows = db_fetchall("SELECT user_id FROM utilisateurs WHERE status = 'premium'")
         premiums = [r[0] for r in rows] if rows else []
-
         for uid in premiums:
             langue = get_langue(uid)
             for coupon in coupons:
@@ -352,20 +271,14 @@ def _envoyer_coupons_premium():
                 _envoyer_message_securise(uid, texte)
                 time.sleep(0.1)
     except Exception as e:
-        log_error(
-            message="Erreur lors de l'envoi des coupons",
-            module="COUPONS",
-            exception=e,
-        )
+        log_error(message="Erreur envoi coupons", module="COUPONS", exception=e)
 
 
 # =========================================================
 # SCHEDULER
 # =========================================================
 def _scheduler_notifications():
-    """Tâche de fond : toutes les tâches planifiées."""
     log_info("Scheduler démarré...", "SCHEDULER")
-
     while True:
         try:
             now = datetime.now(TZ_KINSHASA)
@@ -373,143 +286,44 @@ def _scheduler_notifications():
             est_weekend = jour_semaine >= 5
             date_du_jour = now.strftime("%Y-%m-%d")
 
-            # Heure de notification (paramétrable)
             try:
-                heure_notif_val = get_parametre("notif_heure", "8")
-                heure_notif = int(heure_notif_val) if str(heure_notif_val).isdigit() else 8
+                heure_notif = int(get_parametre("notif_heure", "8"))
             except Exception:
                 heure_notif = 8
 
             _initialiser_bdd_si_necessaire()
 
-            # -------------------------------------------------
             # 02:00 — Mise à jour des résultats
-            # -------------------------------------------------
             if now.hour == 2 and now.minute < 5:
                 if _get_derniere_execution("maj_resultats") != date_du_jour:
                     log_info("Mise à jour des résultats...", "SCHEDULER")
                     _mettre_a_jour_resultats()
                     _set_derniere_execution("maj_resultats", date_du_jour)
 
-            # -------------------------------------------------
             # 03:00 — Téléchargement matchs
-            # -------------------------------------------------
             if now.hour == 3 and now.minute < 5:
                 if _get_derniere_execution("telechargement") != date_du_jour:
                     log_info("Téléchargement des matchs...", "SCHEDULER")
                     _telecharger_nouveaux_matchs()
                     _set_derniere_execution("telechargement", date_du_jour)
 
-            # -------------------------------------------------
             # 03:05 — Nettoyage vieilles données
-            # -------------------------------------------------
             if now.hour == 3 and 5 <= now.minute < 10:
                 if _get_derniere_execution("nettoyage_donnees") != date_du_jour:
-                    log_info("Nettoyage des données > 5 ans...", "SCHEDULER")
                     _nettoyer_vieilles_donnees()
                     _set_derniere_execution("nettoyage_donnees", date_du_jour)
 
-            # -------------------------------------------------
-            # 03:10 — Nettoyage logs/paiements
-            # -------------------------------------------------
-            if now.hour == 3 and 10 <= now.minute < 15:
-                if _get_derniere_execution("nettoyage_logs") != date_du_jour:
-                    try:
-                        from users import nettoyer_logs_anciens, nettoyer_paiements_anciens
-                        nettoyer_logs_anciens(jours=30)
-                        nettoyer_paiements_anciens(jours=90)
-                        _set_derniere_execution("nettoyage_logs", date_du_jour)
-                    except Exception as e:
-                        log_error(
-                            message="Erreur nettoyage logs/paiements",
-                            module="SCHEDULER",
-                            exception=e,
-                        )
-
-            # -------------------------------------------------
-            # 07:00 — Bilan de la veille
-            # -------------------------------------------------
-            if now.hour == 7 and now.minute < 5:
-                if _get_derniere_execution("verif_veille") != date_du_jour:
-                    try:
-                        from core.results_checker import verifier_resultats_veille
-                        from core.canal_manager import publier_bilan_veille
-                        bilan = verifier_resultats_veille()
-                        if bilan.get("total", 0) > 0:
-                            publier_bilan_veille(bot, bilan["texte"])
-                        _set_derniere_execution("verif_veille", date_du_jour)
-                    except Exception as e:
-                        log_error(
-                            message="Erreur vérif veille",
-                            module="SCHEDULER",
-                            exception=e,
-                        )
-
-            # -------------------------------------------------
             # heure_notif — Envoi notifications + canal
-            # -------------------------------------------------
             if now.hour == heure_notif and now.minute < 5:
                 if _get_derniere_execution("notifs_jour") != date_du_jour:
-                    log_info("Envoi notifications du jour...", "SCHEDULER")
                     _envoyer_notifications()
                     _set_derniere_execution("notifs_jour", date_du_jour)
-
                     if est_weekend:
                         _envoyer_coupons_premium()
 
-                    if _get_derniere_execution("canal_matchs") != date_du_jour:
-                        try:
-                            from core.canal_manager import publier_matchs_sur_canal
-                            publier_matchs_sur_canal(bot)
-                            _set_derniere_execution("canal_matchs", date_du_jour)
-                        except Exception as e:
-                            log_error(
-                                message="Erreur publication canal matchs",
-                                module="SCHEDULER",
-                                exception=e,
-                            )
-
-            # -------------------------------------------------
-            # 10:00 — Coupons semaine
-            # -------------------------------------------------
-            if not est_weekend and now.hour == 10 and now.minute < 5:
-                if _get_derniere_execution("coupons_semaine") != date_du_jour:
-                    log_info("Envoi coupons semaine...", "SCHEDULER")
-                    _envoyer_coupons_premium()
-                    try:
-                        from core.canal_manager import publier_coupons_sur_canal
-                        publier_coupons_sur_canal(bot)
-                        _set_derniere_execution("coupons_semaine", date_du_jour)
-                    except Exception as e:
-                        log_error(
-                            message="Erreur publication coupons",
-                            module="SCHEDULER",
-                            exception=e,
-                        )
-
-            # -------------------------------------------------
-            # 17:00 — Teasing canal
-            # -------------------------------------------------
-            if now.hour == 17 and now.minute < 5:
-                if _get_derniere_execution("teasing") != date_du_jour:
-                    try:
-                        from core.canal_manager import publier_teasing
-                        publier_teasing(bot)
-                        _set_derniere_execution("teasing", date_du_jour)
-                    except Exception as e:
-                        log_error(
-                            message="Erreur teasing",
-                            module="SCHEDULER",
-                            exception=e,
-                        )
-
             time.sleep(60)
         except Exception as e:
-            log_error(
-                message="Erreur critique dans le scheduler, pause 60s",
-                module="SCHEDULER",
-                exception=e,
-            )
+            log_error(message="Erreur critique scheduler", module="SCHEDULER", exception=e)
             time.sleep(60)
 
 
@@ -518,11 +332,7 @@ def _lancer_scheduler_apres_delai():
     try:
         _scheduler_notifications()
     except Exception as e:
-        log_critical(
-            message="Le scheduler s'est arrêté prématurément",
-            module="SCHEDULER",
-            exception=e,
-        )
+        log_critical(message="Le scheduler s'est arrêté", module="SCHEDULER", exception=e)
 
 
 # =========================================================
@@ -530,15 +340,9 @@ def _lancer_scheduler_apres_delai():
 # =========================================================
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
-    """Point d'entrée Telegram."""
     try:
         _initialiser_bdd_si_necessaire()
-    except Exception as e:
-        log_critical(
-            message="Impossible d'initialiser la BDD depuis le webhook",
-            module="FLASK",
-            exception=e,
-        )
+    except Exception:
         return "DB init failed", 500
 
     try:
@@ -551,21 +355,11 @@ def webhook():
             try:
                 bot.process_new_updates([update])
             except Exception as e:
-                log_error(
-                    message="Erreur traitement update Telegram",
-                    module="FLASK",
-                    extra={"update_id": getattr(update, "update_id", "?")},
-                    exception=e,
-                )
+                log_error(message="Erreur update Telegram", module="FLASK", exception=e)
 
         threading.Thread(target=traiter_update, daemon=True).start()
         return "OK", 200
-    except Exception as e:
-        log_error(
-            message="Erreur parsing update Telegram",
-            module="FLASK",
-            exception=e,
-        )
+    except Exception:
         return "OK", 200
 
 
@@ -576,29 +370,25 @@ def index():
 
 @app.route("/health")
 def health():
-    """Health check (retourne 200 si la DB répond)."""
     try:
         from users.db import db_fetchone
-        row = db_fetchone("SELECT 1")
-        if row:
+        if db_fetchone("SELECT 1"):
             return "✅ OK", 200
         return "❌ DB muette", 503
-    except Exception as e:
-        log_error(
-            message="Health check : DB inaccessible",
-            module="FLASK",
-            exception=e,
-        )
+    except Exception:
         return "❌ DB inaccessible", 503
 
 
+# =========================================================
+# ROUTES ADMIN (PROTÉGÉES)
+# =========================================================
 @app.route("/debug_env")
 @admin_required
 def debug_env():
     return (
-        f"TURSO_URL : {'✅' if TURSO_URL else '❌'} ({len(TURSO_URL)})\n"
-        f"TURSO_TOKEN : {'✅' if TURSO_TOKEN else '❌'} ({len(TURSO_TOKEN)})\n"
-        f"TELEGRAM_TOKEN : {'✅' if TOKEN else '❌'} ({len(TOKEN)})\n"
+        f"TURSO_URL : {'✅' if TURSO_URL else '❌'}\n"
+        f"TURSO_TOKEN : {'✅' if TURSO_TOKEN else '❌'}\n"
+        f"TELEGRAM_TOKEN : {'✅' if TOKEN else '❌'}\n"
         f"MODE_VITRINE : {MODE_VITRINE}\n"
         f"ADMIN_ID : {ADMIN_ID}"
     ), 200
@@ -616,65 +406,18 @@ def init_db():
         noms = [r[0] for r in rows] if rows else []
         return f"✅ Tables ({len(noms)}) :\n" + "\n".join(noms), 200
     except Exception as e:
-        log_error(
-            message="Erreur /init_db",
-            module="FLASK",
-            exception=e,
-        )
         return f"❌ Erreur : {e}", 500
 
 
-@app.route("/webhook_info")
+@app.route("/telecharger")
 @admin_required
-def webhook_info():
+def telecharger():
     try:
-        res = requests.get(
-            f"https://api.telegram.org/bot{TOKEN}/getWebhookInfo", timeout=10
-        )
-        data = res.json()
-        if not data.get("ok"):
-            return f"❌ Erreur Telegram : {data}", 500
-        info = data.get("result", {})
-        return (
-            f"🔗 URL : {info.get('url', '❌')}\n"
-            f"📥 En attente : {info.get('pending_update_count', 0)}\n"
-            f"🔧 Dernière erreur : {info.get('last_error_message', 'Aucune')}"
-        ), 200
+        from scripts.telecharger_matchs import telecharger_tout
+        total = telecharger_tout()
+        return f"✅ {total} matchs traités.", 200
     except Exception as e:
-        log_error(message="Erreur /webhook_info", module="FLASK", exception=e)
-        return f"❌ {e}", 500
-
-
-@app.route("/delete_webhook_pending")
-@admin_required
-def delete_webhook_pending():
-    try:
-        requests.get(
-            f"https://api.telegram.org/bot{TOKEN}/deleteWebhook?drop_pending_updates=true",
-            timeout=10,
-        )
-        return "✅ Webhook supprimé et messages vidés.", 200
-    except Exception as e:
-        log_error(message="Erreur delete_webhook", module="FLASK", exception=e)
-        return f"❌ {e}", 500
-
-
-@app.route("/set_webhook")
-@admin_required
-def set_webhook():
-    try:
-        host = request.headers.get("Host", "prediction-football-209y.onrender.com")
-        webhook_url = f"https://{host}/{TOKEN}"
-        res = requests.get(
-            f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={webhook_url}",
-            timeout=10,
-        )
-        data = res.json()
-        if data.get("ok"):
-            return f"✅ Webhook défini : {webhook_url}", 200
-        return f"❌ {data}", 500
-    except Exception as e:
-        log_error(message="Erreur set_webhook", module="FLASK", exception=e)
+        log_error(message="Erreur /telecharger", module="FLASK", exception=e)
         return f"❌ {e}", 500
 
 
@@ -690,18 +433,6 @@ def maj_resultats():
         return f"❌ {e}", 500
 
 
-@app.route("/telecharger")
-@admin_required
-def telecharger():
-    try:
-        from scripts.telecharger_matchs import telecharger_tout
-        total = telecharger_tout()
-        return f"✅ {total} matchs traités.", 200
-    except Exception as e:
-        log_error(message="Erreur /telecharger", module="FLASK", exception=e)
-        return f"❌ {e}", 500
-
-
 @app.route("/nettoyer")
 @admin_required
 def nettoyer():
@@ -710,8 +441,25 @@ def nettoyer():
         total = nettoyer_vieilles_donnees(annees=5)
         return f"✅ {total} matchs > 5 ans supprimés.", 200
     except Exception as e:
-        log_error(message="Erreur /nettoyer", module="FLASK", exception=e)
         return f"❌ {e}", 500
+
+
+@app.route("/debug_model")
+def debug_model():
+    try:
+        from users.db import get_connection
+        conn = get_connection()
+        cur = conn.execute("SELECT id, length(data) FROM models_cache")
+        rows = cur.fetchall()
+        conn.close()
+        if not rows:
+            return "❌ La table models_cache est VIDE.", 200
+        output = f"✅ {len(rows)} ligne(s) trouvée(s) :\n"
+        for row in rows:
+            output += f"ID: {row[0]}, Taille: {row[1]} caractères\n"
+        return output, 200
+    except Exception as e:
+        return f"❌ Erreur lecture DB : {e}", 500
 
 
 # =========================================================
