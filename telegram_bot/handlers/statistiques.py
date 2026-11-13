@@ -15,12 +15,12 @@ def enregistrer_statistiques_handlers(bot):
         except Exception:
             langue = "fr"
 
-        modeles = global_model_data.get("modeles_par_competition")
+        modeles = global_model_data.get("models")
         if not modeles:
             bot.reply_to(message, "📊 **Statistiques indisponibles**\n\nLe modèle est en cours de chargement. Réessaie dans un instant.", parse_mode="Markdown")
             return
 
-        # 1. Calcul du nombre de matchs RÉELS dans la base de données
+        # 1. Nombre de matchs en base
         total_matchs = 0
         try:
             row = db_fetchone("SELECT COUNT(*) FROM matchs")
@@ -29,51 +29,31 @@ def enregistrer_statistiques_handlers(bot):
         except Exception as e:
             log_error("Impossible de compter les matchs", "STATS", exception=e)
 
-        # 2. Calcul de la précision RÉELLE basée sur l'historique
-        precision = 0
-        try:
-            row = db_fetchone("""
-                SELECT 
-                    COUNT(*) as total,
-                    SUM(CASE WHEN est_gagnant = 1 THEN 1 ELSE 0 END) as gagnes
-                FROM resultats_pronostics 
-                WHERE est_gagnant IS NOT NULL
-            """)
-            if row and row[0] > 0:
-                total_verifies = row[0]
-                gagnes = row[1] or 0
-                precision = (gagnes / total_verifies) * 100
-        except Exception as e:
-            log_error("Impossible de calculer la précision", "STATS", exception=e)
-
-        nb_competitions = len(modeles)
-        nb_marches = sum(len(m) for m in modeles.values())
+        # 2. Précision réelle (basée sur les metrics du bundle)
+        metrics = global_model_data.get("metrics", {})
+        prec_1n2 = metrics.get("1N2", {}).get("accuracy", 0)
+        prec_dc = metrics.get("DC_1X", {}).get("accuracy", 0)
+        prec_over = metrics.get("Over25", {}).get("accuracy", 0)
+        
+        # Formater les pourcentages
+        str_1n2 = f"{round(prec_1n2 * 100, 1)}%" if prec_1n2 else "N/A"
+        str_dc = f"{round(prec_dc * 100, 1)}%" if prec_dc else "N/A"
+        str_over = f"{round(prec_over * 100, 1)}%" if prec_over else "N/A"
 
         texte = "📊 **STATISTIQUES DU MODÈLE IA**\n"
         texte += "━━━━━━━━━━━━━━━━━━━━\n\n"
-        texte += "🧠 **Modèle** : LightGBM + Calibration Isotonic\n"
-        texte += f"📚 **Compétitions** : {nb_competitions}\n"
-        texte += f"🎯 **Prédictions totales** : {nb_marches}\n"
+        texte += "🧠 **Modèle** : LightGBM (6 marchés)\n"
+        texte += f"📚 **Matchs en base** : {total_matchs:,}\n".replace(",", " ")
+        texte += f"📅 **Dernier entraînement** : {global_model_data.get('date_chargement', 'Inconnu')}\n\n"
         
-        if total_matchs > 0:
-            texte += f"📈 **Matchs en base** : {total_matchs:,}\n".replace(",", " ")
-        else:
-            texte += "📈 **Matchs en base** : En cours de téléchargement\n"
-
-        if precision > 0:
-            texte += f"🎯 **Précision réelle** : {round(precision, 1)}%\n"
-        else:
-            texte += "🎯 **Précision réelle** : En attente de résultats vérifiés\n"
+        texte += "🎯 **Précisions (Test 2025-2026)** :\n"
+        texte += f"• 1N2 : {str_1n2}\n"
+        texte += f"• Double Chance (1X) : {str_dc}\n"
+        texte += f"• Over 2.5 : {str_over}\n\n"
 
         texte += (
-            "\n━━━━━━━━━━━━━━━━━━━━\n"
-            "📋 **Marchés disponibles** :\n"
-            "• 🛡️ Double Chance (1X, X2, 12)\n"
-            "• 🎯 BTTS (Les 2 marquent)\n"
-            "• 🥅 Over/Under 2.5 buts\n"
-            "• ⏱️ Mi-temps la plus prolifique\n"
-            "• 🏁 1N2 à la mi-temps\n\n"
-            "💡 _La précision est calculée sur la base des pronostics vérifiés._"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "💡 _Les statistiques sont mises à jour à chaque ré-entraînement._"
         )
 
         try:
