@@ -5,11 +5,15 @@ from core.utils.logs import log_info, log_error, log_warning
 
 
 def _formater_bulletin_free(resultat, langue="fr"):
-    """Bulletin simplifié pour les utilisateurs Free."""
+    """Bulletin simplifié pour les utilisateurs Free (avec 1N2)."""
     try:
         h = resultat.get('home_team', '?')
         a = resultat.get('away_team', '?')
         
+        p_h = resultat.get('p_h', 0.33)
+        p_d = resultat.get('p_d', 0.33)
+        p_a = resultat.get('p_a', 0.33)
+
         dc_1x = resultat.get('dc_1x', 0.5)
         dc_x2 = resultat.get('dc_x2', 0.5)
         dc_12 = resultat.get('dc_12', 0.5)
@@ -20,9 +24,15 @@ def _formater_bulletin_free(resultat, langue="fr"):
 
         txt = f"⚽ **{h}** 🆚 **{a}**\n"
         txt += "━━━━━━━━━━━━━━━━━━━━\n\n"
+
+        # 1N2 (Version Free)
+        txt += f"📊 **PROBABILITÉS (1N2) :**\n"
+        txt += f"• Victoire {h} : {round(p_h*100, 1)}%\n"
+        txt += f"• Match Nul : {round(p_d*100, 1)}%\n"
+        txt += f"• Victoire {a} : {round(p_a*100, 1)}%\n\n"
         
         txt += f"🏆 **CONSEIL DU JOUR :**\n"
-        txt += f"👉 **{meilleure_dc[0]}** ({round(meilleure_dc[1]*100, 1)}%)\n\n"
+        txt += f"👉 **Double Chance {meilleure_dc[0]}** ({round(meilleure_dc[1]*100, 1)}%)\n\n"
 
         txt += f"🎯 **STATISTIQUES :**\n"
         txt += f"• BTTS : {round(btts*100,1)}% | Over 2.5 : {round(over*100,1)}%\n\n"
@@ -40,11 +50,17 @@ def _formater_bulletin_free(resultat, langue="fr"):
 
 
 def _formater_bulletin_premium(resultat, langue="fr"):
-    """Bulletin complet et visuel pour les utilisateurs Premium."""
+    """Bulletin complet et visuel pour les utilisateurs Premium (avec 1N2)."""
     try:
         h = resultat.get('home_team', '?')
         a = resultat.get('away_team', '?')
         
+        # 1N2
+        p_h = resultat.get('p_h', 0.33)
+        p_d = resultat.get('p_d', 0.33)
+        p_a = resultat.get('p_a', 0.33)
+
+        # Double Chance
         dc_1x = resultat.get('dc_1x', 0.5)
         dc_x2 = resultat.get('dc_x2', 0.5)
         dc_12 = resultat.get('dc_12', 0.5)
@@ -59,30 +75,36 @@ def _formater_bulletin_premium(resultat, langue="fr"):
         txt = f"⚽ **{h}** 🆚 **{a}**\n"
         txt += "━━━━━━━━━━━━━━━━━━━━\n\n"
 
-        # 1. Le conseil principal
-        txt += f"🏆 **PRONOSTIC PRINCIPAL :**\n"
-        txt += f"👉 **{meilleure_dc[0]}** ({round(meilleure_dc[1]*100, 1)}% de chances)\n\n"
+        # 1N2 (Version Premium)
+        txt += f"📊 **PROBABILITÉS (1N2) :**\n"
+        txt += f"• Victoire {h} : {round(p_h*100, 1)}%\n"
+        txt += f"• Match Nul : {round(p_d*100, 1)}%\n"
+        txt += f"• Victoire {a} : {round(p_a*100, 1)}%\n\n"
 
-        # 2. Les marchés secondaires
+        # Conseil principal
+        txt += f"🏆 **PRONOSTIC CONSEILLÉ :**\n"
+        txt += f"👉 **Double Chance {meilleure_dc[0]}** ({round(meilleure_dc[1]*100, 1)}% de chances)\n\n"
+
+        # Marchés secondaires
         txt += f"🎯 **AUTRES MARCHÉS :**\n"
         txt += f"• Les 2 marquent : **{'Oui' if btts > 0.5 else 'Non'}** ({round(btts*100,1)}%)\n"
         txt += f"• Plus de 2.5 buts : **{'Oui' if over > 0.5 else 'Non'}** ({round(over*100,1)}%)\n\n"
 
-        # 3. Les scores exacts
+        # Scores exacts
         if top_scores:
             txt += f"🔮 **SCORES EXACTS PROBABLES :**\n"
             for i, (sh, sa, p) in enumerate(top_scores, 1):
                 txt += f"{i}. **{h} {sh} - {sa} {a}** ({round(p, 1)}%)\n"
             txt += "\n"
 
-        # 4. L'historique H2H
+        # H2H
         if h2h and h2h['total'] > 0:
             txt += f"📊 **HISTORIQUE (5 derniers matchs) :**\n"
             txt += f"• Victoires {h} : {h2h['victoires_h']}\n"
             txt += f"• Matchs nuls : {h2h['nuls']}\n"
             txt += f"• Victoires {a} : {h2h['victoires_a']}\n\n"
 
-        # 5. Value Bet
+        # Value Bet
         if analyse and analyse.get('cote_book'):
             txt += f"💰 **ANALYSE VALUE BET :**\n"
             txt += f"• Cote Bookmaker : {analyse['cote_book']}\n"
@@ -93,10 +115,10 @@ def _formater_bulletin_premium(resultat, langue="fr"):
                 txt += f"⚖️ Pas de valeur détectée (Cote trop basse)\n"
             txt += "\n"
 
-        # 6. Conseil Bankroll
+        # Conseil Bankroll
         txt += "━━━━━━━━━━━━━━━━━━━━\n"
         txt += "💡 **CONSEIL DE MISE :**\n"
-        txt += "_Ne misez jamais plus de 2% de votre capital total sur un seul pari, même si la confiance est élevée._\n"
+        txt += "_Ne misez jamais plus de 2% de votre capital total sur un seul pari._\n"
         
         return txt
     except Exception as e:
