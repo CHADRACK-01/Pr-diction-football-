@@ -2,7 +2,7 @@
 """
 Génération des coupons du jour.
 - Utilise les prédictions déjà calculées (pas de recalcul)
-- Logs enrichis
+- Transmet les probabilités 1N2 pour l'affichage
 """
 
 from datetime import datetime, timezone, timedelta
@@ -27,11 +27,7 @@ def _meilleure_reco(prono):
         options = [("1X", dc_1x), ("X2", dc_x2), ("12", dc_12)]
         return max(options, key=lambda x: x[1])
     except Exception as e:
-        log_error(
-            message="Erreur calcul meilleure reco",
-            module="PARIS",
-            exception=e,
-        )
+        log_error("Erreur calcul meilleure reco", "PARIS", exception=e)
         return "1X", 0.5
 
 
@@ -42,15 +38,11 @@ def get_tous_pronostics_disponibles():
     try:
         matchs = get_matchs_du_jour()
     except Exception as e:
-        log_error(
-            message="Impossible de récupérer les matchs du jour",
-            module="PARIS",
-            exception=e,
-        )
+        log_error("Impossible de récupérer les matchs du jour", "PARIS", exception=e)
         return []
 
     if not matchs:
-        log_warning(message="Aucun match pour les coupons", module="PARIS")
+        log_warning("Aucun match pour les coupons", "PARIS")
         return []
 
     resultats = []
@@ -70,6 +62,7 @@ def get_tous_pronostics_disponibles():
                 matchs_ignores += 1
                 continue
 
+            # ⚠️ AJOUT DES PROBABILITÉS 1N2 ICI
             resultats.append({
                 "home": m.get("home"),
                 "away": m.get("away"),
@@ -81,13 +74,13 @@ def get_tous_pronostics_disponibles():
                 "btts": float(m.get("btts", 0.5)),
                 "over_25": float(m.get("over_25", 0.5)),
                 "analyse_pari": m.get("analyse_pari"),
+                # Transmissions des probas 1N2
+                "p_h": float(m.get("p_h", 0.33)),
+                "p_d": float(m.get("p_d", 0.33)),
+                "p_a": float(m.get("p_a", 0.33)),
             })
         except Exception as e:
-            log_error(
-                message="Erreur traitement match pour coupons",
-                module="PARIS",
-                exception=e,
-            )
+            log_error("Erreur traitement match pour coupons", "PARIS", exception=e)
             matchs_ignores += 1
             continue
 
@@ -102,11 +95,7 @@ def get_tous_pronostics_disponibles():
 def construire_coupon(niveau, matchs_disponibles):
     """Construit un coupon pour un niveau donné."""
     if niveau not in NIVEAUX:
-        log_warning(
-            message=f"Niveau inconnu : {niveau}",
-            module="PARIS",
-            extra={"niveau": niveau},
-        )
+        log_warning(f"Niveau inconnu : {niveau}", "PARIS")
         return None
 
     seuil = NIVEAUX[niveau]
@@ -171,11 +160,7 @@ def generer_coupons_du_jour():
     try:
         matchs = get_tous_pronostics_disponibles()
     except Exception as e:
-        log_error(
-            message="Erreur génération coupons",
-            module="PARIS",
-            exception=e,
-        )
+        log_error("Erreur génération coupons", "PARIS", exception=e)
         return {"weekend": est_weekend, "coupons": []}
 
     if not matchs:
@@ -190,11 +175,7 @@ def generer_coupons_du_jour():
                 if coupon:
                     coupons.append(coupon)
             except Exception as e:
-                log_error(
-                    message=f"Erreur construction coupon '{niveau}'",
-                    module="PARIS",
-                    exception=e,
-                )
+                log_error(f"Erreur construction coupon '{niveau}'", "PARIS", exception=e)
     else:
         intervalles = [
             {"nom": "matin", "min_h": 8, "max_h": 14},
@@ -225,22 +206,14 @@ def generer_coupons_du_jour():
                         coupon["intervalle"] = inter["nom"]
                         coupons.append(coupon)
                 except Exception as e:
-                    log_error(
-                        message=f"Erreur coupon {niveau}/{inter['nom']}",
-                        module="PARIS",
-                        exception=e,
-                    )
+                    log_error(f"Erreur coupon {niveau}/{inter['nom']}", "PARIS", exception=e)
 
     try:
         coupon_outside = construire_coupon_outside(matchs)
         if coupon_outside:
             coupons.append(coupon_outside)
     except Exception as e:
-        log_error(
-            message="Erreur coupon outside",
-            module="PARIS",
-            exception=e,
-        )
+        log_error("Erreur coupon outside", "PARIS", exception=e)
 
     log_info(
         f"{len(coupons)} coupons générés",
@@ -251,7 +224,7 @@ def generer_coupons_du_jour():
 
 
 def formater_coupon(coupon, langue="fr", montrer_details=True):
-    """Formate un coupon pour Telegram."""
+    """Formate un coupon pour Telegram avec le 1N2."""
     niveau_labels = {
         "sur": "🔥 COUPON SUR",
         "modere": "⚖️ COUPON MODÉRÉ",
@@ -267,18 +240,22 @@ def formater_coupon(coupon, langue="fr", montrer_details=True):
     texte = f"{titre}\n━━━━━━━━━━━━━━━━━━━━\n\n"
 
     for i, m in enumerate(coupon.get("matchs", []), 1):
-        texte += f"{i}. {m['home']} vs {m['away']}\n"
+        texte += f"{i}. **{m['home']} vs {m['away']}**\n"
         if montrer_details:
-            texte += f"   🎯 Reco : {m['reco_label']} ({round(m['reco_pct'] * 100, 1)}%)\n"
-            texte += (
-                f"   🎯 BTTS : {round(m['btts'] * 100, 1)}% | "
-                f"🥅 Over 2.5 : {round(m['over_25'] * 100, 1)}%\n"
-            )
+            # ⚠️ AFFICHAGE DU 1N2 DANS LES COUPONS
+            p_h = m.get('p_h', 0.33)
+            p_d = m.get('p_d', 0.33)
+            p_a = m.get('p_a', 0.33)
+            texte += f"   📊 1:{round(p_h*100)}% | N:{round(p_d*100)}% | 2:{round(p_a*100)}%\n"
+            
+            texte += f"   🛡️ DC {m['reco_label']} ({round(m['reco_pct'] * 100, 1)}%)\n"
+            texte += f"   🎯 BTTS {round(m['btts'] * 100, 1)}% | 🥅 +2.5 {round(m['over_25'] * 100, 1)}%\n"
+            
             analyse = m.get("analyse_pari")
             if analyse and analyse.get("cote_book"):
-                texte += f"   🏢 Cote Book : {analyse['cote_book']}\n"
+                texte += f"   💰 Cote Book : {analyse['cote_book']}\n"
                 if analyse.get("is_value"):
-                    texte += "   🔥 VALUE BET !\n"
+                    texte += "   🔥 **VALUE BET !**\n"
         else:
             texte += f"   🎯 Reco : {m['reco_label']}\n"
         texte += "\n"
@@ -292,7 +269,7 @@ def formater_coupon(coupon, langue="fr", montrer_details=True):
     else:
         texte += (
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "_Passe Premium pour les détails et les autres coupons_\n"
+            "_Passe Premium pour les détails complets (1N2, BTTS, Value Bet)._\n"
         )
 
     return texte
