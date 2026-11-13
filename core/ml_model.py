@@ -1,12 +1,4 @@
 # core/ml_model.py
-"""
-Chargement et gestion du modèle IA (LightGBM).
-- Charge le bundle Base64 depuis Turso.
-- Décompresse avec zlib et désérialise avec pickle.
-- Cache en mémoire (global_model_data).
-- Anti-corruption : ne fait plus de concaténation BLOB.
-"""
-# core/ml_model.py
 import base64
 import zlib
 import pickle
