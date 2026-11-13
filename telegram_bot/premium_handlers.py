@@ -1,3 +1,4 @@
+# telegram_bot/premium_handlers.py
 import time
 import threading
 import telebot
@@ -10,7 +11,6 @@ from core.utils.logs import log_info, log_error, log_warning
 
 
 def _envoyer_message_securise(bot, chat_id, texte):
-    """Envoie un message en découpant si trop long (Telegram limite à 4096)."""
     limite = 4000
     if len(texte) <= limite:
         bot.send_message(chat_id, texte)
@@ -25,7 +25,7 @@ def _supprimer_message_silencieux(bot, chat_id, message_id):
     try:
         bot.delete_message(chat_id, message_id)
     except Exception as e:
-        log_warning(f"Impossible de supprimer le message {message_id} dans {chat_id} : {e}", "PREMIUM")
+        log_warning(f"Impossible de supprimer le message {message_id} : {e}", "PREMIUM")
 
 
 def _modifier_message_silencieux(bot, chat_id, message_id, texte):
@@ -36,39 +36,33 @@ def _modifier_message_silencieux(bot, chat_id, message_id, texte):
 
 
 def _charger_modele_en_arriere_plan(bot, chat_id, message_id, user_id, langue, action):
-    """
-    Charge le modèle et exécute l'action demandée en arrière-plan.
-    L'utilisateur reçoit un message dès que c'est prêt.
-    """
     from core.ml_model import global_model_data, charger_et_entrainer
     
-    # 1. On indique à l'utilisateur qu'on charge
-    _modifier_message_silencieux(bot, chat_id, message_id, "⏳ Chargement du modèle IA en cours... (cela peut prendre ~30 secondes)")
+    _modifier_message_silencieux(bot, chat_id, message_id, "⏳ Chargement du modèle IA en cours...")
     
-    # 2. On charge le modèle
     try:
-        if global_model_data.get('modeles_par_competition') is None:
+        if global_model_data.get('models') is None:
             success = charger_et_entrainer()
         else:
             success = True
     except Exception as e:
-        log_error("Erreur chargement modèle en arrière-plan", "PREMIUM", exception=e)
-        _modifier_message_silencieux(bot, chat_id, message_id, "❌ Erreur lors du chargement du modèle. Réessaie.")
+        log_error("Erreur chargement modèle", "PREMIUM", exception=e)
+        _modifier_message_silencieux(bot, chat_id, message_id, "❌ Erreur lors du chargement du modèle.")
         return
     
     if not success:
-        _modifier_message_silencieux(bot, chat_id, message_id, "❌ Impossible de charger le modèle. L'admin a été prévenu.")
+        _modifier_message_silencieux(bot, chat_id, message_id, "❌ Impossible de charger le modèle.")
         return
     
-    # 3. On exécute l'action demandée
     try:
+        # --- MATCHS DU JOUR (SANS FILTRE DE COTE) ---
         if action == "matchs_du_jour":
             matchs = get_matchs_du_jour()
             if not matchs:
-                _modifier_message_silencieux(bot, chat_id, message_id, "📅 Aucun match disponible ou avec une cote intéressante aujourd'hui.")
+                _modifier_message_silencieux(bot, chat_id, message_id, "📅 Aucun match disponible aujourd'hui.")
                 return
             is_prem = est_premium(user_id)
-            nb_max = None if is_prem else 15
+            nb_max = None if is_prem else 50
             texte = formater_matchs_du_jour(matchs, langue, est_premium=is_prem, nb_max=nb_max)
             _supprimer_message_silencieux(bot, chat_id, message_id)
             _envoyer_message_securise(bot, chat_id, texte)
@@ -98,7 +92,7 @@ def _charger_modele_en_arriere_plan(bot, chat_id, message_id, user_id, langue, a
                 return
             affiches_filtrees = [a for a in affiches if round(1/a['reco_pct'], 2) >= 1.30]
             if not affiches_filtrees:
-                _modifier_message_silencieux(bot, chat_id, message_id, "🏆 Aucune affiche avec une cote intéressante (≥ 1.30) aujourd'hui.")
+                _modifier_message_silencieux(bot, chat_id, message_id, "🏆 Aucune affiche avec une cote intéressante aujourd'hui.")
                 return
             is_premium_user = est_premium(user_id)
             _supprimer_message_silencieux(bot, chat_id, message_id)
@@ -109,8 +103,8 @@ def _charger_modele_en_arriere_plan(bot, chat_id, message_id, user_id, langue, a
             _envoyer_message_securise(bot, chat_id, texte)
             
     except Exception as e:
-        log_error(f"Erreur lors de l'exécution de l'action '{action}'", "PREMIUM", exception=e)
-        _modifier_message_silencieux(bot, chat_id, message_id, "❌ Erreur lors de la génération. L'admin a été prévenu.")
+        log_error(f"Erreur action '{action}'", "PREMIUM", exception=e)
+        _modifier_message_silencieux(bot, chat_id, message_id, "❌ Erreur lors de la génération.")
 
 
 def enregistrer_premium_handlers(bot):
@@ -125,14 +119,10 @@ def enregistrer_premium_handlers(bot):
             if est_banni(user_id):
                 bot.reply_to(message, "Tu es banni.")
                 return
-        except Exception as e:
-            log_error(f"Impossible de vérifier si {user_id} est banni", "PREMIUM", exception=e)
+        except Exception:
             return
 
-        # On envoie IMMÉDIATEMENT un message d'attente à Telegram (pour éviter le timeout)
         msg = bot.reply_to(message, "⏳ Chargement du modèle IA en cours...")
-        
-        # On lance le traitement en arrière-plan
         threading.Thread(
             target=_charger_modele_en_arriere_plan,
             args=(bot, message.chat.id, msg.message_id, user_id, langue, "matchs_du_jour"),
@@ -149,8 +139,7 @@ def enregistrer_premium_handlers(bot):
             if est_banni(user_id):
                 bot.reply_to(message, "Tu es banni.")
                 return
-        except Exception as e:
-            log_error(f"Impossible de vérifier si {user_id} est banni", "PREMIUM", exception=e)
+        except Exception:
             return
 
         msg = bot.reply_to(message, "⏳ Chargement du modèle IA en cours...")
@@ -170,8 +159,7 @@ def enregistrer_premium_handlers(bot):
             if est_banni(user_id):
                 bot.reply_to(message, "Tu es banni.")
                 return
-        except Exception as e:
-            log_error(f"Impossible de vérifier si {user_id} est banni", "PREMIUM", exception=e)
+        except Exception:
             return
 
         msg = bot.reply_to(message, "⏳ Chargement du modèle IA en cours...")
