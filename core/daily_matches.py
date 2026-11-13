@@ -9,7 +9,7 @@ from config import CHAMPIONNATS, INFOS_COMPETITIONS, MAPPING_COMPETITIONS
 TZ_KINSHASA = timezone(timedelta(hours=1))
 
 def _normaliser(nom):
-    # (Garde ton dictionnaire de normalisation existant ici)
+    # Garde ton dictionnaire de normalisation existant ici
     return nom 
 
 def _charger_modele_si_necessaire():
@@ -21,13 +21,16 @@ def _charger_modele_si_necessaire():
         log_error("Erreur chargement modèle", "MATCHS", exception=e)
         return False
 
+def _traduire_pari(home, away, label_dc):
+    if label_dc == "1X": return f"{home} gagne ou fait match nul"
+    if label_dc == "X2": return f"{away} gagne ou fait match nul"
+    if label_dc == "12": return "Pas de match nul"
+    return label_dc
+
 def get_matchs_du_jour():
     if not _charger_modele_si_necessaire(): return []
-    try:
-        matchs_bruts = collecter_tous_les_matchs()
-    except Exception as e:
-        log_error("Erreur collecte", "MATCHS", exception=e)
-        return []
+    try: matchs_bruts = collecter_tous_les_matchs()
+    except Exception as e: return []
     if not matchs_bruts: return []
 
     matchs_trouves = []
@@ -59,8 +62,6 @@ def get_matchs_du_jour():
                 "p_a": float(prono.get("p_a", 0.33)),
                 "dc_label": meilleure[0],
                 "dc_pct": float(meilleure[1]),
-                "btts": float(prono.get("btts_yes", 0.5)),
-                "over_25": float(prono.get("over_25", 0.5)),
             })
         except Exception: continue
 
@@ -77,8 +78,7 @@ def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None)
         if not m.get("heure"): continue
         try:
             dt = datetime.fromisoformat(str(m["heure"]).replace("Z", "+00:00")).astimezone(TZ_KINSHASA)
-            jour_key = dt.strftime("%A %d/%m/%Y")
-            jours.setdefault(jour_key, []).append(m)
+            jours.setdefault(dt.strftime("%A %d/%m/%Y"), []).append(m)
         except Exception: continue
 
     if not jours: return "📅 Aucun match valide."
@@ -93,8 +93,8 @@ def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None)
         texte += "━━━━━━━━━━━━━━━━━━━━\n"
         texte += f"📅 **{jour_trad} {date_part}**\n"
         texte += "━━━━━━━━━━━━━━━━━━━━\n\n"
+        
         matchs_jour.sort(key=lambda x: x.get("heure") or "")
-
         for m in matchs_jour:
             try:
                 heure = datetime.fromisoformat(str(m["heure"]).replace("Z", "+00:00")).astimezone(TZ_KINSHASA).strftime("%H:%M")
@@ -102,20 +102,15 @@ def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None)
             
             info = INFOS_COMPETITIONS.get(m.get("nom_competition"), {})
             emoji_pays = info.get("emoji", "🏆")
+            phrase_conseil = _traduire_pari(m['home'], m['away'], m['dc_label'])
             
-            texte += f"⚽ **{m['home']}** 🆚 **{m['away']}**\n"
+            texte += f"⚽ **{m['home']} vs {m['away']}**\n"
             texte += f"   🕐 {heure} | 🏆 {m['nom_competition']} {emoji_pays}\n"
             
             if est_premium:
-                # Explication claire pour un débutant
-                texte += f"   🏆 **Victoire {m['home']} :** {round(m['p_h']*100)}%\n"
-                texte += f"   🤝 **Match Nul :** {round(m['p_d']*100)}%\n"
-                texte += f"   ✈️ **Victoire {m['away']} :** {round(m['p_a']*100)}%\n"
-                texte += f"   🛡️ **Pari Sûr (Double Chance) :** {m['dc_label']} ({round(m['dc_pct']*100,1)}%)\n"
-                texte += f"   🎯 **Les 2 marquent :** {round(m['btts']*100,1)}%\n"
-                texte += f"   🥅 **Plus de 2.5 buts :** {round(m['over_25']*100,1)}%\n"
+                texte += f"   👉 **Mon conseil : \"{phrase_conseil}\"** ({round(m['dc_pct']*100, 1)}%)\n"
             texte += "\n"
 
     if not est_premium:
-        texte += "━━━━━━━━━━━━━━━━━━━━\n⭐ _Passe Premium pour voir les pronostics et les probabilités de chaque match._\n"
+        texte += "━━━━━━━━━━━━━━━━━━━━\n⭐ _Passe Premium pour voir mon conseil pour chaque match._\n"
     return texte
