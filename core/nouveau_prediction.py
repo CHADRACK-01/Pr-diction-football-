@@ -1,390 +1,164 @@
 # core/nouveau_prediction.py
 """
-Moteur de prédiction V2 (5 modèles LightGBM).
-⚠️ CORRECTIONS :
-- ht_home_sc et ht_away_sc sont maintenant DISTINCTS (features séparées)
-- Vérification complète des champs avant construction du vecteur
-- Dates de match parsées pour éviter les fuites (match futur uniquement)
+Moteur de prédiction V2.
+- Utilise les 6 modèles globaux (1N2, DC_1X, Over25, BTTS, HT_Prolific, HTR).
+- Reconstruit les features (Elo, forme, moyennes de buts).
 """
 
 import numpy as np
-import difflib
-
-from core.ml_model import global_model_data, CACHE_MODELES
-from users.db import db_fetchone, db_fetchall
+from collections import defaultdict, deque
+from core.ml_model import global_model_data
 from core.utils.logs import log_info, log_error, log_warning
+from users.db import db_fetchall
 
-
-# Champs obligatoires dans un dict de features
-_CHAMPS_FEATURES_OBLIGATOIRES = [
-    "ft_glob_sc", "ft_glob_co", "ht_glob_sc", "ht_glob_co",
-    "ft_home_sc", "ft_away_sc",
-    "ht_home_sc", "ht_away_sc",
-    "ft_form", "ht_form",
-]
-
-
-def _charger_modeles():
-    """Charge les modèles si nécessaire."""
-    if global_model_data.get("modeles_par_competition"):
-        return global_model_data["modeles_par_competition"]
-
-    log_info("Modèles absents, chargement depuis Turso...", "PREDICTION")
-    from core.ml_model import charger_et_entrainer
-    if charger_et_entrainer():
-        return global_model_data.get("modeles_par_competition")
-    return None
-
-
-def _trouver_nom_exact(nom_recherche, competition):
-    """Cherche le nom d'équipe le plus proche (casse/typo)."""
-    if not nom_recherche:
-        return None
-
+def _get_team_features(home_team, away_team):
+    """
+    Calcule les features pour un match en interrogeant l'historique.
+    ⚠️ Version optimisée : approximation de l'Elo via l'historique récent.
+    """
+    # On récupère les 30 derniers matchs de chaque équipe
     rows = db_fetchall(
         """
-        SELECT DISTINCT home_team FROM matchs_features WHERE competition = ?
-        UNION
-        SELECT DISTINCT away_team FROM matchs_features WHERE competition = ?
+        SELECT date, home_team, away_team, fthg, ftag, ftr
+        FROM matchs
+        WHERE (home_team = ? OR away_team = ?) AND fthg IS NOT NULL
+        ORDER BY date DESC LIMIT 50
         """,
-        params=[competition, competition],
-        db_context={"table": "matchs_features", "operation": "find_team"},
+        params=[home_team, home_team],
+        db_context={"table": "matchs", "operation": "get_features_home"},
     )
-    equipes = [r[0] for r in rows] if rows else []
-
-    if not equipes:
-        log_warning(
-            message=f"Aucune équipe en base pour '{competition}'",
-            module="PREDICTION",
-            extra={"competition": competition, "equipe": nom_recherche},
-        )
-        return nom_recherche
-
-    # 1. Exact (insensible casse)
-    for equipe in equipes:
-        if equipe.lower() == nom_recherche.lower():
-            return equipe
-
-    # 2. Approximatif
-    equipes_lower = {e.lower(): e for e in equipes}
-    matches = difflib.get_close_matches(
-        nom_recherche.lower(), list(equipes_lower.keys()), n=1, cutoff=0.6
-    )
-    if matches:
-        return equipes_lower[matches[0]]
-
-    return nom_recherche
-
-
-def _get_team_stats(competition, team, n=5):
-    """
-    Récupère les stats des N derniers matchs d'une équipe.
-    Retourne un dict ou None si aucune donnée.
-    """
-    rows = db_fetchall(
+    
+    rows_away = db_fetchall(
         """
-        SELECT fthg, ftag, ftr, hthg, htag, htr, home_team, away_team, date
-        FROM matchs_features
-        WHERE competition = ? AND (home_team = ? OR away_team = ?)
-        ORDER BY date DESC LIMIT ?
+        SELECT date, home_team, away_team, fthg, ftag, ftr
+        FROM matchs
+        WHERE (home_team = ? OR away_team = ?) AND fthg IS NOT NULL
+        ORDER BY date DESC LIMIT 50
         """,
-        params=[competition, team, team, n],
-        db_context={
-            "table": "matchs_features",
-            "operation": "team_stats",
-            "params": {"competition": competition, "team": team},
-        },
+        params=[away_team, away_team],
+        db_context={"table": "matchs", "operation": "get_features_away"},
     )
 
-    if not rows:
-        log_warning(
-            message=f"Aucun historique pour '{team}' en '{competition}'",
-            module="PREDICTION",
-            extra={"competition": competition, "team": team},
-        )
+    if not rows or not rows_away:
         return None
 
-    ft_scored, ft_conceded = [], []
-    ht_scored, ht_conceded = [], []
-    ft_results, ht_results = [], []
-    ft_home_scored, ft_away_scored = [], []
-
-    # ⚠️ CORRECTION : séparation explicite home/away pour les features HT
-    ht_home_scored, ht_away_scored = [], []
-
+    # --- Calcul des stats Home ---
+    wins_h, bm_h, be_h = 0, [], []
+    forme_h = []
     for r in rows:
-        fthg, ftag, ftr, hthg, htag, htr, home, away, date = r
-        is_home = home == team
-
-        # Sécurité : scores manquants
-        fthg = fthg if fthg is not None else 0
-        ftag = ftag if ftag is not None else 0
-        hthg = hthg if hthg is not None else 0
-        htag = htag if htag is not None else 0
-
-        if is_home:
-            ft_scored.append(fthg)
-            ft_conceded.append(ftag)
-            ht_scored.append(hthg)
-            ht_conceded.append(htag)
-            ht_home_scored.append(hthg)  # HT à domicile
-            ft_home_scored.append(fthg)
+        h, a, fthg, ftag, ftr = r[1], r[2], r[3], r[4], r[5]
+        if h == home_team:
+            bm_h.append(fthg); be_h.append(ftag)
+            forme_h.append(1 if ftr == 'H' else 0.5 if ftr == 'D' else 0)
         else:
-            ft_scored.append(ftag)
-            ft_conceded.append(fthg)
-            ht_scored.append(htag)
-            ht_conceded.append(hthg)
-            ht_away_scored.append(htag)  # HT à l'extérieur
-            ft_away_scored.append(ftag)
+            bm_h.append(ftag); be_h.append(fthg)
+            forme_h.append(1 if ftr == 'A' else 0.5 if ftr == 'D' else 0)
 
-        # Résultat (1= victoire, 0.5= nul, 0= défaite)
-        if ftr == "H":
-            ft_results.append(1.0 if is_home else 0.0)
-        elif ftr == "A":
-            ft_results.append(1.0 if not is_home else 0.0)
+    # --- Calcul des stats Away ---
+    bm_a, be_a = [], []
+    forme_a = []
+    for r in rows_away:
+        h, a, fthg, ftag, ftr = r[1], r[2], r[3], r[4], r[5]
+        if h == away_team:
+            bm_a.append(fthg); be_a.append(ftag)
+            forme_a.append(1 if ftr == 'H' else 0.5 if ftr == 'D' else 0)
         else:
-            ft_results.append(0.5)
+            bm_a.append(ftag); be_a.append(fthg)
+            forme_a.append(1 if ftr == 'A' else 0.5 if ftr == 'D' else 0)
 
-        if htr in ("H", "D", "A", "N"):
-            if htr == "H":
-                ht_results.append(1.0 if is_home else 0.0)
-            elif htr == "A":
-                ht_results.append(1.0 if not is_home else 0.0)
-            else:
-                ht_results.append(0.5)
+    # Approximation de l'Elo basée sur les points (0 à 2000)
+    elo_home = 1500 + (sum(forme_h) / len(forme_h)) * 200 if forme_h else 1500
+    elo_away = 1500 + (sum(forme_a) / len(forme_a)) * 200 if forme_a else 1500
 
-    def wf(res):
-        """Forme pondérée sur les 3 derniers matchs (3,2,1)."""
-        if not res:
-            return 0.5
-        r = res[:3]
-        w = [3, 2, 1][: len(r)]
-        return sum(x * y for x, y in zip(w, r)) / sum(w)
-
-    def avg(lst, default=1.0):
-        return float(np.mean(lst)) if lst else default
-
-    return {
-        "ft_glob_sc": avg(ft_scored, 1.2),
-        "ft_glob_co": avg(ft_conceded, 1.0),
-        "ht_glob_sc": avg(ht_scored, 0.5),
-        "ht_glob_co": avg(ht_conceded, 0.5),
-        "ft_home_sc": avg(ft_home_scored, 1.3),
-        "ft_away_sc": avg(ft_away_scored, 1.0),
-        # ⚠️ CORRECTION : valeurs distinctes
-        "ht_home_sc": avg(ht_home_scored, 0.5),
-        "ht_away_sc": avg(ht_away_scored, 0.5),
-        "ft_form": wf(ft_results),
-        "ht_form": wf(ht_results),
+    features = {
+        "elo_home": elo_home,
+        "elo_away": elo_away,
+        "elo_diff": elo_home - elo_away,
+        "forme_h": sum(forme_h) / len(forme_h) if forme_h else 0.5,
+        "forme_a": sum(forme_a) / len(forme_a) if forme_a else 0.5,
+        "forme_diff": (sum(forme_h) / len(forme_h) if forme_h else 0.5) - (sum(forme_a) / len(forme_a) if forme_a else 0.5),
+        "bm_h": sum(bm_h) / len(bm_h) if bm_h else 1.3,
+        "be_h": sum(be_h) / len(be_h) if be_h else 1.3,
+        "bm_a": sum(bm_a) / len(bm_a) if bm_a else 1.1,
+        "be_a": sum(be_a) / len(be_a) if be_a else 1.4,
+        "diff_attaque": (sum(bm_h)/len(bm_h) if bm_h else 1.3) - (sum(bm_a)/len(bm_a) if bm_a else 1.1),
+        "diff_defense": (sum(be_a)/len(be_a) if be_a else 1.4) - (sum(be_h)/len(be_h) if be_h else 1.3),
+        "h2h_goals_home": 0, "h2h_goals_away": 0, "h2h_n": 0, # À compléter si besoin
+        "repos_h": 7, "repos_a": 7,
+        "home_adv_ratio": 0.45,
     }
+    return features
 
 
-def _get_elo(competition, team):
-    """Récupère l'Elo actuel d'une équipe."""
-    row = db_fetchone(
-        """
-        SELECT h_elo_ft, a_elo_ft, home_team FROM matchs_features
-        WHERE competition = ? AND (home_team = ? OR away_team = ?)
-        ORDER BY date DESC LIMIT 1
-        """,
-        params=[competition, team, team],
-        db_context={
-            "table": "matchs_features",
-            "operation": "elo",
-            "params": {"competition": competition, "team": team},
-        },
-    )
-    if not row:
-        return 1500.0
-    h_elo, a_elo, home = row
-    if home == team:
-        return h_elo if h_elo is not None else 1500.0
-    return a_elo if a_elo is not None else 1500.0
+def predire_match_v2(home_team, away_team, competition="default", cotes_book=None):
+    """Fonction principale de prédiction."""
+    models = global_model_data.get("models")
+    if not models:
+        return {"erreur": "Modèle IA non chargé. Réessaie dans un instant."}
 
+    feats = _get_team_features(home_team, away_team)
+    if not feats:
+        return {"erreur": f"Pas assez d'historique pour {home_team} vs {away_team}."}
 
-def _verifier_features(features, equipe):
-    """Vérifie que tous les champs obligatoires sont présents."""
-    if not features:
-        return False
-    manquants = [c for c in _CHAMPS_FEATURES_OBLIGATOIRES if c not in features]
-    if manquants:
-        log_error(
-            message=f"Features incomplètes pour '{equipe}'",
-            module="PREDICTION",
-            extra={"equipe": equipe, "manquants": manquants},
-        )
-        return False
-    return True
+    # Construire le vecteur X dans l'ordre exact des features
+    feature_names = global_model_data.get("features", [])
+    X = np.array([[feats.get(f, 0) for f in feature_names]])
 
+    try:
+        result = {"home_team": home_team, "away_team": away_team, "competition": competition}
 
-def predire_match_v2(home_team, away_team, competition, cotes_book=None):
-    """
-    Fait une prédiction avec les 5 modèles LightGBM.
-    Retourne un dict complet ou {"erreur": "..."}.
-    """
-    modeles = _charger_modeles()
-    if not modeles:
-        return {"erreur": "Modèle non chargé."}
+        # 1N2
+        if "1N2" in models:
+            p = models["1N2"].predict_proba(X)[0]
+            result["p_h"], result["p_d"], result["p_a"] = float(p[0]), float(p[1]), float(p[2])
+        else:
+            result["p_h"], result["p_d"], result["p_a"] = 0.33, 0.33, 0.33
 
-    if competition not in modeles:
-        log_error(
-            message=f"Compétition '{competition}' non supportée par le modèle",
-            module="PREDICTION",
-            extra={"competition": competition},
-        )
-        return {"erreur": f"⚠️ Compétition '{competition}' non supportée."}
+        # DC_1X
+        if "DC_1X" in models:
+            p_dc = models["DC_1X"].predict_proba(X)[0]
+            result["dc_1x"] = float(p_dc[1])
+            result["dc_x2"] = float(1 - result["p_h"])
+            result["dc_12"] = float(1 - result["p_d"])
+        else:
+            result["dc_1x"] = result["p_h"] + result["p_d"]
+            result["dc_x2"] = result["p_d"] + result["p_a"]
+            result["dc_12"] = result["p_h"] + result["p_a"]
 
-    # Résolution des noms
-    home_reel = _trouver_nom_exact(home_team, competition)
-    away_reel = _trouver_nom_exact(away_team, competition)
+        # Over 2.5 & BTTS
+        result["over_25"] = float(models["Over25"].predict_proba(X)[0][1]) if "Over25" in models else 0.5
+        result["btts_yes"] = float(models["BTTS"].predict_proba(X)[0][1]) if "BTTS" in models else 0.5
 
-    if home_reel != home_team:
-        log_info(
-            f"Nom corrigé : '{home_team}' -> '{home_reel}'",
-            "PREDICTION",
-            extra={"competition": competition},
-        )
-    if away_reel != away_team:
-        log_info(
-            f"Nom corrigé : '{away_team}' -> '{away_reel}'",
-            "PREDICTION",
-            extra={"competition": competition},
-        )
+        # HT
+        result["ht_prolific"] = {"1ere_mt": 0.33, "2eme_mt": 0.33, "egalite": 0.34}
+        if "HT_Prolific" in models:
+            p_ht = models["HT_Prolific"].predict_proba(X)[0]
+            result["ht_prolific"]["1ere_mt"] = float(p_ht[0])
+            result["ht_prolific"]["2eme_mt"] = float(p_ht[1])
 
-    h_feat = _get_team_stats(competition, home_reel)
-    a_feat = _get_team_stats(competition, away_reel)
+        result["htr"] = {"1": 0.33, "N": 0.33, "2": 0.33}
+        if "HTR" in models:
+            p_htr = models["HTR"].predict_proba(X)[0]
+            result["htr"] = {"1": float(p_htr[0]), "N": float(p_htr[1]), "2": float(p_htr[2])}
 
-    if not h_feat or not a_feat:
-        return {"erreur": f"⚠️ Données insuffisantes pour {home_team} ou {away_team}."}
+        # Score exact (approximation basique)
+        result["best_score"] = (2, 1) if result["p_h"] > result["p_a"] else (1, 2)
 
-    if not _verifier_features(h_feat, home_reel):
-        return {"erreur": f"⚠️ Features incomplètes pour {home_reel}."}
-    if not _verifier_features(a_feat, away_reel):
-        return {"erreur": f"⚠️ Features incomplètes pour {away_reel}."}
+        # Analyse Value Bet
+        result["analyse_pari"] = None
+        if cotes_book and "h" in cotes_book:
+            proba_book = 1 / cotes_book["h"]
+            if result["p_h"] > proba_book + 0.05:
+                result["analyse_pari"] = {
+                    "label": "1 (Domicile)",
+                    "proba": result["p_h"],
+                    "cote_bot": round(1 / result["p_h"], 2),
+                    "cote_book": cotes_book["h"],
+                    "is_value": True
+                }
 
-    h_elo = _get_elo(competition, home_reel)
-    a_elo = _get_elo(competition, away_reel)
+        return result
 
-    # Probabilités bookmaker (normalisées)
-    p_h, p_d, p_a = 1 / 3, 1 / 3, 1 / 3
-    if cotes_book and all(cotes_book.get(k) for k in ("h", "d", "a")):
-        try:
-            s = sum(1 / cotes_book[k] for k in ("h", "d", "a"))
-            p_h = (1 / cotes_book["h"]) / s
-            p_d = (1 / cotes_book["d"]) / s
-            p_a = (1 / cotes_book["a"]) / s
-        except ZeroDivisionError as e:
-            log_error(
-                message="Cotes bookmaker invalides (division par zéro)",
-                module="PREDICTION",
-                extra={"cotes_book": cotes_book},
-                exception=e,
-            )
-
-    ft_f = np.array([[
-        h_elo, a_elo, h_elo - a_elo,
-        h_feat["ft_glob_sc"], h_feat["ft_glob_co"],
-        a_feat["ft_glob_sc"], a_feat["ft_glob_co"],
-        h_feat["ft_home_sc"], a_feat["ft_away_sc"],
-        h_feat["ft_form"], a_feat["ft_form"],
-        p_h, p_d, p_a,
-    ]])
-
-    ht_f = np.array([[
-        h_elo, a_elo, h_elo - a_elo,
-        h_feat["ht_glob_sc"], h_feat["ht_glob_co"],
-        a_feat["ht_glob_sc"], a_feat["ht_glob_co"],
-        h_feat["ht_home_sc"], a_feat["ht_away_sc"],  # ⚠️ CORRIGÉ
-        h_feat["ht_form"], a_feat["ht_form"],
-        p_h, p_d, p_a,
-    ]])
-
-    preds = {}
-    for nom, info in modeles[competition].items():
-        try:
-            # Choisir le bon vecteur selon les features attendues
-            is_ft = any("ft" in str(f) for f in info.get("features", []))
-            X = ft_f if is_ft else ht_f
-            X_scaled = info["scaler"].transform(X)
-            proba = info["model"].predict_proba(X_scaled)[0]
-            preds[nom] = proba
-        except Exception as e:
-            log_error(
-                message=f"Erreur de prédiction pour le marché '{nom}'",
-                module="PREDICTION",
-                extra={
-                    "competition": competition,
-                    "marche": nom,
-                    "home": home_reel,
-                    "away": away_reel,
-                },
-                exception=e,
-            )
-            preds[nom] = None
-
-    # Construction du résultat
-    def safe_pred(nom, index):
-        p = preds.get(nom)
-        if p is None or len(p) <= index:
-            return None
-        return float(p[index])
-
-    dc_1x = safe_pred("DC_1X", 1)
-    over_25 = safe_pred("Over25", 1)
-    btts_yes = safe_pred("BTTS", 1)
-
-    res = {
-        "home_team": home_reel,
-        "away_team": away_reel,
-        "p_h": float(dc_1x * 0.6) if dc_1x is not None else 0.33,
-        "p_d": 0.33,
-        "p_a": 0.33,
-        "dc_1x": dc_1x if dc_1x is not None else 0.5,
-        "dc_x2": (1.0 - dc_1x) if dc_1x is not None else 0.5,
-        "dc_12": 0.5,
-        "over_25": over_25 if over_25 is not None else 0.5,
-        "under_25": (1.0 - over_25) if over_25 is not None else 0.5,
-        "btts_yes": btts_yes if btts_yes is not None else 0.5,
-        "btts_no": (1.0 - btts_yes) if btts_yes is not None else 0.5,
-        "best_score": (1, 1),
-        "top_scores": [(1, 1, 0.1), (2, 1, 0.08), (1, 2, 0.07)],
-        "fiabilite": "⚖️ CONFIANCE MODÉRÉE",
-        "ht_prolific": {
-            "1ere_mt": safe_pred("HT_Prolific", 1) or 0.33,
-            "2eme_mt": safe_pred("HT_Prolific", 2) or 0.33,
-            "egalite": safe_pred("HT_Prolific", 0) or 0.33,
-        },
-        "htr": {
-            "1": safe_pred("HTR", 0) or 0.33,
-            "N": safe_pred("HTR", 1) or 0.33,
-            "2": safe_pred("HTR", 2) or 0.33,
-        },
-        "analyse_pari": None,
-    }
-
-    # Value bet
-    if dc_1x is not None:
-        options = [("1X", res["dc_1x"]), ("X2", res["dc_x2"]), ("12", res["dc_12"])]
-        meilleure = max(options, key=lambda x: x[1])
-        cote_bot = round(1 / meilleure[1], 2) if meilleure[1] > 0 else 999
-
-        cote_book = None
-        if cotes_book:
-            if meilleure[0] == "1X":
-                cote_book = cotes_book.get("h")
-            elif meilleure[0] == "12":
-                cote_book = cotes_book.get("a")
-            elif meilleure[0] == "X2":
-                cote_book = cotes_book.get("d")
-
-        is_value = bool(cote_book and cote_book > cote_bot)
-
-        res["analyse_pari"] = {
-            "label": meilleure[0],
-            "proba": meilleure[1],
-            "cote_bot": cote_bot,
-            "cote_book": cote_book,
-            "is_value": is_value,
-        }
-
-    return res
+    except Exception as e:
+        log_error("Erreur de prédiction", "PREDICTION", extra={"home": home_team, "away": away_team}, exception=e)
+        return {"erreur": "Erreur de calcul. L'admin a été prévenu."}
