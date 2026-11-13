@@ -3,7 +3,7 @@
 Gestion des matchs en base.
 - Insertion idempotente avec INSERT OR IGNORE
 - Fenêtre "saison en cours" avec fallback passé
-- Traduction stricte des noms de compétitions (ex: "Premier League" -> "PREMIER_LEAGUE")
+- Traduction stricte des noms de compétitions (ex: "Premier League" -> "premier_league")
 """
 
 from datetime import datetime, timedelta
@@ -114,7 +114,8 @@ def compter_matchs():
 def get_equipes_saison_en_cours(competition):
     """
     Récupère les équipes de la saison en cours.
-    Traduit le nom ("Premier League") en code DB ("PREMIER_LEAGUE").
+    Traduit le nom ("Premier League") en code DB ("premier_league").
+    Gère les minuscules et les majuscules pour être sûr de trouver la donnée.
     """
     if not competition:
         log_warning(
@@ -126,7 +127,10 @@ def get_equipes_saison_en_cours(competition):
     # --- TRADUCTION ---
     noms_vers_codes = {v: k for k, v in MAPPING_COMPETITIONS.items()}
     competition_db = noms_vers_codes.get(competition, competition)
-    competition_db = competition_db.upper()  # Turso stocke en MAJUSCULES
+    
+    # On prépare les deux variantes (minuscules et majuscules) pour la recherche
+    comp_min = competition_db.lower()
+    comp_maj = competition_db.upper()
     # ------------------
 
     try:
@@ -134,19 +138,20 @@ def get_equipes_saison_en_cours(competition):
         date_debut = datetime.now().strftime("%Y-%m-%d")
         date_fin = (datetime.now() + timedelta(days=180)).strftime("%Y-%m-%d")
 
+        # On cherche avec LOWER() ou UPPER() pour ignorer la casse en SQL
         rows = db_fetchall(
             """
             SELECT DISTINCT home_team FROM matchs
-            WHERE competition = ? AND date >= ? AND date <= ?
+            WHERE LOWER(competition) = ? AND date >= ? AND date <= ?
             UNION
             SELECT DISTINCT away_team FROM matchs
-            WHERE competition = ? AND date >= ? AND date <= ?
+            WHERE LOWER(competition) = ? AND date >= ? AND date <= ?
             ORDER BY home_team ASC
             """,
-            params=[competition_db, date_debut, date_fin,
-                    competition_db, date_debut, date_fin],
+            params=[comp_min, date_debut, date_fin,
+                    comp_min, date_debut, date_fin],
             db_context={"table": "matchs", "operation": "get_equipes_futur",
-                        "params": {"competition": competition_db}},
+                        "params": {"competition": comp_min}},
         )
         equipes = [row[0] for row in rows if row and row[0]]
         source = "calendrier futur (180j)"
@@ -162,15 +167,15 @@ def get_equipes_saison_en_cours(competition):
             rows = db_fetchall(
                 """
                 SELECT DISTINCT home_team FROM matchs
-                WHERE competition = ? AND date >= ?
+                WHERE LOWER(competition) = ? AND date >= ?
                 UNION
                 SELECT DISTINCT away_team FROM matchs
-                WHERE competition = ? AND date >= ?
+                WHERE LOWER(competition) = ? AND date >= ?
                 ORDER BY home_team ASC
                 """,
-                params=[competition_db, date_limite, competition_db, date_limite],
+                params=[comp_min, date_limite, comp_min, date_limite],
                 db_context={"table": "matchs", "operation": "get_equipes_fallback",
-                            "params": {"competition": competition_db}},
+                            "params": {"competition": comp_min}},
             )
             equipes = [row[0] for row in rows if row and row[0]]
             source = "fallback passé (365j)"
