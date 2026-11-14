@@ -7,9 +7,13 @@ TZ_KINSHASA = timezone(timedelta(hours=1))
 SEUIL_CONFIANCE_MIN = 0.75
 
 def _traduire_pari(home, away, label_dc):
-    if label_dc == "1X": return f"<b>{home}</b> gagne ou fait match nul"
-    if label_dc == "X2": return f"<b>{away}</b> gagne ou fait match nul"
-    if label_dc == "12": return "Pas de match nul"
+    """Traduit les codes en phrases positives (HTML)."""
+    if label_dc == "1X":
+        return f"<b>{home}</b> va gagner ou faire match nul"
+    if label_dc == "X2":
+        return f"<b>{away}</b> va gagner ou faire match nul"
+    if label_dc == "12":
+        return "Un vainqueur sera désigné"
     return label_dc
 
 def get_top_affiches(limite=10):
