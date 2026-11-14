@@ -4,13 +4,9 @@ from users import get_langue, est_premium
 from core.utils.logs import log_info, log_error, log_warning
 
 def _traduire_pari(home, away, label_dc):
-    """Traduit 1X, X2, 12 en phrase compréhensible."""
-    if label_dc == "1X":
-        return f"**{home}** gagne ou fait match nul"
-    elif label_dc == "X2":
-        return f"**{away}** gagne ou fait match nul"
-    elif label_dc == "12":
-        return "Il n'y aura **pas de match nul**"
+    if label_dc == "1X": return f"<b>{home}</b> gagne ou fait match nul"
+    elif label_dc == "X2": return f"<b>{away}</b> gagne ou fait match nul"
+    elif label_dc == "12": return "Il n'y aura <b>pas de match nul</b>"
     return label_dc
 
 def _formater_bulletin_premium(resultat, langue="fr"):
@@ -29,46 +25,45 @@ def _formater_bulletin_premium(resultat, langue="fr"):
         h2h = resultat.get('h2h')
         analyse = resultat.get('analyse_pari')
 
-        txt = f"⚽ **{h} vs {a}**\n\n"
+        txt = f"⚽ <b>{h} vs {a}</b>\n\n"
         txt += f"👋 Voici mon analyse pour ce match :\n"
         txt += f"J'ai regardé les statistiques et voici ce que je te conseille.\n\n"
-        txt += f"👉 **Mon conseil : \"{phrase_conseil}\"**\n"
-        txt += f"(J'ai {round(proba_dc*100, 1)}% de certitude que ce pari soit gagnant).\n\n"
+        txt += f"👉 MON CONSEIL : {phrase_conseil}\n"
+        txt += f"(J'ai <b>{round(proba_dc*100, 1)}%</b> de certitude).\n\n"
 
-        txt += f"📊 **Les probabilités du match :**\n"
+        txt += f"📊 <b>LES PROBABILITÉS :</b>\n"
         txt += f"• {h} gagne : {round(p_h*100, 1)}%\n"
         txt += f"• Match nul : {round(p_d*100, 1)}%\n"
         txt += f"• {a} gagne : {round(p_a*100, 1)}%\n\n"
 
-        txt += f"🎯 **Autres options intéressantes :**\n"
-        txt += f"• Les deux équipes marquent : {'Oui' if btts > 0.5 else 'Non'} ({round(btts*100,1)}%)\n"
+        txt += f"🎯 <b>AUTRES OPTIONS :</b>\n"
+        txt += f"• Les deux marquent : {'Oui' if btts > 0.5 else 'Non'} ({round(btts*100,1)}%)\n"
         txt += f"• Plus de 2.5 buts : {'Oui' if over > 0.5 else 'Non'} ({round(over*100,1)}%)\n\n"
 
         if top_scores:
-            txt += f"🔮 **Les scores exacts les plus probables :**\n"
+            txt += f"🔮 <b>SCORES EXACTS PROBABLES :</b>\n"
             for i, (sh, sa, p) in enumerate(top_scores, 1):
                 txt += f"{i}. {h} {sh} - {sa} {a} ({round(p, 1)}%)\n"
             txt += "\n"
 
         if h2h and h2h['total'] > 0:
-            txt += f"📊 **Historique des 5 derniers matchs :**\n"
-            txt += f"{h} a gagné {h2h['victoires_h']} fois, {h2h['nuls']} match(s) nul(s), {a} a gagné {h2h['victoires_a']} fois.\n\n"
+            txt += f"📊 <b>HISTORIQUE (5 matchs) :</b>\n"
+            txt += f"{h} a gagné {h2h['victoires_h']} fois, {h2h['nuls']} nul(s), {a} a gagné {h2h['victoires_a']} fois.\n\n"
 
         if analyse and analyse.get('cote_book'):
-            txt += f"💰 **L'avis du bookmaker :**\n"
-            txt += f"Il propose une cote de {analyse['cote_book']}. "
+            txt += f"💰 <b>AVIS DU BOOKMAKER :</b>\n"
+            txt += f"Cote proposée : {analyse['cote_book']}. "
             if analyse.get('is_value'):
-                txt += f"🔥 **C'est une très bonne affaire (Value Bet) !**\n\n"
+                txt += f"🔥 <b>Value Bet Détecté !</b>\n\n"
             else:
-                txt += f"Ce n'est pas une affaire exceptionnelle.\n\n"
+                txt += f"Pas d'affaire exceptionnelle.\n\n"
 
         txt += "━━━━━━━━━━━━━━━━━━━━\n"
-        txt += "💡 **Conseil du Coach :** Ne mise jamais plus de 2% de ton argent total sur un seul pari.\n"
-        
+        txt += "💡 <i>Conseil du Coach : Ne mise jamais plus de 2% de ton argent total.</i>\n"
         return txt
     except Exception as e:
         log_error("Erreur formater bulletin premium", "PREDICTION", exception=e)
-        return "❌ Erreur lors de la génération du bulletin."
+        return "❌ Erreur."
 
 def _formater_bulletin_free(resultat, langue="fr"):
     try:
@@ -80,18 +75,18 @@ def _formater_bulletin_free(resultat, langue="fr"):
         label_dc, proba_dc = max([("1X", dc_1x), ("X2", dc_x2), ("12", dc_12)], key=lambda x: x[1])
         phrase_conseil = _traduire_pari(h, a, label_dc)
 
-        txt = f"⚽ **{h} vs {a}**\n\n"
-        txt += f"👋 Voici mon analyse pour ce match :\n\n"
-        txt += f"👉 **Mon conseil : \"{phrase_conseil}\"**\n"
-        txt += f"(J'ai {round(proba_dc*100, 1)}% de certitude).\n\n"
+        txt = f"⚽ <b>{h} vs {a}</b>\n\n"
+        txt += f"👋 Voici mon analyse :\n\n"
+        txt += f"👉 MON CONSEIL : {phrase_conseil}\n"
+        txt += f"(J'ai <b>{round(proba_dc*100, 1)}%</b> de certitude).\n\n"
 
-        txt += f"📊 **Les probabilités du match :**\n"
+        txt += f"📊 <b>PROBABILITÉS :</b>\n"
         txt += f"• {h} gagne : {round(p_h*100, 1)}%\n"
         txt += f"• Match nul : {round(p_d*100, 1)}%\n"
         txt += f"• {a} gagne : {round(p_a*100, 1)}%\n\n"
 
         txt += "━━━━━━━━━━━━━━━━━━━━\n"
-        txt += "⭐ _Passe Premium pour voir les scores exacts et l'historique des matchs._\n"
+        txt += "⭐ <i>Passe Premium pour voir les scores exacts et l'historique.</i>\n"
         return txt
     except Exception as e:
         log_error("Erreur formater bulletin free", "PREDICTION", exception=e)
@@ -102,6 +97,6 @@ def enregistrer_prediction_handlers(bot):
     @bot.message_handler(commands=['myid'])
     def cmd_myid(message):
         try:
-            bot.reply_to(message, f"🆔 Ton ID : `{message.from_user.id}`", parse_mode="Markdown")
+            bot.reply_to(message, f"🆔 Ton ID : <code>{message.from_user.id}</code>", parse_mode="HTML")
         except Exception as e:
             log_error("Erreur ID", "PREDICTION", exception=e)
