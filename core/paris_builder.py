@@ -2,7 +2,7 @@
 """
 Génération des coupons du jour.
 - Utilise les prédictions déjà calculées (pas de recalcul)
-- Affiche les conseils sous forme de phrases compréhensibles (Format HTML)
+- Affiche les conseils sous forme de phrases positives (Format HTML)
 """
 
 from datetime import datetime, timezone, timedelta
@@ -32,13 +32,13 @@ def _meilleure_reco(prono):
 
 
 def _traduire_pari(home, away, label_dc):
-    """Traduit les codes 1X, X2, 12 en phrases compréhensibles avec HTML."""
+    """Traduit les codes 1X, X2, 12 en phrases positives et compréhensibles."""
     if label_dc == "1X":
-        return f"<b>{home}</b> gagne ou fait match nul"
+        return f"<b>{home}</b> va gagner ou faire match nul"
     elif label_dc == "X2":
-        return f"<b>{away}</b> gagne ou fait match nul"
+        return f"<b>{away}</b> va gagner ou faire match nul"
     elif label_dc == "12":
-        return "Il n'y aura <b>pas de match nul</b>"
+        return "Un vainqueur sera désigné (pas de match nul)"
     return label_dc
 
 
