@@ -1,17 +1,16 @@
 # telegram_bot/payment_handlers.py
 """
 Gestion des paiements (Stars + Mobile Money + Codes).
-⚠️ CORRECTIONS :
+- Correction de l'extraction du contexte utilisateur (Message vs User)
 - Vérification du payload (user_id)
 - Sessions PAIEMENT_SESSIONS nettoyées (TTL)
-- Atomicité sur validation/refus (déjà fait dans users/paiements.py)
-- Taux CDF/Star externalisé
+- Atomicité sur validation/refus
 """
 
 import time
 import threading
 import telebot
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from users import (
     get_langue, set_premium, ajouter_jours_premium,
@@ -36,12 +35,27 @@ _PAIEMENT_LOCK = threading.Lock()
 PAIEMENT_TTL_SEC = 1800  # 30 min
 
 
-def _get_contexte_user(user, chat_id=None):
+def _get_contexte_user(message_or_user, chat_id=None):
+    """
+    Extrait le contexte utilisateur.
+    Gère le cas où on reçoit un Message (qui a from_user) 
+    ou directement un User.
+    """
+    user = getattr(message_or_user, "from_user", message_or_user)
+    
+    # On détermine le chat_id
+    if chat_id:
+        cid = chat_id
+    elif hasattr(message_or_user, "chat"):
+        cid = message_or_user.chat.id
+    else:
+        cid = user.id
+
     return {
         "user_id": user.id,
-        "user_name": user.first_name or "",
-        "username": user.username or "",
-        "chat_id": chat_id or user.id,
+        "user_name": getattr(user, "first_name", "") or "",
+        "username": getattr(user, "username", "") or "",
+        "chat_id": cid,
     }
 
 
@@ -75,13 +89,13 @@ def _pop_session_paiement(user_id):
 
 
 def _jours_pour_abo(abo_key):
-    """Retourne la durée en jours d'un abonnement (source unique : ABONNEMENTS)."""
+    """Retourne la durée en jours d'un abonnement."""
     abo = ABONNEMENTS.get(abo_key)
     return abo["duree_jours"] if abo else 30
 
 
 def _montant_cdf(abo_key):
-    """Calcule le montant CDF à partir des Stars (taux externalisé)."""
+    """Calcule le montant CDF à partir des Stars."""
     abo = ABONNEMENTS.get(abo_key)
     if not abo:
         return 0
@@ -100,22 +114,12 @@ def enregistrer_payment_handlers(bot):
         ctx = _get_contexte_user(call.from_user, call.message.chat.id)
         action = call.data.split("|", 1)[1] if "|" in call.data else ""
 
-        log_info(
-            f"Choix paiement : {action}",
-            "PAIEMENT",
-            user_context=ctx,
-            extra={"action": action},
-        )
+        log_info(f"Choix paiement : {action}", "PAIEMENT", user_context=ctx)
 
         try:
             bot.answer_callback_query(call.id, "OK")
         except Exception as e:
-            log_warning(
-                message="Impossible de répondre au callback",
-                module="PAIEMENT",
-                user_context=ctx,
-                exception=e,
-            )
+            log_warning(f"Impossible de répondre au callback", "PAIEMENT", exception=e)
 
         try:
             if action == "stars":
@@ -137,9 +141,9 @@ def enregistrer_payment_handlers(bot):
                     ))
                 bot.send_message(
                     call.message.chat.id,
-                    "📱 **MOBILE MONEY**\n\nChoisis ton abonnement :",
+                    "📱 <b>MOBILE MONEY</b>\n\nChoisis ton abonnement :",
                     reply_markup=markup,
-                    parse_mode="Markdown",
+                    parse_mode="HTML",
                 )
 
             elif action == "code":
@@ -150,12 +154,7 @@ def enregistrer_payment_handlers(bot):
                 bot.register_next_step_handler(msg, _traiter_code)
 
         except Exception as e:
-            log_error(
-                message=f"Erreur lors du choix de paiement ({action})",
-                module="PAIEMENT",
-                user_context=ctx,
-                exception=e,
-            )
+            log_error(f"Erreur lors du choix de paiement ({action})", "PAIEMENT", user_context=ctx, exception=e)
             try:
                 bot.send_message(call.message.chat.id, "❌ Une erreur est survenue.")
             except Exception:
@@ -172,15 +171,9 @@ def enregistrer_payment_handlers(bot):
         abo_key = call.data.split("|", 1)[1]
 
         if abo_key not in ABONNEMENTS:
-            log_warning(
-                message=f"Abonnement inconnu demandé : {abo_key}",
-                module="PAIEMENT",
-                user_context=ctx,
-            )
-            try:
-                bot.answer_callback_query(call.id, "Inconnu")
-            except Exception:
-                pass
+            log_warning(f"Abonnement inconnu demandé : {abo_key}", "PAIEMENT", user_context=ctx)
+            try: bot.answer_callback_query(call.id, "Inconnu")
+            except Exception: pass
             return
 
         _set_session_paiement(user_id, abo_key)
@@ -190,12 +183,7 @@ def enregistrer_payment_handlers(bot):
         try:
             bot.answer_callback_query(call.id, "OK")
         except Exception as e:
-            log_warning(
-                message="Impossible de répondre au callback",
-                module="PAIEMENT",
-                user_context=ctx,
-                exception=e,
-            )
+            log_warning(f"Impossible de répondre au callback", "PAIEMENT", exception=e)
 
         texte = get_text("pay_mobile_titre", langue, montant=montant, abo=abo["nom"])
         texte += "\n\n"
@@ -210,12 +198,7 @@ def enregistrer_payment_handlers(bot):
         try:
             bot.send_message(call.message.chat.id, texte, reply_markup=markup)
         except Exception as e:
-            log_error(
-                message="Impossible d'envoyer le menu Mobile Money",
-                module="PAIEMENT",
-                user_context=ctx,
-                exception=e,
-            )
+            log_error(f"Impossible d'envoyer le menu Mobile Money", "PAIEMENT", user_context=ctx, exception=e)
 
     # =========================================================
     # DEMANDE DE PREUVE
@@ -225,11 +208,7 @@ def enregistrer_payment_handlers(bot):
         try:
             bot.answer_callback_query(call.id, "OK")
         except Exception as e:
-            log_warning(
-                message="Impossible de répondre au callback preuve_ok",
-                module="PAIEMENT",
-                exception=e,
-            )
+            log_warning(f"Impossible de répondre au callback preuve_ok", "PAIEMENT", exception=e)
 
         try:
             msg = bot.send_message(
@@ -238,12 +217,7 @@ def enregistrer_payment_handlers(bot):
             )
             bot.register_next_step_handler(msg, recevoir_capture)
         except Exception as e:
-            log_error(
-                message="Impossible de demander la preuve",
-                module="PAIEMENT",
-                user_context=_get_contexte_user(call.from_user, call.message.chat.id),
-                exception=e,
-            )
+            log_error(f"Impossible de demander la preuve", "PAIEMENT", user_context=_get_contexte_user(call.from_user), exception=e)
 
     # =========================================================
     # CODE PREMIUM
@@ -261,12 +235,7 @@ def enregistrer_payment_handlers(bot):
         try:
             resultat = utiliser_code(code, user_id)
         except Exception as e:
-            log_error(
-                message="Erreur lors de l'utilisation du code",
-                module="PAIEMENT",
-                user_context=ctx,
-                exception=e,
-            )
+            log_error(f"Erreur lors de l'utilisation du code", "PAIEMENT", user_context=ctx, exception=e)
             bot.reply_to(message, "❌ Une erreur est survenue.")
             return
 
@@ -278,19 +247,9 @@ def enregistrer_payment_handlers(bot):
         try:
             ajouter_jours_premium(user_id, jours)
             bot.reply_to(message, get_text("pay_code_ok", langue, jours=jours))
-            log_info(
-                f"Code utilisé : +{jours}j",
-                "PAIEMENT",
-                user_context=ctx,
-            )
+            log_info(f"Code utilisé : +{jours}j", "PAIEMENT", user_context=ctx)
         except Exception as e:
-            log_error(
-                message="Code validé mais ajout premium échoué",
-                module="PAIEMENT",
-                user_context=ctx,
-                extra={"jours": jours},
-                exception=e,
-            )
+            log_error(f"Code validé mais ajout premium échoué", "PAIEMENT", user_context=ctx, extra={"jours": jours}, exception=e)
             bot.reply_to(message, "❌ Le code a été validé mais l'ajout a échoué. Contacte l'admin.")
 
     # =========================================================
@@ -302,11 +261,7 @@ def enregistrer_payment_handlers(bot):
         ctx = _get_contexte_user(message)
 
         if not message.photo or len(message.photo) == 0:
-            log_warning(
-                message="Capture invalide (pas une photo)",
-                module="PAIEMENT",
-                user_context=ctx,
-            )
+            log_warning("Capture invalide (pas une photo)", "PAIEMENT", user_context=ctx)
             bot.reply_to(message, "❌ Ce n'est pas une photo valide. Action annulée.")
             return
 
@@ -321,13 +276,7 @@ def enregistrer_payment_handlers(bot):
         try:
             demande_id = creer_demande_paiement(user_id, abo_key, montant, file_id)
         except Exception as e:
-            log_error(
-                message="Impossible de créer la demande de paiement",
-                module="PAIEMENT",
-                user_context=ctx,
-                extra={"abonnement": abo_key, "montant": montant},
-                exception=e,
-            )
+            log_error(f"Impossible de créer la demande de paiement", "PAIEMENT", user_context=ctx, extra={"abonnement": abo_key, "montant": montant}, exception=e)
             bot.reply_to(message, "❌ Erreur lors de l'enregistrement. L'admin a été prévenu.")
             return
 
@@ -338,12 +287,7 @@ def enregistrer_payment_handlers(bot):
         try:
             bot.reply_to(message, get_text("pay_attente_titre", langue))
         except Exception as e:
-            log_warning(
-                message="Impossible de répondre à l'utilisateur",
-                module="PAIEMENT",
-                user_context=ctx,
-                exception=e,
-            )
+            log_warning(f"Impossible de répondre à l'utilisateur", "PAIEMENT", user_context=ctx, exception=e)
 
         # Notification admins
         try:
@@ -358,42 +302,27 @@ def enregistrer_payment_handlers(bot):
             )
 
             caption = (
-                f"📸 NOUVELLE DEMANDE #{demande_id}\n\n"
+                f"📸 <b>NOUVELLE DEMANDE #{demande_id}</b>\n\n"
                 f"User : {nom_user}\nID : {user_id}\n"
                 f"Abo : {abo['nom']}\nMontant : {montant} CDF"
             )
 
             # Admin principal
             try:
-                bot.send_photo(ADMIN_ID, file_id, caption=caption, reply_markup=markup)
+                bot.send_photo(ADMIN_ID, file_id, caption=caption, reply_markup=markup, parse_mode="HTML")
             except Exception as e:
-                log_error(
-                    message="Impossible d'envoyer la demande à l'admin principal",
-                    module="PAIEMENT",
-                    extra={"demande_id": demande_id},
-                    exception=e,
-                )
+                log_error(f"Impossible d'envoyer la demande à l'admin principal", "PAIEMENT", extra={"demande_id": demande_id}, exception=e)
 
             # Autres admins
             for a in admins:
                 if a["user_id"] == ADMIN_ID:
                     continue
                 try:
-                    bot.send_photo(a["user_id"], file_id, caption=caption, reply_markup=markup)
+                    bot.send_photo(a["user_id"], file_id, caption=caption, reply_markup=markup, parse_mode="HTML")
                 except Exception as e:
-                    log_warning(
-                        message=f"Impossible d'envoyer à l'admin {a['user_id']}",
-                        module="PAIEMENT",
-                        extra={"admin_id": a["user_id"]},
-                        exception=e,
-                    )
+                    log_warning(f"Impossible d'envoyer à l'admin {a['user_id']}", "PAIEMENT", exception=e)
         except Exception as e:
-            log_error(
-                message="Erreur lors de la notification des admins",
-                module="PAIEMENT",
-                user_context=ctx,
-                exception=e,
-            )
+            log_error(f"Erreur lors de la notification des admins", "PAIEMENT", user_context=ctx, exception=e)
         finally:
             _pop_session_paiement(user_id)
 
@@ -410,24 +339,13 @@ def enregistrer_payment_handlers(bot):
                 bot.answer_callback_query(call.id, "Accès refusé")
                 return
         except Exception as e:
-            log_error(
-                message="Impossible de vérifier admin (validation)",
-                module="PAIEMENT",
-                user_context=ctx,
-                exception=e,
-            )
+            log_error(f"Impossible de vérifier admin (validation)", "PAIEMENT", user_context=ctx, exception=e)
             return
 
         try:
             demande_id = int(call.data.split("|")[1])
         except (ValueError, IndexError) as e:
-            log_error(
-                message="Demande ID invalide",
-                module="PAIEMENT",
-                user_context=ctx,
-                extra={"callback_data": call.data},
-                exception=e,
-            )
+            log_error(f"Demande ID invalide", "PAIEMENT", user_context=ctx, exception=e)
             bot.answer_callback_query(call.id, "❌ ID invalide")
             return
 
@@ -441,24 +359,13 @@ def enregistrer_payment_handlers(bot):
             ajouter_jours_premium(demande["user_id"], jours)
 
             bot.answer_callback_query(call.id, "✅ Validé")
-            bot.send_message(
-                call.message.chat.id,
-                f"✅ Paiement #{demande_id} validé. +{jours}j pour user {demande['user_id']}",
-            )
+            bot.send_message(call.message.chat.id, f"✅ Paiement #{demande_id} validé. +{jours}j pour user {demande['user_id']}")
 
             try:
                 langue = get_langue(demande["user_id"])
-                bot.send_message(
-                    demande["user_id"],
-                    get_text("pay_valide", langue, jours=jours),
-                )
+                bot.send_message(demande["user_id"], get_text("pay_valide", langue, jours=jours))
             except Exception as e:
-                log_error(
-                    message="Impossible de notifier l'utilisateur (validation)",
-                    module="PAIEMENT",
-                    extra={"user_id": demande["user_id"]},
-                    exception=e,
-                )
+                log_error(f"Impossible de notifier l'utilisateur (validation)", "PAIEMENT", exception=e)
         else:
             bot.answer_callback_query(call.id, "❌ Déjà traité ou échec")
 
@@ -475,24 +382,14 @@ def enregistrer_payment_handlers(bot):
                 bot.answer_callback_query(call.id, "Accès refusé")
                 return
         except Exception as e:
-            log_error(
-                message="Impossible de vérifier admin (refus)",
-                module="PAIEMENT",
-                user_context=ctx,
-                exception=e,
-            )
+            log_error(f"Impossible de vérifier admin (refus)", "PAIEMENT", user_context=ctx, exception=e)
             return
 
         try:
             demande_id = int(call.data.split("|")[1])
         except (ValueError, IndexError) as e:
             bot.answer_callback_query(call.id, "❌ ID invalide")
-            log_error(
-                message="Demande ID invalide (refus)",
-                module="PAIEMENT",
-                user_context=ctx,
-                exception=e,
-            )
+            log_error(f"Demande ID invalide (refus)", "PAIEMENT", user_context=ctx, exception=e)
             return
 
         demande = get_demande(demande_id)
@@ -507,12 +404,7 @@ def enregistrer_payment_handlers(bot):
                 langue = get_langue(demande["user_id"])
                 bot.send_message(demande["user_id"], get_text("pay_refuse", langue))
             except Exception as e:
-                log_error(
-                    message="Impossible de notifier l'utilisateur (refus)",
-                    module="PAIEMENT",
-                    extra={"user_id": demande["user_id"]},
-                    exception=e,
-                )
+                log_error(f"Impossible de notifier l'utilisateur (refus)", "PAIEMENT", exception=e)
         else:
             bot.answer_callback_query(call.id, "❌ Déjà traité ou échec")
 
@@ -531,12 +423,7 @@ def enregistrer_payment_handlers(bot):
             return
 
         if abo_key not in ABONNEMENTS:
-            log_warning(
-                message="Formule inconnue demandée",
-                module="PAIEMENT",
-                user_context=ctx,
-                extra={"abo_key": abo_key},
-            )
+            log_warning(f"Formule inconnue demandée", "PAIEMENT", user_context=ctx, extra={"abo_key": abo_key})
             bot.answer_callback_query(call.id, "Formule inconnue.")
             return
 
@@ -545,13 +432,7 @@ def enregistrer_payment_handlers(bot):
             bot.answer_callback_query(call.id, f"{abo['nom']}")
             envoyer_facture(bot, call.message.chat.id, abo_key, user_id)
         except Exception as e:
-            log_error(
-                message="Impossible d'envoyer la facture",
-                module="PAIEMENT",
-                user_context=ctx,
-                extra={"abo_key": abo_key},
-                exception=e,
-            )
+            log_error(f"Impossible d'envoyer la facture", "PAIEMENT", user_context=ctx, extra={"abo_key": abo_key}, exception=e)
             bot.send_message(call.message.chat.id, "❌ Impossible d'envoyer la facture.")
 
     @bot.pre_checkout_query_handler(func=lambda query: True)
@@ -559,11 +440,7 @@ def enregistrer_payment_handlers(bot):
         try:
             bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
         except Exception as e:
-            log_error(
-                message="Erreur pre_checkout_query",
-                module="PAIEMENT",
-                exception=e,
-            )
+            log_error(f"Erreur pre_checkout_query", "PAIEMENT", exception=e)
 
     # =========================================================
     # PAIEMENT RÉUSSI (Stars)
@@ -577,25 +454,13 @@ def enregistrer_payment_handlers(bot):
             payment = message.successful_payment
             payload = payment.invoice_payload or ""
 
-            # ⚠️ VÉRIFICATION : le payload doit contenir l'user_id
             if f"_{user_id}" not in payload:
-                log_error(
-                    message="Payload de paiement ne correspond pas à l'utilisateur",
-                    module="PAIEMENT",
-                    user_context=ctx,
-                    extra={"payload": payload[:50]},
-                )
+                log_error(f"Payload de paiement ne correspond pas à l'utilisateur", "PAIEMENT", user_context=ctx, extra={"payload": payload[:50]})
                 bot.send_message(user_id, "⚠️ Erreur : payload invalide. Contacte l'admin.")
                 return
 
-            # ⚠️ VÉRIFICATION : devise = XTR
             if payment.currency != "XTR":
-                log_error(
-                    message=f"Devise inattendue : {payment.currency}",
-                    module="PAIEMENT",
-                    user_context=ctx,
-                    extra={"currency": payment.currency},
-                )
+                log_error(f"Devise inattendue : {payment.currency}", "PAIEMENT", user_context=ctx)
                 bot.send_message(user_id, "⚠️ Erreur : devise invalide.")
                 return
 
@@ -606,42 +471,25 @@ def enregistrer_payment_handlers(bot):
 
             abo = ABONNEMENTS[abo_key]
             if payment.total_amount != abo["prix_stars"]:
-                log_error(
-                    message=f"Montant incorrect : {payment.total_amount} != {abo['prix_stars']}",
-                    module="PAIEMENT",
-                    user_context=ctx,
-                    extra={"abo": abo_key},
-                )
+                log_error(f"Montant incorrect : {payment.total_amount} != {abo['prix_stars']}", "PAIEMENT", user_context=ctx, extra={"abo": abo_key})
                 bot.send_message(user_id, "⚠️ Le montant payé ne correspond pas.")
                 return
 
             duree = abo["duree_jours"]
-            from datetime import datetime as dt
-            expiration = (dt.now() + __import__("datetime").timedelta(days=duree)).strftime(
-                "%Y-%m-%d %H:%M"
-            )
+            expiration = (datetime.now() + timedelta(days=duree)).strftime("%Y-%m-%d %H:%M")
             set_premium(user_id, expiration)
 
             bot.send_message(
                 user_id,
-                f"✅ **PAIEMENT CONFIRMÉ**\n\n"
+                f"✅ <b>PAIEMENT CONFIRMÉ</b>\n\n"
                 f"Formule : {abo['nom']}\n"
                 f"Durée : {duree} jour(s)\n"
                 f"Expire : {expiration}",
-                parse_mode="Markdown",
+                parse_mode="HTML",
             )
-            log_info(
-                f"Paiement Stars validé : {abo['nom']}",
-                "PAIEMENT",
-                user_context=ctx,
-            )
+            log_info(f"Paiement Stars validé : {abo['nom']}", "PAIEMENT", user_context=ctx)
         except Exception as e:
-            log_error(
-                message="Erreur traitement paiement Stars",
-                module="PAIEMENT",
-                user_context=ctx,
-                exception=e,
-            )
+            log_error(f"Erreur traitement paiement Stars", "PAIEMENT", user_context=ctx, exception=e)
             try:
                 bot.send_message(user_id, "❌ Une erreur est survenue lors du paiement.")
             except Exception:
