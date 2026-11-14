@@ -6,58 +6,45 @@ from core.utils.logs import log_info, log_warning, log_error
 TZ_KINSHASA = timezone(timedelta(hours=1))
 SEUIL_CONFIANCE_MIN = 0.75
 
+def _traduire_pari(home, away, label_dc):
+    if label_dc == "1X": return f"{home} gagne ou fait match nul"
+    if label_dc == "X2": return f"{away} gagne ou fait match nul"
+    if label_dc == "12": return "Pas de match nul"
+    return label_dc
+
 def get_top_affiches(limite=10):
-    try:
-        matchs = get_tous_pronostics_disponibles()
-    except Exception as e:
-        log_error("Erreur récupération top", "TOP", exception=e)
-        return []
+    try: matchs = get_tous_pronostics_disponibles()
+    except Exception as e: return []
     if not matchs: return []
-    
     top = [m for m in matchs if (m.get("reco_pct") or 0) >= SEUIL_CONFIANCE_MIN]
     if not top: return []
-    
     top.sort(key=lambda x: x.get("reco_pct", 0), reverse=True)
     return top[:limite]
 
 def formater_top_affiches(affiches, langue="fr", montrer_details=True):
-    date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
-    if not affiches: 
-        return "🏆 Aucun match sûr à 100% aujourd'hui."
+    if not affiches: return "🏆 Aucun match sûr à 100% aujourd'hui."
 
-    texte = f"🎯 **LES PARIS LES PLUS SÛRS DU JOUR**\n\n"
+    texte = f"👋 Voici les matchs que je te conseille aujourd'hui.\n"
+    texte += f"J'ai analysé les statistiques et voici où tu as le plus de chances de gagner :\n\n"
 
     for i, m in enumerate(affiches, 1):
         try:
-            home = m.get('home', '?')
-            away = m.get('away', '?')
+            home, away = m.get('home', '?'), m.get('away', '?')
             heure = "?"
             if m.get("heure"):
-                try:
-                    heure = datetime.fromisoformat(str(m["heure"]).replace("Z", "+00:00")).astimezone(TZ_KINSHASA).strftime("%H:%M")
+                try: heure = datetime.fromisoformat(str(m["heure"]).replace("Z", "+00:00")).astimezone(TZ_KINSHASA).strftime("%H:%M")
                 except Exception: pass
 
-            texte += f"{i}. **{home} vs {away}**\n"
+            phrase_conseil = _traduire_pari(home, away, m.get('reco_label', '?'))
+            texte += f"{i}. **{home} vs {away}** (à {heure})\n"
             
             if montrer_details:
-                p_h = m.get('p_h', 0.33)
-                p_d = m.get('p_d', 0.33)
-                p_a = m.get('p_a', 0.33)
-                reco_pct = m.get("reco_pct", 0)
-                reco_label = m.get('reco_label', '?')
-                
-                # On met l'essentiel : L'heure, la reco, la confiance
-                texte += f"   🕐 {heure} | 🛡️ **{reco_label}** ({round(reco_pct * 100, 1)}%)\n"
-                
-                # On résume le 1N2 sur une seule ligne
-                texte += f"   📊 1:{round(p_h*100)}% / N:{round(p_d*100)}% / 2:{round(p_a*100)}%\n"
+                texte += f"   👉 Je te conseille de jouer : \"{phrase_conseil}\"\n"
+                texte += f"   (J'ai {round(m.get('reco_pct', 0) * 100, 1)}% de certitude)\n\n"
             else:
-                texte += f"   🎯 Reco : {m.get('reco_label', '?')}\n"
-            
-            texte += "\n"
+                texte += f"   👉 Conseillé\n\n"
         except Exception: continue
 
     if not montrer_details: 
-        texte += "_Passe Premium pour voir l'heure et les probabilités._\n"
-    
+        texte += "⭐ _Passe Premium pour voir mes conseils détaillés et mes certitudes._\n"
     return texte
