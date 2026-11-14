@@ -1,3 +1,4 @@
+# telegram_bot/admin/menus.py
 import telebot
 
 
@@ -82,7 +83,7 @@ def menu_admin_bas():
     markup.add(
         telebot.types.KeyboardButton("📊 Stats"),
         telebot.types.KeyboardButton("👥 Utilisateurs"),
-        telebot.types.KeyboardButton("📋 Exporter la liste"), # ⚠️ NOUVEAU
+        telebot.types.KeyboardButton("📋 Exporter la liste"),
         telebot.types.KeyboardButton("💳 Paiements"),
         telebot.types.KeyboardButton("🎟️ Codes Premium"),
         telebot.types.KeyboardButton("🗄️ Base de données"),
@@ -90,8 +91,8 @@ def menu_admin_bas():
         telebot.types.KeyboardButton("⚙️ Paramètres"),
         telebot.types.KeyboardButton("📝 Logs"),
         telebot.types.KeyboardButton("🚫 Bannis"),
-        telebot.types.KeyboardButton("📢 Broadcast"), # ⚠️ LE BOUTON EST ICI
-        telebot.types.KeyboardButton("💎 Premium"),
+        telebot.types.KeyboardButton("📢 Broadcast"),
+        telebot.types.KeyboardButton("💎 Gérer Premium"), # ⚠️ MODIFIÉ ICI
         telebot.types.KeyboardButton("🔍 Lancer l'Audit"),
         telebot.types.KeyboardButton("🔙 Quitter Admin")
     )
