@@ -109,11 +109,7 @@ def admin_required(f):
             log_warning(
                 message="Accès refusé à une route admin",
                 module="FLASK",
-                extra={
-                    "route": request.path,
-                    "ip": request.remote_addr,
-                    "user_agent": request.headers.get("User-Agent", "")[:100],
-                },
+                extra={"route": request.path, "ip": request.remote_addr},
             )
             return "🔒 Accès refusé. Secret manquant ou invalide.", 403
         return f(*args, **kwargs)
@@ -144,8 +140,7 @@ def _envoyer_message_securise(chat_id, texte, parse_mode=None):
         try:
             bot.send_message(chat_id, texte, parse_mode=parse_mode)
             return True
-        except Exception as e:
-            log_warning(message="Échec envoi message (fallback)", module="NOTIFS", exception=e)
+        except Exception:
             try:
                 bot.send_message(chat_id, texte)
                 return True
@@ -169,7 +164,7 @@ def charger_modele_universel():
     if global_model_data.get("models") is not None:
         return True
     if charger_et_entrainer():
-        log_info(f"Modèles chargés.", "BOOT")
+        log_info("Modèles chargés.", "BOOT")
         return True
     log_warning("Impossible de charger les modèles.", "BOOT")
     return False
@@ -223,32 +218,50 @@ def _nettoyer_vieilles_donnees():
 
 
 def _envoyer_notifications():
+    """Envoie les 3 meilleurs pronostics aux abonnés (Format Coach)."""
     if not charger_modele_universel():
         return
+
     try:
         from core.daily_matches import get_matchs_du_jour
         matchs = get_matchs_du_jour()
     except Exception as e:
         log_error(message="Erreur récupération matchs notifs", module="NOTIFS", exception=e)
         return
+
     if not matchs:
+        log_warning("Aucun match pour les notifications du matin.", "NOTIFS")
         return
-    top_3 = sorted(matchs, key=lambda x: x["dc_pct"], reverse=True)[:3]
+
+    top_3 = sorted(matchs, key=lambda x: x.get("dc_pct", 0), reverse=True)[:3]
+    
     date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
-    texte = f"🔥 **TOP 3 PRONOSTICS DU JOUR** 🔥\nDate : {date_str}\n\n"
+    texte = f"👋 **BONJOUR ! VOICI MES 3 CONSEILS DU JOUR**\nDate : {date_str}\n\n"
+    
     for i, m in enumerate(top_3, 1):
-        texte += (
-            f"{i}. **{m['home']} vs {m['away']}**\n"
-            f"   🛡️ DC : {m['dc_label']} ({round(m['dc_pct'] * 100, 1)}%)\n"
-            f"   🎯 BTTS : {round(m['btts'] * 100, 1)}% | 🥅 Over 2.5 : {round(m['over_25'] * 100, 1)}%\n\n"
-        )
+        label = m.get("dc_label", "1X")
+        if label == "1X":
+            conseil = f"{m['home']} gagne ou fait match nul"
+        elif label == "X2":
+            conseil = f"{m['away']} gagne ou fait match nul"
+        else:
+            conseil = "Il n'y aura pas de match nul"
+
+        texte += f"{i}. **{m['home']} vs {m['away']}**\n"
+        texte += f"   👉 **Mon conseil :** \"{conseil}\"\n"
+        texte += f"   📊 (Fiabilité : {round(m.get('dc_pct', 0) * 100, 1)}%)\n\n"
+
+    texte += "━━━━━━━━━━━━━━━━━━━━\n"
+    texte += "💡 _Misez max 2% de votre capital par pari._"
+
     users = get_utilisateurs_notifies()
     succes = 0
     for uid in users:
         if _envoyer_message_securise(uid, texte, parse_mode="Markdown"):
             succes += 1
         time.sleep(0.1)
-    log_info(f"Notifications envoyées : {succes}", "NOTIFS")
+        
+    log_info(f"Notifications du matin envoyées : {succes}", "NOTIFS")
 
 
 def _envoyer_coupons_premium():
