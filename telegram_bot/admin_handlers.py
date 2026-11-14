@@ -2,7 +2,7 @@
 """
 Handlers pour le panneau d'administration.
 - Vérification stricte des droits admin
-- Bouton "💎 Premium" isolé du menu utilisateur
+- Bouton "💎 Gérer Premium" isolé du menu utilisateur
 - Logs enrichis
 """
 
@@ -138,7 +138,7 @@ def enregistrer_admin_handlers(bot):
     @bot.message_handler(func=lambda m: est_administrateur(m.from_user.id) and m.text in [
         "📊 Stats", "👥 Utilisateurs", "💳 Paiements", "🎟️ Codes Premium",
         "🗄️ Base de données", "👑 Admins", "⚙️ Paramètres", "📝 Logs",
-        "🚫 Bannis", "📢 Broadcast", "💎 Premium", "🔙 Quitter Admin",
+        "🚫 Bannis", "📢 Broadcast", "💎 Gérer Premium", "🔙 Quitter Admin",
         "🔍 Lancer l'Audit", "📋 Exporter la liste",
         "➕ Ajouter Premium", "➖ Retirer Premium", "🔙 Retour Admin",
         "Gen 10 jours", "Gen 30 jours", "Gen 90 jours", "Gen custom", "👁️ Voir codes dispo",
@@ -220,8 +220,7 @@ def enregistrer_admin_handlers(bot):
             if text == "🗄️ Base de données":
                 bot.send_message(message.chat.id, "🗄️ BASE DE DONNÉES", reply_markup=menu_bdd_bas())
                 return
-            if text == "💎 Premium":
-                # ⚠️ SÉCURITÉ : On vérifie que c'est bien un admin (déjà garanti par le filtre du haut, mais ceinture et bretelles)
+            if text == "💎 Gérer Premium": # ⚠️ MODIFIÉ ICI
                 if est_administrateur(user_id):
                     bot.send_message(message.chat.id, "💎 GESTION PREMIUM", reply_markup=menu_premium_bas())
                 return
