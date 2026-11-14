@@ -6,6 +6,7 @@ Point d'entrée Flask + Scheduler.
 - Scheduler avec persistance des dernières exécutions (table parametres)
 - Health en try/finally
 - verifier_configuration() bloquante au démarrage
+- Formatage HTML pour Telegram
 """
 
 import os
@@ -133,8 +134,8 @@ def gerer_erreur_globale(e):
 # =========================================================
 # UTILITAIRES
 # =========================================================
-def _envoyer_message_securise(chat_id, texte, parse_mode=None):
-    """Envoie un message en gérant la limite 4096."""
+def _envoyer_message_securise(chat_id, texte, parse_mode="HTML"):
+    """Envoie un message en HTML en gérant la limite 4096."""
     limite = 4000
     if len(texte) <= limite:
         try:
@@ -218,7 +219,7 @@ def _nettoyer_vieilles_donnees():
 
 
 def _envoyer_notifications():
-    """Envoie les 3 meilleurs pronostics aux abonnés (Format Coach)."""
+    """Envoie les 3 meilleurs pronostics (Format Coach - HTML)."""
     if not charger_modele_universel():
         return
 
@@ -236,28 +237,28 @@ def _envoyer_notifications():
     top_3 = sorted(matchs, key=lambda x: x.get("dc_pct", 0), reverse=True)[:3]
     
     date_str = datetime.now(TZ_KINSHASA).strftime("%d/%m/%Y")
-    texte = f"👋 **BONJOUR ! VOICI MES 3 CONSEILS DU JOUR**\nDate : {date_str}\n\n"
+    texte = f"👋 <b>BONJOUR ! VOICI MES 3 CONSEILS DU JOUR</b>\nDate : {date_str}\n\n"
     
     for i, m in enumerate(top_3, 1):
         label = m.get("dc_label", "1X")
         if label == "1X":
-            conseil = f"{m['home']} gagne ou fait match nul"
+            conseil = f"<b>{m['home']}</b> gagne ou fait match nul"
         elif label == "X2":
-            conseil = f"{m['away']} gagne ou fait match nul"
+            conseil = f"<b>{m['away']}</b> gagne ou fait match nul"
         else:
             conseil = "Il n'y aura pas de match nul"
 
-        texte += f"{i}. **{m['home']} vs {m['away']}**\n"
-        texte += f"   👉 **Mon conseil :** \"{conseil}\"\n"
+        texte += f"{i}. <b>{m['home']} vs {m['away']}</b>\n"
+        texte += f"   👉 Mon conseil : {conseil}\n"
         texte += f"   📊 (Fiabilité : {round(m.get('dc_pct', 0) * 100, 1)}%)\n\n"
 
     texte += "━━━━━━━━━━━━━━━━━━━━\n"
-    texte += "💡 _Misez max 2% de votre capital par pari._"
+    texte += "💡 <i>Misez max 2% de votre capital par pari.</i>"
 
     users = get_utilisateurs_notifies()
     succes = 0
     for uid in users:
-        if _envoyer_message_securise(uid, texte, parse_mode="Markdown"):
+        if _envoyer_message_securise(uid, texte, parse_mode="HTML"):
             succes += 1
         time.sleep(0.1)
         
@@ -281,7 +282,7 @@ def _envoyer_coupons_premium():
             langue = get_langue(uid)
             for coupon in coupons:
                 texte = formater_coupon(coupon, langue, montrer_details=True)
-                _envoyer_message_securise(uid, texte)
+                _envoyer_message_securise(uid, texte, parse_mode="HTML")
                 time.sleep(0.1)
     except Exception as e:
         log_error(message="Erreur envoi coupons", module="COUPONS", exception=e)
