@@ -3,7 +3,7 @@
 Handlers pour le panneau d'administration.
 - Vérification stricte des droits admin
 - Bouton "💎 Gérer Premium" isolé du menu utilisateur
-- Logs enrichis
+- Le menu admin ignore les photos (laisse passer les preuves de paiement)
 """
 
 import telebot
@@ -133,9 +133,10 @@ def enregistrer_admin_handlers(bot):
             log_error(message=f"Erreur exécution action '{data}'", module="ADMIN", user_context=ctx, exception=e)
 
     # =========================================================
-    # GESTIONNAIRE DES BOUTONS DU CLAVIER ADMIN (Texte)
+    # GESTIONNAIRE DES BOUTONS DU CLAVIER ADMIN (Texte UNIQUEMENT)
     # =========================================================
-    @bot.message_handler(func=lambda m: est_administrateur(m.from_user.id) and m.text in [
+    # ⚠️ CORRECTION ICI : m.content_type == 'text' empêche l'admin de voler les photos
+    @bot.message_handler(func=lambda m: est_administrateur(m.from_user.id) and m.content_type == 'text' and m.text in [
         "📊 Stats", "👥 Utilisateurs", "💳 Paiements", "🎟️ Codes Premium",
         "🗄️ Base de données", "👑 Admins", "⚙️ Paramètres", "📝 Logs",
         "🚫 Bannis", "📢 Broadcast", "💎 Gérer Premium", "🔙 Quitter Admin",
@@ -220,7 +221,7 @@ def enregistrer_admin_handlers(bot):
             if text == "🗄️ Base de données":
                 bot.send_message(message.chat.id, "🗄️ BASE DE DONNÉES", reply_markup=menu_bdd_bas())
                 return
-            if text == "💎 Gérer Premium": # ⚠️ MODIFIÉ ICI
+            if text == "💎 Gérer Premium":
                 if est_administrateur(user_id):
                     bot.send_message(message.chat.id, "💎 GESTION PREMIUM", reply_markup=menu_premium_bas())
                 return
