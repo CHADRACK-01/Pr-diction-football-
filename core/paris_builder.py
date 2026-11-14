@@ -2,7 +2,7 @@
 """
 Génération des coupons du jour.
 - Utilise les prédictions déjà calculées (pas de recalcul)
-- Affiche les conseils sous forme de phrases compréhensibles
+- Affiche les conseils sous forme de phrases compréhensibles (Format HTML)
 """
 
 from datetime import datetime, timezone, timedelta
@@ -32,13 +32,13 @@ def _meilleure_reco(prono):
 
 
 def _traduire_pari(home, away, label_dc):
-    """Traduit les codes 1X, X2, 12 en phrases compréhensibles."""
+    """Traduit les codes 1X, X2, 12 en phrases compréhensibles avec HTML."""
     if label_dc == "1X":
-        return f"**{home}** gagne ou fait match nul"
+        return f"<b>{home}</b> gagne ou fait match nul"
     elif label_dc == "X2":
-        return f"**{away}** gagne ou fait match nul"
+        return f"<b>{away}</b> gagne ou fait match nul"
     elif label_dc == "12":
-        return "Il n'y aura **pas de match nul**"
+        return "Il n'y aura <b>pas de match nul</b>"
     return label_dc
 
 
@@ -235,7 +235,7 @@ def generer_coupons_du_jour():
 
 
 def formater_coupon(coupon, langue="fr", montrer_details=True):
-    """Formate un coupon pour Telegram avec le ton du Coach Personnel."""
+    """Formate un coupon pour Telegram avec le ton du Coach Personnel (HTML)."""
     niveau_labels = {
         "sur": "🔥 COUPON SUR",
         "modere": "⚖️ COUPON MODÉRÉ",
@@ -248,35 +248,35 @@ def formater_coupon(coupon, langue="fr", montrer_details=True):
     if coupon.get("intervalle"):
         titre += f" - {intervalle_labels.get(coupon['intervalle'], '')}"
 
-    texte = f"{titre}\n━━━━━━━━━━━━━━━━━━━━\n\n"
+    texte = f"<b>{titre}</b>\n━━━━━━━━━━━━━━━━━━━━\n\n"
 
     for i, m in enumerate(coupon.get("matchs", []), 1):
         phrase = _traduire_pari(m['home'], m['away'], m['reco_label'])
         
-        texte += f"{i}. **{m['home']} vs {m['away']}**\n"
+        texte += f"{i}. <b>{m['home']} vs {m['away']}</b>\n"
         
         if montrer_details:
-            texte += f"   👉 **Mon conseil :** \"{phrase}\"\n"
+            texte += f"   👉 Mon conseil : {phrase}\n"
             texte += f"   📊 (Fiabilité : {round(m['reco_pct'] * 100, 1)}%)\n"
             
             analyse = m.get("analyse_pari")
             if analyse and analyse.get("cote_book"):
                 if analyse.get("is_value"):
-                    texte += f"   💰 **Value Bet** (Cote bookmaker : {analyse['cote_book']})\n"
+                    texte += f"   💰 <b>Value Bet</b> (Cote bookmaker : {analyse['cote_book']})\n"
         else:
-            texte += f"   👉 **Mon conseil :** \"{phrase}\"\n"
+            texte += f"   👉 Mon conseil : {phrase}\n"
         
         texte += "\n"
 
     if montrer_details:
         texte += (
             f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"🎯 **Fiabilité globale du coupon :** {round(coupon.get('confiance_cumulee', 0) * 100, 1)}%\n"
+            f"🎯 <b>Fiabilité globale du coupon :</b> {round(coupon.get('confiance_cumulee', 0) * 100, 1)}%\n"
         )
     else:
         texte += (
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "⭐ _Passe Premium pour voir les conseils détaillés et les cotes._\n"
+            "⭐ <i>Passe Premium pour voir les conseils détaillés et les cotes.</i>\n"
         )
 
     return texte
