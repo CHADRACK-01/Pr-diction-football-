@@ -11,13 +11,28 @@ from core.utils.logs import log_info, log_error, log_warning
 
 
 def _envoyer_message_securise(bot, chat_id, texte):
+    """Envoie un message en HTML (gère la limite de 4096 caractères)."""
     limite = 4000
     if len(texte) <= limite:
-        bot.send_message(chat_id, texte)
+        try:
+            # ⚠️ C'EST ICI QUE TOUT SE JOUE : parse_mode="HTML"
+            bot.send_message(chat_id, texte, parse_mode="HTML")
+        except Exception as e:
+            log_warning(f"Erreur HTML, envoi en texte brut : {e}", "PREMIUM")
+            try:
+                bot.send_message(chat_id, texte)
+            except Exception as e2:
+                log_error(f"Impossible d'envoyer le message : {e2}", "PREMIUM")
     else:
         morceaux = [texte[i:i+limite] for i in range(0, len(texte), limite)]
         for morceau in morceaux:
-            bot.send_message(chat_id, morceau)
+            try:
+                bot.send_message(chat_id, morceau, parse_mode="HTML")
+            except Exception:
+                try:
+                    bot.send_message(chat_id, morceau)
+                except Exception:
+                    pass
             time.sleep(0.4)
 
 
@@ -30,8 +45,11 @@ def _supprimer_message_silencieux(bot, chat_id, message_id):
 
 def _modifier_message_silencieux(bot, chat_id, message_id, texte):
     try:
-        bot.edit_message_text(texte, chat_id, message_id)
+        bot.edit_message_text(texte, chat_id, message_id, parse_mode="HTML")
     except Exception as e:
+        msg_err = str(e).lower()
+        if "message is not modified" in msg_err:
+            return
         log_warning(f"Impossible de modifier le message {message_id} : {e}", "PREMIUM")
 
 
@@ -55,7 +73,7 @@ def _charger_modele_en_arriere_plan(bot, chat_id, message_id, user_id, langue, a
         return
     
     try:
-        # --- MATCHS DU JOUR (SANS FILTRE DE COTE) ---
+        # --- MATCHS DU JOUR ---
         if action == "matchs_du_jour":
             matchs = get_matchs_du_jour()
             if not matchs:
@@ -67,6 +85,7 @@ def _charger_modele_en_arriere_plan(bot, chat_id, message_id, user_id, langue, a
             _supprimer_message_silencieux(bot, chat_id, message_id)
             _envoyer_message_securise(bot, chat_id, texte)
             
+        # --- COUPONS ---
         elif action == "coupons":
             data = generer_coupons_du_jour()
             coupons = data['coupons']
@@ -85,6 +104,7 @@ def _charger_modele_en_arriere_plan(bot, chat_id, message_id, user_id, langue, a
                 texte = formater_coupon(coupon_modere, langue, montrer_details=False)
                 _envoyer_message_securise(bot, chat_id, texte)
                 
+        # --- TOP AFFICHES ---
         elif action == "top_affiches":
             affiches = get_top_affiches(limite=10)
             if not affiches:
