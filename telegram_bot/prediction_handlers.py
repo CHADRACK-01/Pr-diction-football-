@@ -3,13 +3,20 @@ import telebot
 from users import get_langue, est_premium
 from core.utils.logs import log_info, log_error, log_warning
 
+
 def _traduire_pari(home, away, label_dc):
-    if label_dc == "1X": return f"<b>{home}</b> gagne ou fait match nul"
-    elif label_dc == "X2": return f"<b>{away}</b> gagne ou fait match nul"
-    elif label_dc == "12": return "Il n'y aura <b>pas de match nul</b>"
+    """Traduit les codes 1X, X2, 12 en phrases positives."""
+    if label_dc == "1X":
+        return f"<b>{home}</b> va gagner ou faire match nul"
+    elif label_dc == "X2":
+        return f"<b>{away}</b> va gagner ou faire match nul"
+    elif label_dc == "12":
+        return "L'un des deux équipes va gagner (pas de match nul )"
     return label_dc
 
+
 def _formater_bulletin_premium(resultat, langue="fr"):
+    """Bulletin complet et visuel pour les utilisateurs Premium (HTML)."""
     try:
         h = resultat.get('home_team', '?')
         a = resultat.get('away_team', '?')
@@ -65,7 +72,9 @@ def _formater_bulletin_premium(resultat, langue="fr"):
         log_error("Erreur formater bulletin premium", "PREDICTION", exception=e)
         return "❌ Erreur."
 
+
 def _formater_bulletin_free(resultat, langue="fr"):
+    """Bulletin simplifié pour les utilisateurs Free (HTML)."""
     try:
         h = resultat.get('home_team', '?')
         a = resultat.get('away_team', '?')
@@ -91,6 +100,7 @@ def _formater_bulletin_free(resultat, langue="fr"):
     except Exception as e:
         log_error("Erreur formater bulletin free", "PREDICTION", exception=e)
         return "❌ Erreur."
+
 
 def enregistrer_prediction_handlers(bot):
     log_info("Module prediction_handlers chargé.", "PREDICTION")
