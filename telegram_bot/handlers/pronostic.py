@@ -1,10 +1,4 @@
 # telegram_bot/handlers/pronostic.py
-"""
-Flux de pronostic (compétition -> domicile -> extérieur).
-- Session dédiée (table sessions_pronostic)
-- Intégration du nouveau moteur V2 (top_scores, H2H)
-"""
-
 import telebot
 
 from users import (
@@ -100,8 +94,8 @@ def enregistrer_pronostic_handlers(bot):
             return
 
         try:
-            bot.reply_to(message, "⚽ **Choisis la compétition** :", 
-                         reply_markup=_creer_clavier_competitions(), parse_mode="Markdown")
+            bot.reply_to(message, "⚽ <b>Choisis la compétition</b> :", 
+                         reply_markup=_creer_clavier_competitions(), parse_mode="HTML")
         except Exception as e:
             log_error("Erreur affichage compétitions", "PRONOSTIC", user_context=ctx, exception=e)
 
@@ -134,7 +128,7 @@ def enregistrer_pronostic_handlers(bot):
             return
 
         if not equipes:
-            bot.reply_to(message, f"⚠️ Aucune équipe trouvée pour **{nom_propre}** cette saison.", parse_mode="Markdown")
+            bot.reply_to(message, f"⚠️ Aucune équipe trouvée pour <b>{nom_propre}</b> cette saison.", parse_mode="HTML")
             return
 
         if not creer_session(user_id, comp_code, nom_propre, equipes):
@@ -143,8 +137,8 @@ def enregistrer_pronostic_handlers(bot):
 
         bot.send_message(
             message.chat.id,
-            f"⚽ Compétition : **{nom_propre}**\n\n🏠 Sélectionne l'équipe **à domicile** :",
-            reply_markup=_creer_clavier_equipes(equipes), parse_mode="Markdown"
+            f"⚽ Compétition : <b>{nom_propre}</b>\n\n🏠 Sélectionne l'équipe <b>à domicile</b> :",
+            reply_markup=_creer_clavier_equipes(equipes), parse_mode="HTML"
         )
 
     @bot.message_handler(func=lambda m: _est_en_session(m.from_user.id, "domicile"))
@@ -165,8 +159,8 @@ def enregistrer_pronostic_handlers(bot):
         
         bot.send_message(
             message.chat.id,
-            f"🏠 Domicile : **{equipe_dom}**\n\n✈️ Sélectionne l'équipe **à l'extérieur** :",
-            reply_markup=_creer_clavier_equipes(equipes_ext), parse_mode="Markdown"
+            f"🏠 Domicile : <b>{equipe_dom}</b>\n\n✈️ Sélectionne l'équipe <b>à l'extérieur</b> :",
+            reply_markup=_creer_clavier_equipes(equipes_ext), parse_mode="HTML"
         )
 
     @bot.message_handler(func=lambda m: _est_en_session(m.from_user.id, "exterieur"))
@@ -189,8 +183,8 @@ def enregistrer_pronostic_handlers(bot):
         clear_session(user_id)
         bot.send_message(
             message.chat.id,
-            f"⏳ Calcul de la prédiction pour **{equipe_dom} vs {equipe_ext}**...",
-            reply_markup=_creer_clavier_principal(user_id), parse_mode="Markdown"
+            f"⏳ Calcul de la prédiction pour <b>{equipe_dom} vs {equipe_ext}</b>...",
+            reply_markup=_creer_clavier_principal(user_id), parse_mode="HTML"
         )
 
         try:
@@ -206,22 +200,21 @@ def enregistrer_pronostic_handlers(bot):
             bot.send_message(message.chat.id, f"❌ {erreur_msg}")
             return
 
-        # --- ENVOI DU BULLETIN FORMATÉ ---
+        # --- ENVOI DU BULLETIN FORMATÉ (HTML) ---
         try:
             from telegram_bot.prediction_handlers import _formater_bulletin_premium, _formater_bulletin_free
             is_prem = est_premium(user_id)
             bulletin = _formater_bulletin_premium(resultat) if is_prem else _formater_bulletin_free(resultat)
-            bot.send_message(message.chat.id, bulletin, parse_mode="Markdown")
+            # ⚠️ L'IMPORTANT EST ICI : parse_mode="HTML"
+            bot.send_message(message.chat.id, bulletin, parse_mode="HTML")
         except Exception as e:
             log_error("Erreur affichage bulletin", "PRONOSTIC", user_context=ctx, exception=e)
             bot.send_message(message.chat.id, "⚠️ Prédiction calculée mais affichage échoué.")
 
         # --- SAUVEGARDE HISTORIQUE ---
         try:
-            # ⚠️ CORRECTION ICI : on utilise top_scores au lieu de best_score
             top_scores = resultat.get("top_scores", [(1, 0, 0)])
-            best_i = top_scores[0][0]
-            best_j = top_scores[0][1]
+            best_i, best_j = top_scores[0][0], top_scores[0][1]
             
             sauvegarder_historique(
                 resultat["home_team"], resultat["away_team"], competition_reelle,
