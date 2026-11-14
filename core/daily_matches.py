@@ -22,15 +22,15 @@ def _charger_modele_si_necessaire():
         return False
 
 def _traduire_pari(home, away, label_dc):
-    if label_dc == "1X": return f"{home} gagne ou fait match nul"
-    if label_dc == "X2": return f"{away} gagne ou fait match nul"
+    if label_dc == "1X": return f"<b>{home}</b> gagne ou fait match nul"
+    if label_dc == "X2": return f"<b>{away}</b> gagne ou fait match nul"
     if label_dc == "12": return "Pas de match nul"
     return label_dc
 
 def get_matchs_du_jour():
     if not _charger_modele_si_necessaire(): return []
     try: matchs_bruts = collecter_tous_les_matchs()
-    except Exception as e: return []
+    except Exception: return []
     if not matchs_bruts: return []
 
     matchs_trouves = []
@@ -83,7 +83,7 @@ def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None)
 
     if not jours: return "📅 Aucun match valide."
 
-    texte = f"📅 **PROGRAMME DES MATCHS**\nDu {date_str}\n\n"
+    texte = f"📅 <b>PROGRAMME DES MATCHS</b>\nDu {date_str}\n\n"
     jours_fr = {"Monday": "Lundi", "Tuesday": "Mardi", "Wednesday": "Mercredi", "Thursday": "Jeudi", "Friday": "Vendredi", "Saturday": "Samedi", "Sunday": "Dimanche"}
 
     for jour_label in sorted(jours.keys()):
@@ -91,7 +91,7 @@ def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None)
         jour_trad = jours_fr.get(jour_label.split(" ")[0], "")
         date_part = jour_label.split(" ", 1)[1] if " " in jour_label else ""
         texte += "━━━━━━━━━━━━━━━━━━━━\n"
-        texte += f"📅 **{jour_trad} {date_part}**\n"
+        texte += f"📅 <b>{jour_trad} {date_part}</b>\n"
         texte += "━━━━━━━━━━━━━━━━━━━━\n\n"
         
         matchs_jour.sort(key=lambda x: x.get("heure") or "")
@@ -104,13 +104,13 @@ def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None)
             emoji_pays = info.get("emoji", "🏆")
             phrase_conseil = _traduire_pari(m['home'], m['away'], m['dc_label'])
             
-            texte += f"⚽ **{m['home']} vs {m['away']}**\n"
+            texte += f"⚽ <b>{m['home']} vs {m['away']}</b>\n"
             texte += f"   🕐 {heure} | 🏆 {m['nom_competition']} {emoji_pays}\n"
             
             if est_premium:
-                texte += f"   👉 **Mon conseil : \"{phrase_conseil}\"** ({round(m['dc_pct']*100, 1)}%)\n"
+                texte += f"   👉 Mon conseil : {phrase_conseil} ({round(m['dc_pct']*100, 1)}%)\n"
             texte += "\n"
 
     if not est_premium:
-        texte += "━━━━━━━━━━━━━━━━━━━━\n⭐ _Passe Premium pour voir mon conseil pour chaque match._\n"
+        texte += "━━━━━━━━━━━━━━━━━━━━\n⭐ <i>Passe Premium pour voir mon conseil pour chaque match.</i>\n"
     return texte
