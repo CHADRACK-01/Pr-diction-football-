@@ -23,7 +23,7 @@ except (ValueError, TypeError):
 # CANAL_ID peut être un int négatif (-100...) ou un username (@canal)
 CANAL_ID_RAW = os.environ.get("CANAL_ID", "-1003999473611").strip()
 if CANAL_ID_RAW.startswith("@") or CANAL_ID_RAW.startswith("-") is False:
-    CANAL_ID = CANAL_ID_RAW  # username ou ID positif (rare)
+    CANAL_ID = CANAL_ID_RAW
 else:
     try:
         CANAL_ID = int(CANAL_ID_RAW)
@@ -32,6 +32,12 @@ else:
 
 CANAL_USERNAME = os.environ.get("CANAL_USERNAME", "@pronosticsfootball01")
 CANAL_LIEN = os.environ.get("CANAL_LIEN", "https://t.me/pronosticsfootball01")
+
+# =========================================================
+# MODES
+# =========================================================
+MODE_VITRINE = os.environ.get("MODE_VITRINE", "false").lower() == "true"
+MODE_TEST = os.environ.get("MODE_TEST", "false").lower() == "true"
 
 # =========================================================
 # DÉTECTION DE L'ENVIRONNEMENT
@@ -49,7 +55,6 @@ try:
     os.makedirs(DOSSIER_PASSE, exist_ok=True)
     os.makedirs(DOSSIER_ACTUEL, exist_ok=True)
 except OSError:
-    # Sur Render, /tmp/data est toujours écrivable. Sur d'autres, on tolère.
     pass
 
 # =========================================================
@@ -110,7 +115,7 @@ TURSO_URL = os.environ.get("TURSO_URL", "")
 TURSO_TOKEN = os.environ.get("TURSO_TOKEN", "")
 
 # =========================================================
-# APIs EXTERNES (fallbacks supprimés : RuntimeError si manquant)
+# APIs EXTERNES
 # =========================================================
 FOOTBALL_DATA_KEY = os.environ.get("FOOTBALL_DATA_KEY", "")
 BZZOIRO_API_KEY = os.environ.get("BZZOIRO_API_KEY", "")
@@ -119,7 +124,6 @@ API_FOOTBALL_KEYS = [
     os.environ.get("API_FOOTBALL_KEY_1", ""),
     os.environ.get("API_FOOTBALL_KEY_2", ""),
 ]
-# On filtre les clés vides (si l'utilisateur n'en a mis qu'une)
 API_FOOTBALL_KEYS = [k for k in API_FOOTBALL_KEYS if k]
 
 # =========================================================
@@ -129,33 +133,21 @@ LIMITE_FREE_JOUR = 3
 LIMITE_PREMIUM_JOUR = 100
 
 # =========================================================
-# TAUX DE CHANGE (CDF par Star) — externalisé
+# TAUX DE CHANGE (CDF par Star)
 # =========================================================
 TAUX_CDF_PAR_STAR = int(os.environ.get("TAUX_CDF_PAR_STAR", "40"))
 
 # =========================================================
-# MODE VITRINE
-# =========================================================
-MODE_VITRINE = os.environ.get("MODE_VITRINE", "false").lower() == "true"
-
-# =========================================================
 # LOGS TELEGRAM
 # =========================================================
-# Anti-flood : nombre de secondes avant de pouvoir renvoyer la même erreur
 LOG_DEDUP_WINDOW_SEC = int(os.environ.get("LOG_DEDUP_WINDOW_SEC", "60"))
-# Récap des erreurs supprimées : intervalle en secondes
 LOG_RECAP_INTERVAL_SEC = int(os.environ.get("LOG_RECAP_INTERVAL_SEC", "3600"))
 
 # =========================================================
 # VÉRIFICATION DES VARIABLES CRITIQUES
 # =========================================================
 def verifier_configuration():
-    """
-    Vérifie que les variables critiques sont définies.
-    Lève une RuntimeError si une variable est manquante (le bot ne DOIT PAS démarrer).
-    """
     problemes = []
-
     if not TOKEN:
         problemes.append("TELEGRAM_TOKEN manquant ou vide")
     if not TURSO_URL:
@@ -163,24 +155,19 @@ def verifier_configuration():
     if not TURSO_TOKEN:
         problemes.append("TURSO_TOKEN manquant ou vide")
 
-    # Les APIs externes sont optionnelles (le bot peut tourner en mode dégradé)
-    # mais on log un warning si elles manquent (voir plus bas)
-
     if problemes:
         message = "❌ Configuration incomplète :\n" + "\n".join(f"  • {p}" for p in problemes)
         print(message, file=sys.stderr)
         raise RuntimeError(message)
 
-    # Variables optionnelles : warning seulement
     warnings = []
     if not FOOTBALL_DATA_KEY:
-        warnings.append("FOOTBALL_DATA_KEY absent (source football_data désactivée)")
+        warnings.append("FOOTBALL_DATA_KEY absent")
     if not BZZOIRO_API_KEY:
-        warnings.append("BZZOIRO_API_KEY absent (source bzzoiro désactivée)")
+        warnings.append("BZZOIRO_API_KEY absent")
     if not API_FOOTBALL_KEYS:
-        warnings.append("API_FOOTBALL_KEYS absent (source api_football désactivée)")
+        warnings.append("API_FOOTBALL_KEYS absent")
 
     for w in warnings:
         print(f"⚠️ {w}")
-
     return True
