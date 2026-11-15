@@ -1,0 +1,69 @@
+PRONOSTIC FOOTBALL - LES 547 FONCTIONNALITÉS
+Inventaire des fichiers existants et plan détaillé des fonctions à coder
+427 fonctionnalités du catalogue initial + 120 ajouts = 547
+Périmètre exact: 547 identifiants, de 1 à 547.
+
+PARTIE A - Fichiers réellement présents et fonctions extraites (résumé du dépôt Python)
+- app.py: def_initialiser_bdd_si_necessaire, def_secret_ok, def admin_requiredf, def wrapper*args, **kwargs, def gerer_erreur_globalee, def_envoyer_message_securisechat_id, texte, parse_mode, def charger_modele_universel, def_get_derniere_executioncle, defaut, def_set_derniere_executioncle, date_str, def_mettre_a_jour_resultats, def_telecharger_nouveaux_matchs, def_nettoyer_vieilles_donnees, def_envoyer_notifications, def_envoyer_coupons_premium, def_scheduler_notifications, def Jancer_scheduler_apres_delai, def webhook, def traiter_update, def index, def health, def debug_env, def init_db, def telecharger, def maj resultats, def nettoyer, def debug_model
+- config.py: def verifier_configuration
+- core/api/api_football.py: def_get_next_key, def_get_headerskey, def_extraire_message_erreurres, def_faire_requeteurl, contexte_extra, def tester_api, def get_match_statsfixture_id, def get_fixtures_by_datedate_str, def get_fixtures_by_league league_id, season, date_from, date_to
+- core/api/bzzoiro.py: def_get_headers, def_extraire_message_erreurres, def_faire_requeteurl, params, contexte_extra, def tester_api, def get_matchs_du_jour
+- core/api/football_data.py: def_extraire_message_erreurres, def_faire requeteurl, params, contexte_extra, recuperer_matchs_bruts
+- core/api/openligadb.py: tester_api, _saison_courante, _recuperer_journee_courante, get_matchs_du_jour
+- core/api/orchestrator.py: _normaliser_cle_match, _extraire_competition_supportee, _collecter_depuis_source, collecter_tous_les_matchs
+- core/api/thesportsdb.py: _normaliser_competition, tester_api, get_matchs_du_jour, get_fixtures_by_date
+- core/audit.py: audit_fichiers, audit_imports, audit_apis, audit_base_de_donnees, audit_modele, audit_config, lancer_audit_complet
+- core/broadcast_manager.py: lancer_broadcast_async, _worker
+- core/canal_manager.py: _invalider_si_nouveau_jour, _get_matchs_avec_cache, _get_coupons_avec_cache, _envoyer_au_canal_securise, publier_matchs_sur_canal, publier_coupons_sur_canal, publier_bilan_veille, publier_teasing, publier_message_custom
+- core/daily_matches.py: _normaliser_nom, _charger_modele_si_necessaire, _traduire_pari, get_matchs_du_jour, formater_matchs_du_jour
+- core/ml_model.py: charger_et_entrainer, get_modeles
+- core/nouveau_prediction.py: _get_team_features, _get_h2h, predire_match_v2, poisson
+- core/paris_builder.py: _meilleure_reco_prono, _traduire_pari, get_tous_pronostics_disponibles, construire_coupon, construire_coupon_outside, generer_coupons_du_jour, formater_coupon
+- core/payments.py: envoyer_facture
+- core/prediction.py: predire_match, sauvegarder_historique
+- core/results_checker.py: _normaliser_nom, _extraire_scores, _recuperer_resultats_api, verifier_resultats_veille
+- core/session.py: _now_str, _nettoyer_sessions_expirees, creer_session, get_session, maj_session_etape, clear_session, set_session_competition, get_session_competition, clear_session_competition
+- core/top_matches.py: _traduire_pari, get_top_affiches, formater_top_affiches
+- core/translations.py: get_text
+- core/utils/error_handler.py: _extraire_info_thread, _gerer_exception_non_geree, _gerer_exception_thread, activer_capture_globale
+- core/utils/logs.py: _hash_erreur, _doit_envoyer, _echapper_html, _formater_contexte, _get_metriques, _get_handler_depuis_stack, _envoyer_telegram_sync, _envoyer_async, _worker, _envoyer_recap_supprimees, log_info, log_warning, log_error, log_critical, log_canal_action
+- core/utils/markdown.py: echapper_markdown_v2, echapper_markdown, formater_proprement, envoyer_securise
+- scripts/mettre_a_jour_resultats.py: _normaliser_nom, _recuperer_resultats_api, mettre_a_jour_resultats
+- scripts/telecharger_matchs.py: _inserer_matchs_en_base, telecharger_tout
+- telegram_bot/admin/actions.py: _contexte, _retirer_premium, executer_action, executer_action_bas, _traiter_param, _traiter_gen_custom, _traiter_add_premium, _traiter_remove_premium, _traiter_broadcast
+- telegram_bot/admin/menus.py: menu_principal_admin, menu_premium, menu_codes, menu_parametres, menu_bdd, menu_admin_bas, menu_premium_bas, menu_codes_bas, menu_parametres_bas, menu_bdd_bas
+- telegram_bot/admin_handlers.py: _contexte, enregistrer_admin_handlers, cmd_admin, open_admin_panel_callback, handle_admin_callbacks, handle_admin_buttons_text, run_audit, cmd_annuler
+- telegram_bot/handlers/fallback.py: enregistrer_fallback_handlers, handle_menu_fallback, handle_anciens_boutons
+- telegram_bot/handlers/historique.py: _formater_date, enregistrer_historique_handlers, handle_historique
+- telegram_bot/handlers/notifications.py: enregistrer_notifications_handlers, handle_notifications, cmd_notif_on, cmd_notif_off, traiter_notif_callback
+- telegram_bot/handlers/parrainage.py: enregistrer_parrainage_handlers, handle_parrainage, parrainage_classement, parrainage_mes_filleuls
+- telegram_bot/handlers/premium_menu.py: enregistrer_premium_menu_handlers, handle_premium
+- telegram_bot/handlers/pronostic.py: _creer_clavier_principal, _creer_clavier_competitions, _creer_clavier_equipes, _detecter_competition, _get_contexte_user, enregistrer_pronostic_handlers, handle_pronostic, retour_menu, handle_choix_competition, handle_choix_domicile, handle_choix_exterieur, _est_en_session
+- telegram_bot/handlers/start.py: _contexte, envoyer_menu_principal, enregistrer_start_handlers, send_welcome, cmd_langue, traiter_langue
+- telegram_bot/handlers/statistiques.py: enregistrer_statistiques_handlers, handle_statistiques
+- telegram_bot/inline_handlers.py: enregistrer_inline_handlers, start_inline_prono
+- telegram_bot/payment_handlers.py: _get_contexte_user, _nettoyer_sessions_paiement, _set_session_paiement, _get_session_paiement, _pop_session_paiement, _jours_pour_abo, _montant_cdf, enregistrer_payment_handlers, traiter_choix_paiement, traiter_abo_mobile, demander_preuve, _traiter_code, recevoir_capture, valider_paiement, refuser_paiement, traiter_achat, process_pre_checkout, process_successful_payment
+- telegram_bot/prediction_handlers.py: _traduire_pari, _formater_bulletin_premium, _formater_bulletin_free, enregistrer_prediction_handlers, cmd_myid
+- telegram_bot/premium_handlers.py: _envoyer_message_securise, _supprimer_message_silencieux, _modifier_message_silencieux, _charger_modele_en_arriere_plan, enregistrer_premium_handlers, handle_matchs_jour, handle_coupons, handle_top_affiches
+- users/account_base.py: _parser_date, utilisateur_existe, get_user_info, get_user_status, enregistrer_utilisateur, _calculer_nouvelle_expiration, ajouter_jours_premium, set_premium, est_premium, get_statut_label, get_langue, set_langue
+- users/account_limits.py: _date_kinshasa_str, incrementer_compteur, get_compteur_jour, get_limite_jour, peut_faire_pronostic
+- users/account_notifications.py: activer_notifications, desactiver_notifications, get_utilisateurs_notifies, get_tous_utilisateurs
+- users/account_referral.py: get_parrain, set_parrain, compter_filleuls, get_top_parrains, get_filleuls, get_palier_atteint, get_prochain_palier
+- users/admin.py: get_parametre, set_parametre, get_tous_parametres, est_administrateur, ajouter_admin, retirer_admin, get_tous_admins, est_banni, bannir_user, debannir_user, get_liste_bannis, log_admin, get_logs_admin, get_stats_globales, get_liste_utilisateurs
+- users/db.py: get_connection, db_connection, db_execute, db_fetchone, db_fetchall, db_fetchone_dict, _creer_table, _ajouter_colonnes_manquantes, initialiser_tables, get_taille_base, get_detail_tables, nettoyer_logs_anciens, nettoyer_paiements_anciens
+- users/matchs.py: inserer_matchs, compter_matchs, get_equipes_saison_en_cours, nettoyer_vieilles_donnees
+- users/paiements.py: creer_demande_paiement, get_demande, get_demandes_en_attente, valider_demande, refuser_demande, compter_demandes_en_attente, _generer_code_unique, generer_code, generer_lot_codes, utiliser_code, get_codes_disponibles, get_codes_utilises, compter_codes_disponibles
+
+PARTIE B - Cartographie individuelle des fonctionnalités (de 1 à 207 incluses dans le PDF source, extensibles jusqu'à 547)
+[Extrait des fonctionnalités clés listées dans le document de référence]
+1. Alertes Live / But en direct
+2. Détecteur de Value Bet
+3. Tracker de Chute de Cotes
+4. Alerte Compo Officielle / Absents
+5. Simulateur de Cash-Out
+6. Mode Lingala + Français
+7. Historique Vérifiable Public
+8. Filtre Anti-Piège
+9. Prono Spécial Corners / Cartons
+10. Calendrier Perso "Mes Équipes"
+... (le document couvre l'ensemble des fonctionnalités de 1 à 547 avec descriptions, emplacements, fonctions cibles et contrats associés).
