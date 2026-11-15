@@ -21,7 +21,7 @@ from functools import wraps
 from flask import Flask, request
 
 # =========================================================
-# CAPTURE GLOBALE (avant tout import métier)
+# CAPTURE GLOBALE
 # =========================================================
 from core.utils.error_handler import activer_capture_globale
 activer_capture_globale()
@@ -31,7 +31,7 @@ activer_capture_globale()
 # =========================================================
 from config import (
     TOKEN, MODE_VITRINE, TURSO_URL, TURSO_TOKEN,
-    ADMIN_ID, verifier_configuration,
+    ADMIN_ID, verifier_configuration, MODE_TEST
 )
 verifier_configuration()
 
@@ -67,11 +67,9 @@ _db_initialisee = False
 
 
 def _initialiser_bdd_si_necessaire():
-    """Crée les tables Turso une seule fois (thread-safe)."""
     global _db_initialisee
     if _db_initialisee:
         return
-
     with _db_lock:
         if _db_initialisee:
             return
@@ -89,12 +87,10 @@ def _initialiser_bdd_si_necessaire():
             )
             raise
 
-
 # =========================================================
 # PROTECTION DES ROUTES DEBUG
 # =========================================================
 def _secret_ok():
-    """Vérifie le secret admin dans le header/query."""
     secret_attendu = os.environ.get("ADMIN_SECRET", "")
     if not secret_attendu:
         return False
@@ -103,7 +99,6 @@ def _secret_ok():
 
 
 def admin_required(f):
-    """Décorateur : bloque l'accès si le secret est absent/invalide."""
     @wraps(f)
     def wrapper(*args, **kwargs):
         if not _secret_ok():
@@ -115,7 +110,6 @@ def admin_required(f):
             return "🔒 Accès refusé. Secret manquant ou invalide.", 403
         return f(*args, **kwargs)
     return wrapper
-
 
 # =========================================================
 # MIDDLEWARE FLASK
@@ -130,12 +124,14 @@ def gerer_erreur_globale(e):
     )
     return "❌ Erreur interne.", 500
 
-
 # =========================================================
 # UTILITAIRES
 # =========================================================
 def _envoyer_message_securise(chat_id, texte, parse_mode="HTML"):
-    """Envoie un message en HTML en gérant la limite 4096."""
+    if MODE_TEST:
+        log_info("Mode Test : envoi de message ignoré.", "NOTIFS")
+        return True
+
     limite = 4000
     if len(texte) <= limite:
         try:
@@ -160,7 +156,6 @@ def _envoyer_message_securise(chat_id, texte, parse_mode="HTML"):
 
 
 def charger_modele_universel():
-    """Charge les modèles si nécessaire."""
     from core.ml_model import global_model_data, charger_et_entrainer
     if global_model_data.get("models") is not None:
         return True
@@ -170,9 +165,8 @@ def charger_modele_universel():
     log_warning("Impossible de charger les modèles.", "BOOT")
     return False
 
-
 # =========================================================
-# PERSISTANCE DES DERNIÈRES EXÉCUTIONS (scheduler)
+# PERSISTANCE DES DERNIÈRES EXÉCUTIONS
 # =========================================================
 def _get_derniere_execution(cle, defaut=None):
     try:
@@ -186,7 +180,6 @@ def _set_derniere_execution(cle, date_str):
         set_parametre(f"sched_{cle}", date_str, f"Dernière exécution {cle}")
     except Exception:
         pass
-
 
 # =========================================================
 # TÂCHES AUTOMATIQUES
@@ -219,7 +212,10 @@ def _nettoyer_vieilles_donnees():
 
 
 def _envoyer_notifications():
-    """Envoie les 3 meilleurs pronostics (Format Coach - HTML)."""
+    if MODE_TEST:
+        log_info("Mode Test : envoi de notifications ignoré.", "NOTIFS")
+        return
+
     if not charger_modele_universel():
         return
 
@@ -266,6 +262,9 @@ def _envoyer_notifications():
 
 
 def _envoyer_coupons_premium():
+    if MODE_TEST:
+        log_info("Mode Test : envoi de coupons ignoré.", "COUPONS")
+        return
     if not charger_modele_universel():
         return
     try:
@@ -286,7 +285,6 @@ def _envoyer_coupons_premium():
                 time.sleep(0.1)
     except Exception as e:
         log_error(message="Erreur envoi coupons", module="COUPONS", exception=e)
-
 
 # =========================================================
 # SCHEDULER
@@ -348,7 +346,6 @@ def _lancer_scheduler_apres_delai():
     except Exception as e:
         log_critical(message="Le scheduler s'est arrêté", module="SCHEDULER", exception=e)
 
-
 # =========================================================
 # ROUTES FLASK
 # =========================================================
@@ -392,7 +389,6 @@ def health():
     except Exception:
         return "❌ DB inaccessible", 503
 
-
 # =========================================================
 # ROUTES ADMIN (PROTÉGÉES)
 # =========================================================
@@ -404,6 +400,7 @@ def debug_env():
         f"TURSO_TOKEN : {'✅' if TURSO_TOKEN else '❌'}\n"
         f"TELEGRAM_TOKEN : {'✅' if TOKEN else '❌'}\n"
         f"MODE_VITRINE : {MODE_VITRINE}\n"
+        f"MODE_TEST : {MODE_TEST}\n"
         f"ADMIN_ID : {ADMIN_ID}"
     ), 200
 
@@ -475,13 +472,14 @@ def debug_model():
     except Exception as e:
         return f"❌ Erreur lecture DB : {e}", 500
 
-
 # =========================================================
 # DÉMARRAGE
 # =========================================================
 log_info("Bot prêt (Lazy Loading activé).", "BOOT")
 
-if not MODE_VITRINE:
+if MODE_TEST:
+    log_warning("⚠️ MODE TEST ACTIVÉ : Le scheduler est désactivé.", "BOOT")
+elif not MODE_VITRINE:
     threading.Thread(target=_lancer_scheduler_apres_delai, daemon=True).start()
     log_info("Scheduler programmé.", "BOOT")
 else:
