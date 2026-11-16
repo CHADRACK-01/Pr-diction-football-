@@ -1,9 +1,6 @@
 # telegram_bot/admin/actions.py
 """
 Actions admin (inline + bas).
-⚠️ CORRECTIONS :
-- _traiter_add_premium vérifie l'existence de l'utilisateur
-- Toutes les erreurs sont loggées avec contexte
 """
 
 import telebot
@@ -38,7 +35,6 @@ def _contexte(message_or_user):
 
 
 def _retirer_premium(user_id, ctx=None):
-    """Retire le premium d'un utilisateur."""
     from users.db import db_execute
     rowcount = db_execute(
         "UPDATE utilisateurs SET status = 'free', date_expiration = NULL WHERE user_id = ?",
@@ -229,6 +225,19 @@ def executer_action(bot, call, data, user_id):
             )
             bot.register_next_step_handler(msg, lambda m: _traiter_broadcast(bot, m, ADMIN_SESSIONS))
 
+        elif data == "admin_features":
+            from core.feature_flags import lister_features
+            features = lister_features()
+            texte = "⚙️ **GESTION DES FONCTIONNALITÉS**\n\n"
+            if not features:
+                texte += "Aucune fonctionnalité enregistrée."
+            else:
+                for fid, actif in features.items():
+                    statut = "✅ ACTIF" if actif else "❌ INACTIF"
+                    texte += f"• {fid} : {statut}\n"
+            texte += "\nCommandes :\n`/activer <id>`\n`/desactiver <id>`"
+            bot.send_message(call.message.chat.id, texte, parse_mode="Markdown")
+
         else:
             log_warning(message=f"Action inline inconnue : {data}", module="ADMIN", user_context=ctx)
             bot.send_message(call.message.chat.id, f"⚠️ Action '{data}' non reconnue.")
@@ -367,6 +376,19 @@ def executer_action_bas(bot, message, text, user_id):
             texte = "⚙️ PARAMS\n\n" + "\n".join(f"- {p['cle']} = {p['valeur']}" for p in params)
             bot.send_message(message.chat.id, texte)
 
+        elif text == "⚙️ Gérer les Fonctionnalités":
+            from core.feature_flags import lister_features
+            features = lister_features()
+            texte = "⚙️ FONCTIONNALITÉS\n\n"
+            if not features:
+                texte += "Aucune fonctionnalité enregistrée."
+            else:
+                for fid, actif in features.items():
+                    statut = "✅" if actif else "❌"
+                    texte += f"{statut} {fid}\n"
+            texte += "\nCommandes :\n/activer <id>\n/desactiver <id>"
+            bot.send_message(message.chat.id, texte)
+
         else:
             log_warning(message=f"Action bas inconnue : {text}", module="ADMIN", user_context=ctx)
             bot.send_message(message.chat.id, f"⚠️ Action '{text}' non reconnue.")
@@ -462,7 +484,6 @@ def _traiter_add_premium(bot, message, sessions):
     target = int(parts[0])
     jours = int(parts[1])
 
-    # ⚠️ VÉRIFICATION : l'utilisateur existe
     if not utilisateur_existe(target):
         log_warning(
             message="Tentative d'ajout premium sur utilisateur inexistant",
@@ -569,3 +590,45 @@ def _traiter_broadcast(bot, message, sessions):
         bot.reply_to(message, "❌ Erreur.")
     finally:
         sessions.pop(user_id, None)
+
+
+# =========================================================
+# COMMANDES FEATURES (hors session)
+# =========================================================
+# Note : Ces commandes sont aussi ajoutées dans admin_handlers.py pour être actives
+def cmd_features(bot, message):
+    from users import est_administrateur
+    if not est_administrateur(message.from_user.id): return
+    from core.feature_flags import lister_features
+    features = lister_features()
+    texte = "⚙️ **GESTION DES FONCTIONNALITÉS**\n\n"
+    if not features:
+        texte += "Aucune fonctionnalité enregistrée."
+    else:
+        for fid, actif in features.items():
+            statut = "✅ ACTIF" if actif else "❌ INACTIF"
+            texte += f"• {fid} : {statut}\n"
+    texte += "\nPour activer : `/activer 413`\nPour désactiver : `/desactiver 413`"
+    bot.send_message(message.chat.id, texte, parse_mode="Markdown")
+
+def cmd_activer(bot, message):
+    from users import est_administrateur
+    if not est_administrateur(message.from_user.id): return
+    try:
+        fid = message.text.split()[1]
+        from core.feature_flags import activer_feature
+        activer_feature(fid)
+        bot.reply_to(message, f"✅ Fonctionnalité {fid} ACTIVÉE.")
+    except Exception:
+        bot.reply_to(message, "Format: /activer <id>")
+
+def cmd_desactiver(bot, message):
+    from users import est_administrateur
+    if not est_administrateur(message.from_user.id): return
+    try:
+        fid = message.text.split()[1]
+        from core.feature_flags import desactiver_feature
+        desactiver_feature(fid)
+        bot.reply_to(message, f"❌ Fonctionnalité {fid} DÉSACTIVÉE.")
+    except Exception:
+        bot.reply_to(message, "Format: /desactiver <id>")
