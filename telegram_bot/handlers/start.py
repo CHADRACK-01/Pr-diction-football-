@@ -50,7 +50,7 @@ def envoyer_menu_principal(chat_id, user_id, bot, force_langue=None):
     # MODE VITRINE
     if config.MODE_VITRINE:
         presentation = (
-            f"👋 Bienvenue {nom} sur Pronostic Football !\n\n"
+            f"👋 Bienvenue sur mon bot auto-évolutif !\n\n"
             f"🛠️ **Le bot est actuellement en maintenance.**\n\n"
             f"📢 Les analyses et pronostics sont publiés **gratuitement** "
             f"sur notre canal Telegram.\n\n"
@@ -89,7 +89,7 @@ def envoyer_menu_principal(chat_id, user_id, bot, force_langue=None):
         statut_label, compteur, limite = "FREE", 0, 3
 
     presentation = (
-        f"👋 Bienvenue {nom} sur Pronostic Football !\n\n"
+        f"👋 Bienvenue sur mon bot auto-évolutif !\n\n"
         f"🤖 Je suis un bot d'IA spécialisé dans les pronostics sportifs.\n\n"
         f"📊 Statut : {statut_label}\n"
         f"🎯 Pronostics aujourd'hui : {compteur}/{limite}\n\n"
