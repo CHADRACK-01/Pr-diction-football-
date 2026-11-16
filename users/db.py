@@ -1,13 +1,6 @@
 # users/db.py
 """
 Gestion de la base de données Turso (libsql).
-
-Principes :
-- Une seule fonction `get_connection()` centralisée
-- Contexte manager `db_connection()` pour try/finally automatique
-- Helpers `db_execute`, `db_fetchone`, `db_fetchall` avec logs enrichis
-- Migration de colonnes robuste (PRAGMA + fallback)
-- Aucune f-string SQL (paramètres liés uniquement)
 """
 
 import os
@@ -26,11 +19,6 @@ TURSO_TOKEN = os.environ.get("TURSO_TOKEN", "")
 # CONNEXION CENTRALISÉE
 # =========================================================
 def get_connection():
-    """
-    Retourne une connexion Turso.
-    Lève RuntimeError si la config est absente (ne devrait jamais arriver
-    après verifier_configuration()).
-    """
     if not TURSO_URL or not TURSO_TOKEN:
         raise RuntimeError(
             "TURSO_URL ou TURSO_TOKEN manquant. "
@@ -41,14 +29,6 @@ def get_connection():
 
 @contextmanager
 def db_connection(db_context=None):
-    """
-    Context manager qui garantit la fermeture de la connexion,
-    même en cas d'exception.
-
-    Usage :
-        with db_connection({"table": "utilisateurs"}) as conn:
-            conn.execute(...)
-    """
     conn = None
     try:
         conn = get_connection()
@@ -75,13 +55,9 @@ def db_connection(db_context=None):
 
 
 # =========================================================
-# HELPERS DE HAUT NIVEAU (try/except + logs enrichis)
+# HELPERS DE HAUT NIVEAU
 # =========================================================
 def db_execute(query, params=None, db_context=None, commit=True):
-    """
-    Exécute une requête d'écriture avec logs détaillés en cas d'erreur.
-    Retourne le rowcount (nombre de lignes affectées) ou None si échec.
-    """
     ctx = dict(db_context or {})
     ctx.setdefault("query", query)
     ctx.setdefault("params", params)
@@ -115,7 +91,6 @@ def db_execute(query, params=None, db_context=None, commit=True):
 
 
 def db_fetchone(query, params=None, db_context=None):
-    """Exécute un SELECT et retourne la première ligne (ou None)."""
     ctx = dict(db_context or {})
     ctx.setdefault("query", query)
     ctx.setdefault("params", params)
@@ -147,7 +122,6 @@ def db_fetchone(query, params=None, db_context=None):
 
 
 def db_fetchall(query, params=None, db_context=None):
-    """Exécute un SELECT et retourne toutes les lignes (liste vide si échec)."""
     ctx = dict(db_context or {})
     ctx.setdefault("query", query)
     ctx.setdefault("params", params)
@@ -179,7 +153,6 @@ def db_fetchall(query, params=None, db_context=None):
 
 
 def db_fetchone_dict(query, params=None, db_context=None):
-    """Comme db_fetchone, mais retourne un dict (colonnes -> valeurs)."""
     conn = None
     ctx = dict(db_context or {})
     ctx.setdefault("query", query)
@@ -217,7 +190,6 @@ def db_fetchone_dict(query, params=None, db_context=None):
 # INITIALISATION DES TABLES
 # =========================================================
 def _creer_table(conn, nom, sql):
-    """Crée une table (idempotent)."""
     try:
         conn.execute(sql)
         conn.commit()
@@ -234,15 +206,7 @@ def _creer_table(conn, nom, sql):
 
 
 def _ajouter_colonnes_manquantes(conn, table, colonnes):
-    """
-    Vérifie les colonnes existantes via PRAGMA table_info
-    et ajoute celles qui manquent via ALTER TABLE.
-    Gère le cas où PRAGMA n'est pas supporté (fallback : on tente l'ALTER
-    directement et on ignore l'erreur "duplicate column").
-    """
     existantes = set()
-
-    # Tentative via PRAGMA
     try:
         cur = conn.execute(f"PRAGMA table_info({table})")
         rows = cur.fetchall()
@@ -271,7 +235,6 @@ def _ajouter_colonnes_manquantes(conn, table, colonnes):
             )
         except Exception as e:
             msg = str(e).lower()
-            # Si la colonne existe déjà (PRAGMA indisponible), c'est OK
             if "duplicate column" in msg or "already exists" in msg:
                 log_info(
                     f"Colonne '{nom_col}' déjà présente dans '{table}'.",
@@ -287,7 +250,6 @@ def _ajouter_colonnes_manquantes(conn, table, colonnes):
 
 
 def initialiser_tables():
-    """Initialise toutes les tables de la base (idempotent, sans destruction)."""
     log_info("Début de l'initialisation des tables...", "DATABASE")
 
     conn = None
@@ -421,12 +383,18 @@ def initialiser_tables():
                     date_maj TEXT DEFAULT CURRENT_TIMESTAMP
                 )
             """,
+            # NOUVELLE TABLE : Gestion des fonctionnalités (Feature Flags)
+            "fonctionnalites_actives": """
+                CREATE TABLE IF NOT EXISTS fonctionnalites_actives (
+                    feature_id TEXT PRIMARY KEY,
+                    actif INTEGER DEFAULT 0
+                )
+            """,
         }
 
         for nom, sql in tables.items():
             _creer_table(conn, nom, sql)
 
-        # Migration : colonnes manquantes dans matchs
         colonnes_matchs = {
             "hs": "INTEGER", "as_shots": "INTEGER",
             "hst": "INTEGER", "ast": "INTEGER",
@@ -438,7 +406,6 @@ def initialiser_tables():
         }
         _ajouter_colonnes_manquantes(conn, "matchs", colonnes_matchs)
 
-        # Migration : colonnes manquantes dans resultats_pronostics
         colonnes_resultats = {
             "competition": "TEXT",
             "score_predit": "TEXT",
@@ -446,7 +413,6 @@ def initialiser_tables():
         }
         _ajouter_colonnes_manquantes(conn, "resultats_pronostics", colonnes_resultats)
 
-        # Migration : colonnes manquantes dans sessions_pronostic
         colonnes_sessions = {
             "etape": "TEXT",
             "equipe_dom": "TEXT",
@@ -457,7 +423,6 @@ def initialiser_tables():
         }
         _ajouter_colonnes_manquantes(conn, "sessions_pronostic", colonnes_sessions)
 
-        # Vérification finale
         try:
             result = conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table'"
@@ -495,7 +460,6 @@ def initialiser_tables():
 # UTILITAIRES ADMIN
 # =========================================================
 def get_taille_base():
-    """Retourne la taille de la base en MB (ou 'Erreur' si échec)."""
     try:
         row = db_fetchone("""
             SELECT page_count * page_size as size
@@ -514,16 +478,15 @@ def get_taille_base():
 
 
 def get_detail_tables():
-    """Retourne le nombre de lignes par table."""
     tables = [
         "utilisateurs", "matchs", "models_cache",
         "paiements_attente", "codes_premium", "logs_admin",
         "resultats_pronostics", "sessions_pronostic",
+        "fonctionnalites_actives",
     ]
     resultats = []
     for table in tables:
         try:
-            # ⚠️ Pas de f-string SQL : on whitelist les tables
             if table not in tables:
                 continue
             row = db_fetchone(
@@ -544,7 +507,6 @@ def get_detail_tables():
 
 
 def nettoyer_logs_anciens(jours: int = 30) -> int:
-    """Supprime les logs admin de plus de X jours. Retourne le nombre supprimé."""
     if not isinstance(jours, int) or jours <= 0 or jours > 3650:
         log_warning(
             message=f"Paramètre 'jours' invalide : {jours}",
@@ -565,7 +527,6 @@ def nettoyer_logs_anciens(jours: int = 30) -> int:
 
 
 def nettoyer_paiements_anciens(jours: int = 90) -> int:
-    """Supprime les paiements traités de plus de X jours."""
     if not isinstance(jours, int) or jours <= 0 or jours > 3650:
         log_warning(
             message=f"Paramètre 'jours' invalide : {jours}",
