@@ -5,6 +5,7 @@ Handlers pour le panneau d'administration.
 - Bouton "💎 Gérer Premium" isolé du menu utilisateur
 - Le menu admin ignore les photos (laisse passer les preuves de paiement)
 - Gestion des Fonctionnalités (Feature Flags)
+- Gestion des taux de change (Fonctionnalité 416)
 """
 
 import telebot
@@ -21,7 +22,8 @@ from telegram_bot.admin.menus import (
 )
 from telegram_bot.admin.actions import (
     executer_action, executer_action_bas, ADMIN_SESSIONS,
-    cmd_features, cmd_activer, cmd_desactiver
+    cmd_features, cmd_activer, cmd_desactiver,
+    cmd_taux  # NOUVEAU
 )
 from core.utils.logs import log_info, log_error, log_warning
 
@@ -150,6 +152,13 @@ def enregistrer_admin_handlers(bot):
     @bot.message_handler(commands=['desactiver'])
     def handle_desactiver(message):
         cmd_desactiver(bot, message)
+
+    # =========================================================
+    # COMMANDE TAUX (Fonctionnalité 416)
+    # =========================================================
+    @bot.message_handler(commands=['taux'])
+    def handle_taux(message):
+        cmd_taux(bot, message)
 
     # =========================================================
     # GESTIONNAIRE DES BOUTONS DU CLAVIER ADMIN (Texte UNIQUEMENT)
