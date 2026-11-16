@@ -1,7 +1,7 @@
 # ai_dev/agent.py
 """
 Agent IA Développeur.
-Utilise Google Gemini (gemini-3.8-flash) en principal, et Groq (llama-3.3-70b-versatile) en fallback.
+Utilise Google Gemini (gemini-3.8-flash) en principal, et Groq (llama3-70b-8192) en fallback.
 """
 
 import os
@@ -9,8 +9,7 @@ import json
 import requests
 from core.utils.logs import log_info, log_error, log_warning
 
-# ⚠️ MODE TEST : Liste vide pour autoriser tous les fichiers
-FICHIERS_INTERDITS = []
+FICHIERS_INTERDITS = []  # Mode TEST : tout est autorisé
 
 PROMPT_SYSTEME = """Tu es le développeur principal d'un bot Telegram de pronostic football en Python.
 Tu reçois une demande de modification. Tu dois renvoyer UNIQUEMENT un objet JSON valide avec ce format exact :
@@ -23,7 +22,6 @@ RÈGLES STRICTES :
 - Le code doit être du Python valide, indenté correctement.
 - Tu dois intégrer tes modifications dans le code existant fourni.
 - Ne rajoute pas de blocs Markdown (```python) dans la clé "code_complet", juste le code brut.
-- Échappe correctement les guillemets et les retours à la ligne dans le JSON.
 """
 
 def _lire_fichier(chemin):
@@ -52,7 +50,6 @@ def _appeler_google(instruction, contenu_actuel):
     if not api_key:
         return {"erreur": "Clé GOOGLE_AI_API_KEY manquante."}
 
-    # Mise à jour vers gemini-3.8-flash
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={api_key}"
     headers = {"Content-Type": "application/json"}
     
@@ -69,7 +66,8 @@ def _appeler_google(instruction, contenu_actuel):
     }
 
     try:
-        res = requests.post(url, headers=headers, json=payload, timeout=90)
+        # TIMEOUT AUGMENTÉ À 120 SECONDES
+        res = requests.post(url, headers=headers, json=payload, timeout=120)
         if res.status_code != 200:
             log_warning(f"Google a échoué (code {res.status_code}) : {res.text[:200]}", "AI_DEV")
             return {"erreur": f"Google HTTP {res.status_code}"}
@@ -77,7 +75,6 @@ def _appeler_google(instruction, contenu_actuel):
         data = res.json()
         content = data["candidates"][0]["content"]["parts"][0]["text"]
         
-        # Nettoyage de sécurité si l'IA ajoute des backticks
         content = content.strip()
         if content.startswith("```json"):
             content = content[7:]
@@ -87,7 +84,7 @@ def _appeler_google(instruction, contenu_actuel):
         return json.loads(content)
     except Exception as e:
         log_error(f"Exception Google: {str(e)}", "AI_DEV", exception=e)
-        return {"erreur": "Erreur réseau Google"}
+        return {"erreur": "Erreur réseau Google (Timeout)"}
 
 # =========================================================
 # GROQ (FALLBACK)
@@ -103,7 +100,7 @@ def _appeler_groq(instruction, contenu_actuel):
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "llama-3.3-70b-versatile", # Modèle plus stable pour le JSON
+        "model": "llama3-70b-8192", # Modèle standard encore dispo
         "messages": [
             {"role": "system", "content": PROMPT_SYSTEME},
             {"role": "user", "content": f"Code actuel:\n```python\n{contenu_actuel}\n```\n\nDemande : {instruction}"}
@@ -113,7 +110,8 @@ def _appeler_groq(instruction, contenu_actuel):
     }
 
     try:
-        res = requests.post(url, headers=headers, json=payload, timeout=90)
+        # TIMEOUT AUGMENTÉ À 120 SECONDES
+        res = requests.post(url, headers=headers, json=payload, timeout=120)
         if res.status_code != 200:
             log_warning(f"Groq a échoué (code {res.status_code}) : {res.text[:200]}", "AI_DEV")
             return {"erreur": f"Groq HTTP {res.status_code}"}
@@ -123,10 +121,10 @@ def _appeler_groq(instruction, contenu_actuel):
         return json.loads(content)
     except Exception as e:
         log_warning(f"Exception Groq: {str(e)}", "AI_DEV")
-        return {"erreur": "Erreur réseau Groq"}
+        return {"erreur": "Erreur réseau Groq (Timeout)"}
 
 # =========================================================
-# LOGIQUE DE FALLBACK INVERSÉE
+# LOGIQUE DE FALLBACK
 # =========================================================
 def demander_a_ia(instruction_utilisateur, contenu_actuel):
     log_info("Tentative avec Google Gemini (IA Principale)...", "AI_DEV")
@@ -144,17 +142,13 @@ def demander_a_ia(instruction_utilisateur, contenu_actuel):
         return reponse_fallback
         
     log_error("Les deux IA ont échoué.", "AI_DEV")
-    return {"erreur": "Les deux intelligences artificielles ont échoué. Vérifie tes clés API et tes quotas."}
+    return {"erreur": "Les deux intelligences artificielles ont échoué. Fichier trop lourd ou timeout."}
 
 # =========================================================
 # FONCTION PRINCIPALE
 # =========================================================
 def preparer_mise_a_jour(chemin_fichier, instruction):
     log_info(f"Demande IA : {instruction} sur {chemin_fichier}", "AI_DEV")
-
-    # ⚠️ MODE TEST : Vérification désactivée
-    # if any(interdit in chemin_fichier for interdit in FICHIERS_INTERDITS):
-    #     return False, "🚫 Sécurité : Ce fichier est protégé.", None, None
 
     contenu_actuel = _lire_fichier(chemin_fichier)
     if contenu_actuel is None:
