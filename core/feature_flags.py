@@ -1,5 +1,5 @@
 # core/feature_flags.py
-from users.db import db_execute, db_fetchone
+from users.db import db_execute, db_fetchone, db_fetchall
 
 def est_active(feature_id):
     """Vérifie si une fonctionnalité est active (par défaut : False)."""
@@ -25,6 +25,5 @@ def desactiver_feature(feature_id):
 
 def lister_features():
     """Retourne la liste de toutes les fonctionnalités et leur état."""
-    from users.db import db_fetchall
     rows = db_fetchall("SELECT feature_id, actif FROM fonctionnalites_actives")
     return {row[0]: bool(row[1]) for row in rows}
