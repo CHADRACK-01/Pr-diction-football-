@@ -17,6 +17,7 @@ from telegram_bot.handlers.notifications import enregistrer_notifications_handle
 from telegram_bot.handlers.historique import enregistrer_historique_handlers
 from telegram_bot.handlers.statistiques import enregistrer_statistiques_handlers
 from telegram_bot.handlers.parrainage import enregistrer_parrainage_handlers
+from telegram_bot.devises_handlers import enregistrer_devises_handlers
 
 # 4. Les paiements et prédictions
 from telegram_bot.payment_handlers import enregistrer_payment_handlers
@@ -40,6 +41,7 @@ def enregistrer_handlers(bot):
         ("Historique", enregistrer_historique_handlers),
         ("Stats", enregistrer_statistiques_handlers),
         ("Parrainage", enregistrer_parrainage_handlers),
+        ("Devises", enregistrer_devises_handlers),
         ("Paiement", enregistrer_payment_handlers),
         ("Prédiction", enregistrer_prediction_handlers),
         ("AI_Dev", enregistrer_ai_dev_handlers), # Nouveau
