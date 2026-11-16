@@ -1,6 +1,7 @@
 # telegram_bot/admin/menus.py
 import telebot
 
+
 # =========================================================
 # MENUS INLINE
 # =========================================================
@@ -24,6 +25,7 @@ def menu_principal_admin():
     )
     return markup
 
+
 def menu_premium():
     markup = telebot.types.InlineKeyboardMarkup(row_width=1)
     markup.add(
@@ -32,6 +34,7 @@ def menu_premium():
         telebot.types.InlineKeyboardButton("🔙 Retour Admin", callback_data="admin_back")
     )
     return markup
+
 
 def menu_codes():
     markup = telebot.types.InlineKeyboardMarkup(row_width=2)
@@ -44,6 +47,7 @@ def menu_codes():
         telebot.types.InlineKeyboardButton("🔙 Retour Admin", callback_data="admin_back")
     )
     return markup
+
 
 def menu_parametres():
     markup = telebot.types.InlineKeyboardMarkup(row_width=2)
@@ -58,6 +62,7 @@ def menu_parametres():
     )
     return markup
 
+
 def menu_bdd():
     markup = telebot.types.InlineKeyboardMarkup(row_width=2)
     markup.add(
@@ -68,11 +73,13 @@ def menu_bdd():
     )
     return markup
 
+
 # =========================================================
 # MENUS EN BAS (ReplyKeyboardMarkup)
 # =========================================================
 
 def menu_admin_bas():
+    """Menu principal de l'admin en bas."""
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(
         telebot.types.KeyboardButton("📊 Stats"),
@@ -90,5 +97,53 @@ def menu_admin_bas():
         telebot.types.KeyboardButton("🔍 Lancer l'Audit"),
         telebot.types.KeyboardButton("⚙️ Gérer les Fonctionnalités"), # NOUVEAU
         telebot.types.KeyboardButton("🔙 Quitter Admin")
+    )
+    return markup
+
+
+def menu_premium_bas():
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    markup.add(
+        telebot.types.KeyboardButton("➕ Ajouter Premium"),
+        telebot.types.KeyboardButton("➖ Retirer Premium"),
+        telebot.types.KeyboardButton("🔙 Retour Admin")
+    )
+    return markup
+
+
+def menu_codes_bas():
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    markup.add(
+        telebot.types.KeyboardButton("Gen 10 jours"),
+        telebot.types.KeyboardButton("Gen 30 jours"),
+        telebot.types.KeyboardButton("Gen 90 jours"),
+        telebot.types.KeyboardButton("Gen custom"),
+        telebot.types.KeyboardButton("👁️ Voir codes dispo"),
+        telebot.types.KeyboardButton("🔙 Retour Admin")
+    )
+    return markup
+
+
+def menu_parametres_bas():
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    markup.add(
+        telebot.types.KeyboardButton("Heure notifs"),
+        telebot.types.KeyboardButton("Limite Free"),
+        telebot.types.KeyboardButton("Prix Stars"),
+        telebot.types.KeyboardButton("Message accueil"),
+        telebot.types.KeyboardButton("Mode maintenance"),
+        telebot.types.KeyboardButton("👁️ Voir parametres"),
+        telebot.types.KeyboardButton("🔙 Retour Admin")
+    )
+    return markup
+
+
+def menu_bdd_bas():
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    markup.add(
+        telebot.types.KeyboardButton("Taille BDD"),
+        telebot.types.KeyboardButton("Detail tables"),
+        telebot.types.KeyboardButton("🧹 Nettoyer"),
+        telebot.types.KeyboardButton("🔙 Retour Admin")
     )
     return markup
