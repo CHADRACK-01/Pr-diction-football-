@@ -100,7 +100,7 @@ def _appeler_groq(instruction, contenu_actuel):
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "llama3-70b-8192", # Modèle standard encore dispo
+        "model": "llama-3.3-70b-versatile",
         "messages": [
             {"role": "system", "content": PROMPT_SYSTEME},
             {"role": "user", "content": f"Code actuel:\n```python\n{contenu_actuel}\n```\n\nDemande : {instruction}"}
