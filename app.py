@@ -90,12 +90,12 @@ def _initialiser_bdd_si_necessaire():
 # =========================================================
 # PROTECTION DES ROUTES DEBUG
 # =========================================================
+from core.securite import verifier_token_admin
+
+
 def _secret_ok():
-    secret_attendu = os.environ.get("ADMIN_SECRET", "")
-    if not secret_attendu:
-        return False
     fourni = request.args.get("secret") or request.headers.get("X-Admin-Secret")
-    return fourni == secret_attendu
+    return verifier_token_admin(fourni)
 
 
 def admin_required(f):
