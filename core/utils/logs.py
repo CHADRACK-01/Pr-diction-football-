@@ -94,16 +94,7 @@ def _doit_envoyer(hash_cle: str) -> bool:
     return True
 
 
-def _echapper_html(texte: str) -> str:
-    """Échappe le HTML pour Telegram."""
-    if not texte:
-        return ""
-    return (
-        str(texte)
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
+from core.securite import nettoyer_html
 
 
 def _formater_contexte(user_context: Optional[Dict], api_context: Optional[Dict],
@@ -115,39 +106,39 @@ def _formater_contexte(user_context: Optional[Dict], api_context: Optional[Dict]
     if user_context:
         lignes = []
         if user_context.get("user_id"):
-            lignes.append(f"   • ID : <code>{_echapper_html(user_context['user_id'])}</code>")
+            lignes.append(f"   • ID : <code>{nettoyer_html(user_context['user_id'])}</code>")
         if user_context.get("user_name"):
-            lignes.append(f"   • Nom : {_echapper_html(user_context['user_name'])}")
+            lignes.append(f"   • Nom : {nettoyer_html(user_context['user_name'])}")
         if user_context.get("username"):
-            lignes.append(f"   • Username : @{_echapper_html(user_context['username'])}")
+            lignes.append(f"   • Username : @{nettoyer_html(user_context['username'])}")
         if user_context.get("chat_id"):
-            lignes.append(f"   • Chat ID : <code>{_echapper_html(user_context['chat_id'])}</code>")
+            lignes.append(f"   • Chat ID : <code>{nettoyer_html(user_context['chat_id'])}</code>")
         if user_context.get("langue"):
-            lignes.append(f"   • Langue : {_echapper_html(user_context['langue'])}")
+            lignes.append(f"   • Langue : {nettoyer_html(user_context['langue'])}")
         if user_context.get("statut"):
-            lignes.append(f"   • Statut : {_echapper_html(user_context['statut'])}")
+            lignes.append(f"   • Statut : {nettoyer_html(user_context['statut'])}")
         if user_context.get("message_text"):
             msg = str(user_context["message_text"])[:200]
-            lignes.append(f"   • Message : <i>\"{_echapper_html(msg)}\"</i>")
+            lignes.append(f"   • Message : <i>\"{nettoyer_html(msg)}\"</i>")
         if user_context.get("command"):
-            lignes.append(f"   • Commande : {_echapper_html(user_context['command'])}")
+            lignes.append(f"   • Commande : {nettoyer_html(user_context['command'])}")
         if lignes:
             blocs.append("👤 <b>Utilisateur</b>\n" + "\n".join(lignes))
 
     if api_context:
         lignes = []
         if api_context.get("source"):
-            lignes.append(f"   • Source : <b>{_echapper_html(api_context['source'])}</b>")
+            lignes.append(f"   • Source : <b>{nettoyer_html(api_context['source'])}</b>")
         if api_context.get("url"):
             url = str(api_context["url"])[:300]
-            lignes.append(f"   • URL : <code>{_echapper_html(url)}</code>")
+            lignes.append(f"   • URL : <code>{nettoyer_html(url)}</code>")
         if api_context.get("http_status"):
-            lignes.append(f"   • Statut HTTP : <code>{_echapper_html(api_context['http_status'])}</code>")
+            lignes.append(f"   • Statut HTTP : <code>{nettoyer_html(api_context['http_status'])}</code>")
         if api_context.get("http_body"):
             body = str(api_context["http_body"])[:200]
-            lignes.append(f"   • Réponse : <code>{_echapper_html(body)}</code>")
+            lignes.append(f"   • Réponse : <code>{nettoyer_html(body)}</code>")
         if api_context.get("attempt"):
-            lignes.append(f"   • Tentative : {_echapper_html(api_context['attempt'])}")
+            lignes.append(f"   • Tentative : {nettoyer_html(api_context['attempt'])}")
         if api_context.get("duration_ms"):
             lignes.append(f"   • Durée : {api_context['duration_ms']} ms")
         if lignes:
@@ -157,23 +148,23 @@ def _formater_contexte(user_context: Optional[Dict], api_context: Optional[Dict]
         lignes = []
         if db_context.get("query"):
             query = str(db_context["query"])[:300]
-            lignes.append(f"   • Requête : <code>{_echapper_html(query)}</code>")
+            lignes.append(f"   • Requête : <code>{nettoyer_html(query)}</code>")
         if db_context.get("table"):
-            lignes.append(f"   • Table : {_echapper_html(db_context['table'])}")
+            lignes.append(f"   • Table : {nettoyer_html(db_context['table'])}")
         if db_context.get("params"):
             params = str(db_context["params"])[:200]
-            lignes.append(f"   • Paramètres : <code>{_echapper_html(params)}</code>")
+            lignes.append(f"   • Paramètres : <code>{nettoyer_html(params)}</code>")
         if lignes:
             blocs.append("🗄️ <b>Base de données</b>\n" + "\n".join(lignes))
 
     if handler:
-        blocs.append(f"🔧 <b>Handler</b> : <code>{_echapper_html(handler)}</code>")
+        blocs.append(f"🔧 <b>Handler</b> : <code>{nettoyer_html(handler)}</code>")
 
     if extra:
         lignes = []
         for k, v in extra.items():
             valeur = str(v)[:200]
-            lignes.append(f"   • {_echapper_html(k)} : {_echapper_html(valeur)}")
+            lignes.append(f"   • {nettoyer_html(k)} : {nettoyer_html(valeur)}")
         if lignes:
             blocs.append("📋 <b>Détails</b>\n" + "\n".join(lignes))
 
@@ -306,22 +297,22 @@ def log_warning(message: str, module: str = "BOT",
         f"⚠️ <b>AVERTISSEMENT</b>\n",
         f"📅 {date_str} (Kinshasa)",
         f"🆔 <code>{hash_cle}</code>",
-        f"📌 Module : <b>{_echapper_html(module)}</b>",
+        f"📌 Module : <b>{nettoyer_html(module)}</b>",
     ]
 
     if handler_final != "N/A":
-        blocs.append(f"🔧 Handler : <code>{_echapper_html(handler_final)}</code>")
+        blocs.append(f"🔧 Handler : <code>{nettoyer_html(handler_final)}</code>")
 
     ctx = _formater_contexte(user_context, api_context, db_context, None, extra)
     if ctx:
         blocs.append(ctx)
 
-    blocs.append(f"\n📝 <b>Message</b> :\n{_echapper_html(message)}")
+    blocs.append(f"\n📝 <b>Message</b> :\n{nettoyer_html(message)}")
 
     if exception:
         trace = traceback.format_exc()
         if trace and "NoneType: None" not in trace:
-            blocs.append(f"\n🔍 <b>Trace</b> :\n<pre>{_echapper_html(trace[:2500])}</pre>")
+            blocs.append(f"\n🔍 <b>Trace</b> :\n<pre>{nettoyer_html(trace[:2500])}</pre>")
 
     texte = "\n".join(blocs)
     _envoyer_async(texte)
@@ -356,20 +347,20 @@ def log_error(message: str, module: str = "BOT",
         f"🚨 <b>ERREUR DÉTECTÉE</b>\n",
         f"📅 {date_str} (Kinshasa)",
         f"🆔 <code>{hash_cle}</code>",
-        f"📌 Module : <b>{_echapper_html(module)}</b>",
+        f"📌 Module : <b>{nettoyer_html(module)}</b>",
     ]
 
     if handler_final != "N/A":
-        blocs.append(f"🔧 Handler : <code>{_echapper_html(handler_final)}</code>")
+        blocs.append(f"🔧 Handler : <code>{nettoyer_html(handler_final)}</code>")
 
     ctx = _formater_contexte(user_context, api_context, db_context, None, extra)
     if ctx:
         blocs.append(ctx)
 
-    blocs.append(f"\n📝 <b>Message</b> :\n{_echapper_html(message)}")
+    blocs.append(f"\n📝 <b>Message</b> :\n{nettoyer_html(message)}")
 
     if trace and "NoneType: None" not in trace:
-        blocs.append(f"\n🔍 <b>Trace</b> :\n<pre>{_echapper_html(trace[:2500])}</pre>")
+        blocs.append(f"\n🔍 <b>Trace</b> :\n<pre>{nettoyer_html(trace[:2500])}</pre>")
 
     blocs.append("\n" + _get_metriques())
 
@@ -401,20 +392,20 @@ def log_critical(message: str, module: str = "BOT",
     blocs = [
         f"🚨🚨 <b>ERREUR CRITIQUE</b> 🚨🚨\n",
         f"📅 {date_str} (Kinshasa)",
-        f"📌 Module : <b>{_echapper_html(module)}</b>",
+        f"📌 Module : <b>{nettoyer_html(module)}</b>",
     ]
 
     if handler_final != "N/A":
-        blocs.append(f"🔧 Handler : <code>{_echapper_html(handler_final)}</code>")
+        blocs.append(f"🔧 Handler : <code>{nettoyer_html(handler_final)}</code>")
 
     ctx = _formater_contexte(user_context, api_context, db_context, None, extra)
     if ctx:
         blocs.append(ctx)
 
-    blocs.append(f"\n📝 <b>Message</b> :\n{_echapper_html(message)}")
+    blocs.append(f"\n📝 <b>Message</b> :\n{nettoyer_html(message)}")
 
     if trace and "NoneType: None" not in trace:
-        blocs.append(f"\n🔍 <b>Trace</b> :\n<pre>{_echapper_html(trace[:2500])}</pre>")
+        blocs.append(f"\n🔍 <b>Trace</b> :\n<pre>{nettoyer_html(trace[:2500])}</pre>")
 
     blocs.append("\n" + _get_metriques())
 
