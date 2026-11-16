@@ -9,6 +9,7 @@ import json
 import requests
 from core.utils.logs import log_info, log_error, log_warning
 
+# ⚠️ MODE TEST : Liste vide pour autoriser tous les fichiers
 FICHIERS_INTERDITS = []
 
 PROMPT_SYSTEME = """Tu es le développeur principal d'un bot Telegram de pronostic football en Python.
@@ -141,8 +142,9 @@ def demander_a_ia(instruction_utilisateur, contenu_actuel):
 def preparer_mise_a_jour(chemin_fichier, instruction):
     log_info(f"Demande IA : {instruction} sur {chemin_fichier}", "AI_DEV")
 
-    if any(interdit in chemin_fichier for interdit in FICHIERS_INTERDITS):
-        return False, "🚫 Sécurité : Ce fichier est protégé et ne peut pas être modifié par l'IA.", None, None
+    # ⚠️ MODE TEST : Vérification désactivée pour autoriser tous les fichiers
+    # if any(interdit in chemin_fichier for interdit in FICHIERS_INTERDITS):
+    #     return False, "🚫 Sécurité : Ce fichier est protégé et ne peut pas être modifié par l'IA.", None, None
 
     contenu_actuel = _lire_fichier(chemin_fichier)
     if contenu_actuel is None:
