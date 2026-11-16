@@ -37,6 +37,7 @@ from telegram_bot.ai_dev_handlers import enregistrer_ai_dev_handlers
 # 5. Le Fallback en TOUT DERNIER
 from telegram_bot.handlers.fallback import enregistrer_fallback_handlers
 from telegram_bot.momentum_handlers import enregistrer_momentum_handlers
+from telegram_bot.fiabilite_handlers import enregistrer_fiabilite_handlers
 
 def enregistrer_handlers(bot):
     handlers_modules = [
@@ -56,6 +57,7 @@ def enregistrer_handlers(bot):
         ("UtilisationCode", enregistrer_utilisation_code_handlers), # NOUVEAU
         ("Paiement", enregistrer_payment_handlers),
         ("Prédiction", enregistrer_prediction_handlers),
+        ("Fiabilite", enregistrer_fiabilite_handlers),
         ("Momentum", enregistrer_momentum_handlers),
         ("AI_Dev", enregistrer_ai_dev_handlers),
         ("Fallback", enregistrer_fallback_handlers),
