@@ -1,6 +1,7 @@
 # telegram_bot/prediction_handlers.py
 import telebot
 from users import get_langue, est_premium
+from core.feature_flags import est_active
 from core.utils.logs import log_info, log_error, log_warning
 
 
@@ -65,6 +66,22 @@ def _formater_bulletin_premium(resultat, langue="fr"):
             else:
                 txt += f"Pas d'affaire exceptionnelle.\n\n"
 
+        # --- Accès Pro aux Matrices de Poisson (Fonctionnalité 414) ---
+        if est_active("414"):
+            try:
+                from core.nouveau_prediction import get_matrice_poisson
+                matrice = get_matrice_poisson(h, a)
+                if matrice:
+                    txt += f"\n📐 <b>MATRICE DE POISSON (Top 5 Scores) :</b>\n"
+                    for score in matrice["top_scores"][:5]:
+                        txt += f"• {h} {score['score']} {a} : {score['proba']}%\n"
+                    txt += f"\n📊 <b>Autres probabilités :</b>\n"
+                    txt += f"• Plus de 2.5 buts : {matrice['proba_over_25']}%\n"
+                    txt += f"• Les deux marquent : {matrice['proba_btts']}%\n"
+                    txt += f"• Buts attendus (xG) : {matrice['lambda_home']} - {matrice['lambda_away']}\n\n"
+            except Exception as e:
+                log_warning(f"Impossible de générer la matrice de Poisson : {e}", "PREDICTION")
+
         txt += "━━━━━━━━━━━━━━━━━━━━\n"
         txt += "💡 <i>Conseil du Coach : Ne mise jamais plus de 2% de ton argent total.</i>\n"
         return txt
@@ -104,6 +121,7 @@ def _formater_bulletin_free(resultat, langue="fr"):
 
 def enregistrer_prediction_handlers(bot):
     log_info("Module prediction_handlers chargé.", "PREDICTION")
+    
     @bot.message_handler(commands=['myid'])
     def cmd_myid(message):
         try:
