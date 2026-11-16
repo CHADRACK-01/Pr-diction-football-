@@ -23,6 +23,10 @@ from telegram_bot.handlers.parrainage import enregistrer_parrainage_handlers
 from telegram_bot.devises_handlers import enregistrer_devises_handlers
 from telegram_bot.preuves_handlers import enregistrer_preuves_handlers
 
+# NOUVEAU : Les Codes Promo (manuels)
+from telegram_bot.codes_promo_handlers import enregistrer_codes_promo_handlers
+from telegram_bot.utilisation_code_handlers import enregistrer_utilisation_code_handlers
+
 # 4. Les paiements et prédictions
 from telegram_bot.payment_handlers import enregistrer_payment_handlers
 from telegram_bot.prediction_handlers import enregistrer_prediction_handlers
@@ -48,9 +52,11 @@ def enregistrer_handlers(bot):
         ("Parrainage", enregistrer_parrainage_handlers),
         ("Devises", enregistrer_devises_handlers),
         ("Preuves", enregistrer_preuves_handlers),
+        ("CodesPromo", enregistrer_codes_promo_handlers),          # NOUVEAU
+        ("UtilisationCode", enregistrer_utilisation_code_handlers), # NOUVEAU
         ("Paiement", enregistrer_payment_handlers),
         ("Prédiction", enregistrer_prediction_handlers),
-        ("AI_Dev", enregistrer_ai_dev_handlers), # Nouveau
+        ("AI_Dev", enregistrer_ai_dev_handlers),
         ("Fallback", enregistrer_fallback_handlers),
     ]
 
