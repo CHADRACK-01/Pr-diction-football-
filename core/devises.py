@@ -36,9 +36,7 @@ def convertir_montant(montant_cdf, devise_cible):
     montant_converti = montant_cdf / taux
     
     # Arrondi propre
-    if devise_cible == "USD":
-        return round(montant_converti, 2)
-    elif devise_cible == "EUR":
+    if devise_cible in ("USD", "EUR"):
         return round(montant_converti, 2)
     return montant_converti
 
