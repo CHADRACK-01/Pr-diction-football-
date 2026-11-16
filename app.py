@@ -290,6 +290,7 @@ def _envoyer_coupons_premium():
 # SCHEDULER
 # =========================================================
 def _scheduler_notifications():
+    global _derniere_alerte_live
     log_info("Scheduler démarré...", "SCHEDULER")
     while True:
         try:
@@ -333,10 +334,27 @@ def _scheduler_notifications():
                     if est_weekend:
                         _envoyer_coupons_premium()
 
+            # Toutes les 5 min — Alertes live (buts en direct)
+            if now.minute % 5 == 0:
+                creneau = f"{date_du_jour}-{now.hour:02d}-{now.minute // 5}"
+                if creneau != _derniere_alerte_live:
+                    _derniere_alerte_live = creneau
+                    try:
+                        alertes = verifier_buts_live(bot)
+                        if alertes > 0:
+                            log_info(f"Alertes live : {alertes} alerte(s) envoyée(s)", "SCHEDULER")
+                    except Exception as e:
+                        log_error(message="Erreur alertes live", module="SCHEDULER", exception=e)
+
             time.sleep(60)
         except Exception as e:
             log_error(message="Erreur critique scheduler", module="SCHEDULER", exception=e)
             time.sleep(60)
+
+
+from core.alertes_live import verifier_buts_live
+
+_derniere_alerte_live = None
 
 
 def _lancer_scheduler_apres_delai():
