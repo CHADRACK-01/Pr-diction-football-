@@ -11,6 +11,7 @@ from users import get_langue, est_banni
 from core.translations import get_text
 from core.session import get_session
 from core.utils.logs import log_info, log_error, log_warning
+from core.urgence import est_en_panique
 
 
 def enregistrer_fallback_handlers(bot):
@@ -37,6 +38,20 @@ def enregistrer_fallback_handlers(bot):
             "chat_id": message.chat.id,
             "message_text": (message.text or "")[:100],
         }
+
+        # Mode panique : on bloque le fallback
+        try:
+            if est_en_panique():
+                bot.reply_to(message, '🚨 Le bot est en mode maintenance. Veuillez patienter.')
+                log_info("Message bloqué par le mode panique", "FALLBACK", user_context=ctx)
+                return
+        except Exception as e:
+            log_warning(
+                message="Impossible de vérifier le mode panique",
+                module="FALLBACK",
+                user_context=ctx,
+                exception=e,
+            )
 
         try:
             langue = get_langue(user_id)
