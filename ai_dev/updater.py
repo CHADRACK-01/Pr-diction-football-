@@ -2,6 +2,7 @@
 """
 Gestionnaire de mise à jour.
 Applique le code généré par l'IA avec backup et push GitHub automatique.
+Gère la création de nouveaux fichiers (pas de backup nécessaire).
 """
 
 import os
@@ -13,7 +14,12 @@ from core.utils.logs import log_info, log_error, log_warning
 BACKUP_DIR = "backups_ia"
 
 def _creer_backup(chemin_fichier):
-    """Crée une copie de sauvegarde du fichier original."""
+    """Crée une copie de sauvegarde du fichier original (si le fichier existe)."""
+    # Si le fichier n'existe pas, pas besoin de backup (c'est une création)
+    if not os.path.exists(chemin_fichier):
+        log_info(f"Pas de backup nécessaire : {chemin_fichier} est un nouveau fichier.", "AI_UPDATER")
+        return "NO_BACKUP_NEEDED"
+
     try:
         os.makedirs(BACKUP_DIR, exist_ok=True)
         nom_fichier = os.path.basename(chemin_fichier)
@@ -37,7 +43,7 @@ def _git_commit_and_push(chemin_fichier, message):
         subprocess.run(["git", "config", "user.email", "bot@pronostic.com"], cwd=projet_dir, check=True)
         subprocess.run(["git", "config", "user.name", "Bot Auto-Update"], cwd=projet_dir, check=True)
         
-        # Ajout du fichier modifié
+        # Ajout du fichier modifié (ou créé)
         subprocess.run(["git", "add", chemin_fichier], cwd=projet_dir, check=True)
         
         # Commit
@@ -72,12 +78,13 @@ def appliquer_mise_a_jour(chemin_fichier_original, chemin_fichier_test):
     if not os.path.exists(chemin_fichier_test):
         return False, "❌ Fichier de test introuvable. Mise à jour annulée."
 
+    # Création du backup (ou détection que c'est un nouveau fichier)
     backup = _creer_backup(chemin_fichier_original)
-    if not backup:
+    if backup is None:
         return False, "❌ Impossible de créer le backup. Mise à jour annulée par sécurité."
 
     try:
-        # 1. On écrase le fichier original avec le code testé
+        # 1. On écrase le fichier original avec le code testé (ou on le crée)
         shutil.copy2(chemin_fichier_test, chemin_fichier_original)
         
         # 2. On nettoie le fichier de test
@@ -87,8 +94,9 @@ def appliquer_mise_a_jour(chemin_fichier_original, chemin_fichier_test):
         succes_git, msg_git = _git_commit_and_push(chemin_fichier_original, "Mise à jour automatique par l'IA")
         
         if not succes_git:
-            # Si le push échoue, on restaure le backup
-            shutil.copy2(backup, chemin_fichier_original)
+            # Si le push échoue, on restaure le backup (si on en a un)
+            if backup != "NO_BACKUP_NEEDED":
+                shutil.copy2(backup, chemin_fichier_original)
             return False, f"❌ Échec du push GitHub. Rollback effectué.\n{msg_git}"
             
         return True, f"✅ Mise à jour appliquée et envoyée sur GitHub.\n{msg_git}"
@@ -96,7 +104,8 @@ def appliquer_mise_a_jour(chemin_fichier_original, chemin_fichier_test):
     except Exception as e:
         log_error(f"Erreur critique lors de l'application de la MAJ", "AI_UPDATER", exception=e)
         try:
-            shutil.copy2(backup, chemin_fichier_original)
+            if backup != "NO_BACKUP_NEEDED":
+                shutil.copy2(backup, chemin_fichier_original)
             return False, f"❌ Erreur : {str(e)}. Le fichier original a été restauré."
         except Exception as e2:
             log_error(f"ÉCHEC CRITIQUE DU ROLLBACK", "AI_UPDATER", exception=e2)
@@ -108,6 +117,8 @@ def restaurer_backup(chemin_backup, chemin_fichier_original):
         if not os.path.exists(chemin_backup):
             return False, "❌ Fichier de backup introuvable."
         shutil.copy2(chemin_backup, chemin_fichier_original)
-        return True, "✅ Fichier restauré."
+        log_info(f"Restauration effectuée depuis {chemin_backup}", "AI_UPDATER")
+        return True, "✅ Fichier restauré avec succès."
     except Exception as e:
+        log_error(f"Erreur de restauration", "AI_UPDATER", exception=e)
         return False, f"❌ Erreur de restauration : {str(e)}"
