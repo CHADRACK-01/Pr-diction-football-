@@ -43,6 +43,7 @@ from telegram_bot.comparateur_handlers import enregistrer_comparateur_handlers
 from telegram_bot.favoris_handlers import enregistrer_favoris_handlers
 from telegram_bot.meteo_handlers import enregistrer_meteo_handlers
 from telegram_bot.bookmakers_handlers import enregistrer_bookmakers_handlers
+from telegram_bot.cashout_handlers import enregistrer_cashout_handlers
 
 
 
@@ -73,6 +74,7 @@ def enregistrer_handlers(bot):
         ("Meteo", enregistrer_meteo_handlers),
         ("Bookmakers", enregistrer_bookmakers_handlers),
         ("AI_Dev", enregistrer_ai_dev_handlers),
+        ("Cashout", enregistrer_cashout_handlers),
         ("Fallback", enregistrer_fallback_handlers),
     ]
 
