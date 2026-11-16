@@ -9,6 +9,9 @@ from telegram_bot.handlers.start import enregistrer_start_handlers
 # 2. L'Admin ensuite
 from telegram_bot.admin_handlers import enregistrer_admin_handlers
 
+# Panique (réservé aux administrateurs)
+from telegram_bot.panique_handlers import enregistrer_panique_handlers
+
 # 3. Les modules de fonctionnalités
 from telegram_bot.handlers.pronostic import enregistrer_pronostic_handlers
 from telegram_bot.premium_handlers import enregistrer_premium_handlers
@@ -34,6 +37,7 @@ def enregistrer_handlers(bot):
     handlers_modules = [
         ("Start", enregistrer_start_handlers),
         ("Admin", enregistrer_admin_handlers),
+        ("Panique", enregistrer_panique_handlers),
         ("Pronostic", enregistrer_pronostic_handlers),
         ("Premium", enregistrer_premium_handlers),
         ("Premium Menu", enregistrer_premium_menu_handlers),
