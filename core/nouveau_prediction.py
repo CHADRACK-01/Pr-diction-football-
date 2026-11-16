@@ -4,6 +4,7 @@ Moteur de prédiction V2.
 - Traduction des noms d'équipes (Telegram -> Base de données)
 - Reconstruit les features (Elo, forme, moyennes de buts)
 - Calcule le H2H, les scores exacts (Poisson) et le Value Bet
+- Expose la matrice de Poisson complète pour les Premiums (Fonctionnalité 414)
 """
 
 import math
@@ -244,3 +245,51 @@ def predire_match_v2(home_team, away_team, competition="default", cotes_book=Non
     except Exception as e:
         log_error("Erreur de prédiction", "PREDICTION", extra={"home": home_team, "away": away_team}, exception=e)
         return {"erreur": "Erreur de calcul. L'admin a été prévenu."}
+
+
+# =========================================================
+# FONCTIONNALITÉ 414 : ACCÈS PRO AUX MATRICES DE POISSON
+# =========================================================
+def get_matrice_poisson(home_team, away_team, max_buts=5):
+    """
+    Calcule la matrice de Poisson complète pour un match.
+    Retourne les probabilités de scores exacts, Over 2.5 et BTTS.
+    """
+    # Mapping des noms
+    home_team_db = NOMS_EQUIPES_MAPPING.get(home_team, home_team)
+    away_team_db = NOMS_EQUIPES_MAPPING.get(away_team, away_team)
+
+    feats = _get_team_features(home_team_db, away_team_db)
+    if not feats:
+        return None
+    
+    # Moyennes de buts attendues (lambda)
+    lambda_h = max(0.5, feats["bm_h"])
+    lambda_a = max(0.5, feats["bm_a"])
+    
+    def poisson(k, lamb):
+        return (lamb**k * math.exp(-lamb)) / math.factorial(k)
+    
+    matrice = []
+    for i in range(max_buts + 1):
+        for j in range(max_buts + 1):
+            proba = poisson(i, lambda_h) * poisson(j, lambda_a) * 100
+            matrice.append({
+                "score": f"{i}-{j}",
+                "proba": round(proba, 2)
+            })
+    
+    # Trier par probabilité décroissante
+    matrice.sort(key=lambda x: x["proba"], reverse=True)
+    
+    # Calcul des probabilités dérivées
+    proba_over_25 = sum(m["proba"] for m in matrice if int(m["score"].split("-")[0]) + int(m["score"].split("-")[1]) > 2.5)
+    proba_btts = sum(m["proba"] for m in matrice if int(m["score"].split("-")[0]) > 0 and int(m["score"].split("-")[1]) > 0)
+    
+    return {
+        "lambda_home": round(lambda_h, 2),
+        "lambda_away": round(lambda_a, 2),
+        "top_scores": matrice[:10],  # Top 10 des scores
+        "proba_over_25": round(proba_over_25, 2),
+        "proba_btts": round(proba_btts, 2),
+    }
