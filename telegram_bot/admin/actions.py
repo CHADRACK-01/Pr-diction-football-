@@ -632,3 +632,36 @@ def cmd_desactiver(bot, message):
         bot.reply_to(message, f"❌ Fonctionnalité {fid} DÉSACTIVÉE.")
     except Exception:
         bot.reply_to(message, "Format: /desactiver <id>")
+
+def cmd_taux(bot, message):
+    """Commande /taux pour voir et modifier les taux de change."""
+    from users import est_administrateur
+    if not est_administrateur(message.from_user.id): 
+        return
+    
+    from core.devises import get_taux_change
+    from users.admin import set_parametre
+    
+    args = message.text.split()
+    if len(args) < 3:
+        # Afficher les taux actuels
+        taux_usd = get_taux_change("USD")
+        taux_eur = get_taux_change("EUR")
+        bot.reply_to(message, 
+            f"💱 <b>TAUX DE CHANGE ACTUELS</b>\n\n"
+            f"1 USD = {taux_usd} CDF\n"
+            f"1 EUR = {taux_eur} CDF\n\n"
+            f"Pour modifier : <code>/taux USD 2850</code>",
+            parse_mode="HTML"
+        )
+        return
+    
+    devise = args[1].upper()
+    try:
+        nouveau_taux = float(args[2])
+        if set_parametre(f"taux_{devise.lower()}", str(nouveau_taux)):
+            bot.reply_to(message, f"✅ Taux {devise} mis à jour : 1 {devise} = {nouveau_taux} CDF")
+        else:
+            bot.reply_to(message, "❌ Erreur lors de la mise à jour.")
+    except ValueError:
+        bot.reply_to(message, "❌ Format invalide. Exemple : /taux USD 2850")
