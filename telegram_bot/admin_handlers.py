@@ -4,6 +4,7 @@ Handlers pour le panneau d'administration.
 - Vérification stricte des droits admin
 - Bouton "💎 Gérer Premium" isolé du menu utilisateur
 - Le menu admin ignore les photos (laisse passer les preuves de paiement)
+- Gestion des Fonctionnalités (Feature Flags)
 """
 
 import telebot
@@ -18,7 +19,10 @@ from telegram_bot.admin.menus import (
     menu_admin_bas, menu_premium_bas, menu_codes_bas,
     menu_parametres_bas, menu_bdd_bas
 )
-from telegram_bot.admin.actions import executer_action, executer_action_bas, ADMIN_SESSIONS
+from telegram_bot.admin.actions import (
+    executer_action, executer_action_bas, ADMIN_SESSIONS,
+    cmd_features, cmd_activer, cmd_desactiver
+)
 from core.utils.logs import log_info, log_error, log_warning
 
 
@@ -133,9 +137,23 @@ def enregistrer_admin_handlers(bot):
             log_error(message=f"Erreur exécution action '{data}'", module="ADMIN", user_context=ctx, exception=e)
 
     # =========================================================
+    # COMMANDES FEATURES (Feature Flags)
+    # =========================================================
+    @bot.message_handler(commands=['features'])
+    def handle_features(message):
+        cmd_features(bot, message)
+
+    @bot.message_handler(commands=['activer'])
+    def handle_activer(message):
+        cmd_activer(bot, message)
+
+    @bot.message_handler(commands=['desactiver'])
+    def handle_desactiver(message):
+        cmd_desactiver(bot, message)
+
+    # =========================================================
     # GESTIONNAIRE DES BOUTONS DU CLAVIER ADMIN (Texte UNIQUEMENT)
     # =========================================================
-    # ⚠️ CORRECTION ICI : m.content_type == 'text' empêche l'admin de voler les photos
     @bot.message_handler(func=lambda m: est_administrateur(m.from_user.id) and m.content_type == 'text' and m.text in [
         "📊 Stats", "👥 Utilisateurs", "💳 Paiements", "🎟️ Codes Premium",
         "🗄️ Base de données", "👑 Admins", "⚙️ Paramètres", "📝 Logs",
@@ -144,7 +162,8 @@ def enregistrer_admin_handlers(bot):
         "➕ Ajouter Premium", "➖ Retirer Premium", "🔙 Retour Admin",
         "Gen 10 jours", "Gen 30 jours", "Gen 90 jours", "Gen custom", "👁️ Voir codes dispo",
         "Heure notifs", "Limite Free", "Prix Stars", "Message accueil", "Mode maintenance", "👁️ Voir parametres",
-        "Taille BDD", "Detail tables", "🧹 Nettoyer"
+        "Taille BDD", "Detail tables", "🧹 Nettoyer",
+        "⚙️ Gérer les Fonctionnalités"
     ])
     def handle_admin_buttons_text(message):
         text = message.text
@@ -224,6 +243,9 @@ def enregistrer_admin_handlers(bot):
             if text == "💎 Gérer Premium":
                 if est_administrateur(user_id):
                     bot.send_message(message.chat.id, "💎 GESTION PREMIUM", reply_markup=menu_premium_bas())
+                return
+            if text == "⚙️ Gérer les Fonctionnalités":
+                cmd_features(bot, message)
                 return
 
             # --- Exécution des actions ---
