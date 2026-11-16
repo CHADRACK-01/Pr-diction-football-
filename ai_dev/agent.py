@@ -9,8 +9,7 @@ import json
 import requests
 from core.utils.logs import log_info, log_error, log_warning
 
-FICHIERS_INTERDITS = [
-]
+FICHIERS_INTERDITS = []
 
 PROMPT_SYSTEME = """Tu es le développeur principal d'un bot Telegram de pronostic football en Python.
 Tu reçois une demande de modification. Tu dois renvoyer UNIQUEMENT un JSON valide avec ce format :
