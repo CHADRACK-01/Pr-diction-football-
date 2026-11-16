@@ -1,8 +1,7 @@
 # ai_dev/agent.py
 """
 Agent IA Développeur.
-Utilise Groq (Llama 3) en principal, et Google Gemini en fallback.
-Reçoit une demande, lit le code cible, et génère le nouveau code.
+Utilise Groq (openai/gpt-oss-120b) en principal, et Google Gemini (gemini-2.5-flash) en fallback.
 """
 
 import os
@@ -10,12 +9,11 @@ import json
 import requests
 from core.utils.logs import log_info, log_error, log_warning
 
-# Liste des fichiers que l'IA n'a PAS le droit de modifier directement
 FICHIERS_INTERDITS = [
-    "config.py", 
-    "users/db.py", 
+    "config.py",
+    "users/db.py",
     "telegram_bot/payment_handlers.py",
-    "app.py"  # On protège app.py pour éviter de casser le webhook
+    "app.py"
 ]
 
 PROMPT_SYSTEME = """Tu es le développeur principal d'un bot Telegram de pronostic football en Python.
@@ -28,11 +26,10 @@ RÈGLES STRICTES :
 - Ne touche JAMAIS aux paiements, aux mots de passe ou aux clés API.
 - Le code doit être du Python valide, indenté correctement.
 - Tu dois intégrer tes modifications dans le code existant fourni.
-- Ne rajoute pas de blocs Markdown (```python) dans la clé "code_complet", juste le code brut.
+- Ne rajoute pas de blocs Markdown dans la clé "code_complet", juste le code brut.
 """
 
 def _lire_fichier(chemin):
-    """Lit le contenu d'un fichier existant."""
     try:
         with open(chemin, "r", encoding="utf-8") as f:
             return f.read()
@@ -41,22 +38,19 @@ def _lire_fichier(chemin):
         return None
 
 def _ecrire_fichier_test(chemin, contenu):
-    """Écrit le code généré dans un fichier de test temporaire."""
     chemin_test = chemin.replace(".py", "_test.py")
     try:
         with open(chemin_test, "w", encoding="utf-8") as f:
             f.write(contenu)
         return chemin_test
     except Exception as e:
-        log_error(f"Impossible d'écrire le fichier de test {chemin_test}", "AI_DEV", exception=e)
+        log_error(f"Impossible d'écrire {chemin_test}", "AI_DEV", exception=e)
         return None
 
 # =========================================================
-# APPELS AUX APIs (Groq puis Fallback Google)
+# GROQ (IA PRINCIPALE)
 # =========================================================
-
 def _appeler_groq(instruction, contenu_actuel):
-    """Appel principal à l'API Groq."""
     api_key = os.environ.get("GROQ_API_KEY")
     if not api_key:
         return {"erreur": "Clé GROQ_API_KEY manquante."}
@@ -67,7 +61,7 @@ def _appeler_groq(instruction, contenu_actuel):
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "llama-3.3-70b-versatile",
+        "model": "openai/gpt-oss-120b",
         "messages": [
             {"role": "system", "content": PROMPT_SYSTEME},
             {"role": "user", "content": f"Code actuel:\n```python\n{contenu_actuel}\n```\n\nDemande : {instruction}"}
@@ -77,9 +71,9 @@ def _appeler_groq(instruction, contenu_actuel):
     }
 
     try:
-        res = requests.post(url, headers=headers, json=payload, timeout=45)
+        res = requests.post(url, headers=headers, json=payload, timeout=60)
         if res.status_code != 200:
-            log_warning(f"Groq a échoué (code {res.status_code})", "AI_DEV")
+            log_warning(f"Groq a échoué (code {res.status_code}) : {res.text[:200]}", "AI_DEV")
             return {"erreur": f"Groq HTTP {res.status_code}"}
         
         data = res.json()
@@ -89,14 +83,15 @@ def _appeler_groq(instruction, contenu_actuel):
         log_warning(f"Exception Groq: {str(e)}", "AI_DEV")
         return {"erreur": "Erreur réseau Groq"}
 
+# =========================================================
+# GOOGLE GEMINI (FALLBACK)
+# =========================================================
 def _appeler_google(instruction, contenu_actuel):
-    """Appel de secours à l'API Google Gemini."""
     api_key = os.environ.get("GOOGLE_AI_API_KEY")
     if not api_key:
         return {"erreur": "Clé GOOGLE_AI_API_KEY manquante."}
 
-    # Gemini 1.5 Flash est rapide et gratuit
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
     headers = {"Content-Type": "application/json"}
     
     prompt_complet = f"{PROMPT_SYSTEME}\n\nCode actuel:\n```python\n{contenu_actuel}\n```\n\nDemande : {instruction}"
@@ -112,9 +107,9 @@ def _appeler_google(instruction, contenu_actuel):
     }
 
     try:
-        res = requests.post(url, headers=headers, json=payload, timeout=45)
+        res = requests.post(url, headers=headers, json=payload, timeout=60)
         if res.status_code != 200:
-            log_warning(f"Google a échoué (code {res.status_code})", "AI_DEV")
+            log_warning(f"Google a échoué (code {res.status_code}) : {res.text[:200]}", "AI_DEV")
             return {"erreur": f"Google HTTP {res.status_code}"}
         
         data = res.json()
@@ -124,8 +119,10 @@ def _appeler_google(instruction, contenu_actuel):
         log_error(f"Exception Google: {str(e)}", "AI_DEV", exception=e)
         return {"erreur": "Erreur réseau Google"}
 
+# =========================================================
+# FALLBACK
+# =========================================================
 def demander_a_ia(instruction_utilisateur, contenu_actuel):
-    """Gère le fallback : essaie Groq, puis Google."""
     log_info("Tentative avec Groq (IA Principale)...", "AI_DEV")
     reponse = _appeler_groq(instruction_utilisateur, contenu_actuel)
     
@@ -147,10 +144,6 @@ def demander_a_ia(instruction_utilisateur, contenu_actuel):
 # FONCTION PRINCIPALE
 # =========================================================
 def preparer_mise_a_jour(chemin_fichier, instruction):
-    """
-    Fonction appelée par le bot.
-    Retourne (succes, explication, chemin_test, nouveau_code).
-    """
     log_info(f"Demande IA : {instruction} sur {chemin_fichier}", "AI_DEV")
 
     if any(interdit in chemin_fichier for interdit in FICHIERS_INTERDITS):
