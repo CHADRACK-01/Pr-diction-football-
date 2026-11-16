@@ -1,11 +1,7 @@
 # ai_dev/agent.py
-"""
-Agent IA Développeur.
-Utilise Google Gemini (gemini-3.8-flash) en principal, et Groq (llama3-70b-8192) en fallback.
-"""
-
 import os
 import json
+import time
 import requests
 from core.utils.logs import log_info, log_error, log_warning
 
@@ -43,7 +39,7 @@ def _ecrire_fichier_test(chemin, contenu):
         return None
 
 # =========================================================
-# GOOGLE GEMINI (IA PRINCIPALE)
+# GOOGLE GEMINI (IA PRINCIPALE) - Avec Retry sur 503
 # =========================================================
 def _appeler_google(instruction, contenu_actuel):
     api_key = os.environ.get("GOOGLE_AI_API_KEY")
@@ -65,29 +61,33 @@ def _appeler_google(instruction, contenu_actuel):
         }
     }
 
-    try:
-        # TIMEOUT AUGMENTÉ À 120 SECONDES
-        res = requests.post(url, headers=headers, json=payload, timeout=120)
-        if res.status_code != 200:
-            log_warning(f"Google a échoué (code {res.status_code}) : {res.text[:200]}", "AI_DEV")
-            return {"erreur": f"Google HTTP {res.status_code}"}
-        
-        data = res.json()
-        content = data["candidates"][0]["content"]["parts"][0]["text"]
-        
-        content = content.strip()
-        if content.startswith("```json"):
-            content = content[7:]
-        if content.endswith("```"):
-            content = content[:-3]
+    # On tente 2 fois (retry) si Google est surchargé (503)
+    for tentative in range(2):
+        try:
+            res = requests.post(url, headers=headers, json=payload, timeout=90)
+            if res.status_code == 200:
+                data = res.json()
+                content = data["candidates"][0]["content"]["parts"][0]["text"]
+                content = content.strip()
+                if content.startswith("```json"): content = content[7:]
+                if content.endswith("```"): content = content[:-3]
+                return json.loads(content)
             
-        return json.loads(content)
-    except Exception as e:
-        log_error(f"Exception Google: {str(e)}", "AI_DEV", exception=e)
-        return {"erreur": "Erreur réseau Google (Timeout)"}
+            if res.status_code == 503 and tentative == 0:
+                log_warning("Google surchargé (503). Nouvelle tentative dans 3s...", "AI_DEV")
+                time.sleep(3)
+                continue
+                
+            log_warning(f"Google a échoué (code {res.status_code})", "AI_DEV")
+            break # On sort de la boucle si c'est une autre erreur
+        except Exception as e:
+            log_error(f"Exception Google: {str(e)}", "AI_DEV", exception=e)
+            break
+
+    return {"erreur": "Google indisponible (503) ou timeout."}
 
 # =========================================================
-# GROQ (FALLBACK)
+# GROQ (FALLBACK) - Modèle corrigé
 # =========================================================
 def _appeler_groq(instruction, contenu_actuel):
     api_key = os.environ.get("GROQ_API_KEY")
@@ -100,7 +100,7 @@ def _appeler_groq(instruction, contenu_actuel):
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "llama-3.3-70b-versatile",
+        "model": "openai/gpt-oss-120b",  # Le modèle correct
         "messages": [
             {"role": "system", "content": PROMPT_SYSTEME},
             {"role": "user", "content": f"Code actuel:\n```python\n{contenu_actuel}\n```\n\nDemande : {instruction}"}
@@ -110,8 +110,7 @@ def _appeler_groq(instruction, contenu_actuel):
     }
 
     try:
-        # TIMEOUT AUGMENTÉ À 120 SECONDES
-        res = requests.post(url, headers=headers, json=payload, timeout=120)
+        res = requests.post(url, headers=headers, json=payload, timeout=90)
         if res.status_code != 200:
             log_warning(f"Groq a échoué (code {res.status_code}) : {res.text[:200]}", "AI_DEV")
             return {"erreur": f"Groq HTTP {res.status_code}"}
@@ -121,20 +120,20 @@ def _appeler_groq(instruction, contenu_actuel):
         return json.loads(content)
     except Exception as e:
         log_warning(f"Exception Groq: {str(e)}", "AI_DEV")
-        return {"erreur": "Erreur réseau Groq (Timeout)"}
+        return {"erreur": "Erreur réseau Groq"}
 
 # =========================================================
 # LOGIQUE DE FALLBACK
 # =========================================================
 def demander_a_ia(instruction_utilisateur, contenu_actuel):
-    log_info("Tentative avec Google Gemini (IA Principale)...", "AI_DEV")
+    log_info("Tentative avec Google Gemini...", "AI_DEV")
     reponse = _appeler_google(instruction_utilisateur, contenu_actuel)
     
     if "erreur" not in reponse and "code_complet" in reponse:
         log_info("Succès avec Google Gemini.", "AI_DEV")
         return reponse
         
-    log_warning("Google a échoué. Bascule sur Groq (Fallback)...", "AI_DEV")
+    log_warning("Google a échoué. Bascule sur Groq...", "AI_DEV")
     reponse_fallback = _appeler_groq(instruction_utilisateur, contenu_actuel)
     
     if "erreur" not in reponse_fallback and "code_complet" in reponse_fallback:
@@ -142,7 +141,7 @@ def demander_a_ia(instruction_utilisateur, contenu_actuel):
         return reponse_fallback
         
     log_error("Les deux IA ont échoué.", "AI_DEV")
-    return {"erreur": "Les deux intelligences artificielles ont échoué. Fichier trop lourd ou timeout."}
+    return {"erreur": "Les deux IA ont échoué. Réessaie dans quelques instants."}
 
 # =========================================================
 # FONCTION PRINCIPALE
