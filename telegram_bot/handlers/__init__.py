@@ -39,6 +39,7 @@ from telegram_bot.handlers.fallback import enregistrer_fallback_handlers
 from telegram_bot.momentum_handlers import enregistrer_momentum_handlers
 from telegram_bot.fiabilite_handlers import enregistrer_fiabilite_handlers
 from telegram_bot.pieges_handlers import enregistrer_pieges_handlers
+from telegram_bot.comparateur_handlers import enregistrer_comparateur_handlers
 
 def enregistrer_handlers(bot):
     handlers_modules = [
@@ -61,6 +62,7 @@ def enregistrer_handlers(bot):
         ("Fiabilite", enregistrer_fiabilite_handlers),
         ("Momentum", enregistrer_momentum_handlers),
         ("Pieges", enregistrer_pieges_handlers),
+        ("Comparateur", enregistrer_comparateur_handlers),
         ("AI_Dev", enregistrer_ai_dev_handlers),
         ("Fallback", enregistrer_fallback_handlers),
     ]
