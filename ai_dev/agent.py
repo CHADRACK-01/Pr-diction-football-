@@ -10,10 +10,6 @@ import requests
 from core.utils.logs import log_info, log_error, log_warning
 
 FICHIERS_INTERDITS = [
-    "config.py",
-    "users/db.py",
-    "telegram_bot/payment_handlers.py",
-    "app.py"
 ]
 
 PROMPT_SYSTEME = """Tu es le développeur principal d'un bot Telegram de pronostic football en Python.
