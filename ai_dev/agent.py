@@ -1,36 +1,56 @@
 # ai_dev/agent.py
+"""
+Agent IA Développeur.
+Utilise Google Gemini (gemini-3.8-flash) en principal, et Groq (openai/gpt-oss-120b) en fallback.
+Gère la création de nouveaux fichiers si le fichier cible n'existe pas.
+"""
+
 import os
 import json
 import time
 import requests
 from core.utils.logs import log_info, log_error, log_warning
 
-FICHIERS_INTERDITS = []  # Mode TEST : tout est autorisé
+# Mode TEST : Liste vide pour autoriser tous les fichiers
+FICHIERS_INTERDITS = []
 
 PROMPT_SYSTEME = """Tu es le développeur principal d'un bot Telegram de pronostic football en Python.
 Tu reçois une demande de modification. Tu dois renvoyer UNIQUEMENT un objet JSON valide avec ce format exact :
 {
   "explication": "Ce que tu vas faire (en français, simple)",
-  "code_complet": "Le code Python complet du fichier après modification"
+  "code_complet": "Le code Python complet du fichier après modification (ou le nouveau fichier à créer)"
 }
 RÈGLES STRICTES :
-- Ne touche JAMAIS aux paiements, aux mots de passe ou aux clés API.
+- Ne touche JAMAIS aux paiements, aux mots de passe ou aux clés API (sauf si on te le demande explicitement).
 - Le code doit être du Python valide, indenté correctement.
-- Tu dois intégrer tes modifications dans le code existant fourni.
+- Si le fichier existe déjà, intègre tes modifications dans le code existant fourni.
+- Si le fichier n'existe pas encore, crée-le de zéro avec le code complet nécessaire.
 - Ne rajoute pas de blocs Markdown (```python) dans la clé "code_complet", juste le code brut.
 """
 
 def _lire_fichier(chemin):
+    """
+    Lit le contenu d'un fichier.
+    Si le fichier n'existe pas, retourne une chaîne vide pour permettre la création.
+    Si erreur de droits, retourne None.
+    """
     try:
         with open(chemin, "r", encoding="utf-8") as f:
             return f.read()
+    except FileNotFoundError:
+        # Le fichier n'existe pas : on retourne une chaîne vide
+        log_info(f"Fichier {chemin} introuvable. Il sera créé.", "AI_DEV")
+        return ""
     except Exception as e:
         log_error(f"Impossible de lire {chemin}", "AI_DEV", exception=e)
         return None
 
 def _ecrire_fichier_test(chemin, contenu):
+    """Écrit le code généré dans un fichier de test temporaire."""
     chemin_test = chemin.replace(".py", "_test.py")
     try:
+        # S'assurer que le dossier existe
+        os.makedirs(os.path.dirname(chemin_test) or ".", exist_ok=True)
         with open(chemin_test, "w", encoding="utf-8") as f:
             f.write(contenu)
         return chemin_test
@@ -49,7 +69,8 @@ def _appeler_google(instruction, contenu_actuel):
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={api_key}"
     headers = {"Content-Type": "application/json"}
     
-    prompt_complet = f"{PROMPT_SYSTEME}\n\nCode actuel:\n```python\n{contenu_actuel}\n```\n\nDemande : {instruction}"
+    contexte_code = f"Code actuel du fichier :\n```python\n{contenu_actuel}\n```" if contenu_actuel else "Le fichier est nouveau, il n'existe pas encore."
+    prompt_complet = f"{PROMPT_SYSTEME}\n\n{contexte_code}\n\nDemande : {instruction}"
     
     payload = {
         "contents": [{
@@ -61,7 +82,6 @@ def _appeler_google(instruction, contenu_actuel):
         }
     }
 
-    # On tente 2 fois (retry) si Google est surchargé (503)
     for tentative in range(2):
         try:
             res = requests.post(url, headers=headers, json=payload, timeout=90)
@@ -78,8 +98,8 @@ def _appeler_google(instruction, contenu_actuel):
                 time.sleep(3)
                 continue
                 
-            log_warning(f"Google a échoué (code {res.status_code})", "AI_DEV")
-            break # On sort de la boucle si c'est une autre erreur
+            log_warning(f"Google a échoué (code {res.status_code}) : {res.text[:200]}", "AI_DEV")
+            break
         except Exception as e:
             log_error(f"Exception Google: {str(e)}", "AI_DEV", exception=e)
             break
@@ -87,7 +107,7 @@ def _appeler_google(instruction, contenu_actuel):
     return {"erreur": "Google indisponible (503) ou timeout."}
 
 # =========================================================
-# GROQ (FALLBACK) - Modèle corrigé
+# GROQ (FALLBACK)
 # =========================================================
 def _appeler_groq(instruction, contenu_actuel):
     api_key = os.environ.get("GROQ_API_KEY")
@@ -99,11 +119,14 @@ def _appeler_groq(instruction, contenu_actuel):
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
+    
+    contexte_code = f"Code actuel du fichier :\n```python\n{contenu_actuel}\n```" if contenu_actuel else "Le fichier est nouveau, il n'existe pas encore."
+    
     payload = {
-        "model": "openai/gpt-oss-120b",  # Le modèle correct
+        "model": "openai/gpt-oss-120b",
         "messages": [
             {"role": "system", "content": PROMPT_SYSTEME},
-            {"role": "user", "content": f"Code actuel:\n```python\n{contenu_actuel}\n```\n\nDemande : {instruction}"}
+            {"role": "user", "content": f"{contexte_code}\n\nDemande : {instruction}"}
         ],
         "response_format": {"type": "json_object"},
         "temperature": 0.1
@@ -150,8 +173,11 @@ def preparer_mise_a_jour(chemin_fichier, instruction):
     log_info(f"Demande IA : {instruction} sur {chemin_fichier}", "AI_DEV")
 
     contenu_actuel = _lire_fichier(chemin_fichier)
+    
+    # Si contenu_actuel est None, c'est une vraie erreur (droits, etc.)
+    # S'il est vide "", c'est que le fichier n'existait pas, c'est OK.
     if contenu_actuel is None:
-        return False, "❌ Fichier introuvable.", None, None
+        return False, "❌ Impossible de lire le fichier (problème de droits).", None, None
 
     reponse = demander_a_ia(instruction, contenu_actuel)
     
