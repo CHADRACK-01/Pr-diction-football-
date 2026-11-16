@@ -1,8 +1,9 @@
 # core/paris_builder.py
 """
-Génération des coupons du jour et calculs avancés (Value Bet, Corners, Cartons).
+Génération des coupons du jour et calculs avancés (Value Bet, Corners, Cartons, 1ère MT).
 - Utilise les prédictions déjà calculées.
 - Détecte les Value Bets (cote bookmaker > proba IA).
+- Estime les probabilités pour la 1ère mi-temps.
 - Affiche les conseils sous forme de phrases positives (Format HTML).
 """
 
@@ -45,14 +46,42 @@ def _calculer_value_bet(proba_ia, cote_book):
     """
     Fonctionnalité 2 : Détecteur de Value Bet.
     Calcule l'espérance mathématique.
-    Retourne True si c'est un Value Bet, False sinon.
     """
     if not cote_book or cote_book <= 1.0:
         return False
     # EV = (Probabilité * Cote) - 1
-    # Si EV > 0, c'est un Value Bet (la cote est plus haute que ce que la proba justifie)
     ev = (proba_ia * cote_book) - 1
     return ev > 0.05  # On demande au moins 5% d'avantage
+
+def calculer_proba_mi_temps(prono):
+    """
+    Fonctionnalité 413 : Estime les probabilités pour la 1ère mi-temps.
+    Généralement, les équipes marquent moins en 1ère mi-temps (environ 40% des buts).
+    """
+    p_h = float(prono.get("p_h", 0.33))
+    p_d = float(prono.get("p_d", 0.33))
+    p_a = float(prono.get("p_a", 0.33))
+    
+    # Ajustement empirique : moins de buts en 1ère période
+    p_h_mt = p_h * 0.80
+    p_a_mt = p_a * 0.80
+    p_d_mt = 1.0 - (p_h_mt + p_a_mt)  # Le reste va au match nul
+    
+    # Déterminer la meilleure option pour la MT
+    options = [
+        ("1X", p_h_mt + p_d_mt),
+        ("X2", p_a_mt + p_d_mt),
+        ("12", p_h_mt + p_a_mt)
+    ]
+    best_mt = max(options, key=lambda x: x[1])
+    
+    return {
+        "p_h_mt": round(p_h_mt, 3),
+        "p_d_mt": round(p_d_mt, 3),
+        "p_a_mt": round(p_a_mt, 3),
+        "label_mt": best_mt[0],
+        "proba_mt": best_mt[1]
+    }
 
 def get_tous_pronostics_disponibles():
     """Récupère tous les pronostics calculés avec les options avancées."""
@@ -75,7 +104,6 @@ def get_tous_pronostics_disponibles():
         try:
             reco_label, reco_pct = _meilleure_reco(m)
             
-            # On garde l'idée de filtrer les cotes trop basses
             cote = round(1 / reco_pct, 2) if reco_pct > 0 else 0
             if cote < 1.30:
                 matchs_ignores += 1
@@ -85,9 +113,7 @@ def get_tous_pronostics_disponibles():
             cotes_book = m.get("cotes_book", {})
             is_value_bet = False
             if est_active("2") and cotes_book:
-                # On vérifie si la cote du bookmaker est intéressante pour notre recommandation
                 if reco_label == "1X" and "h" in cotes_book and "d" in cotes_book:
-                    # Cote combinée pour 1X (approximation)
                     cote_1x = (cotes_book["h"] * cotes_book["d"]) / (cotes_book["h"] + cotes_book["d"])
                     is_value_bet = _calculer_value_bet(reco_pct, cote_1x)
                 elif reco_label == "X2" and "a" in cotes_book and "d" in cotes_book:
@@ -101,7 +127,6 @@ def get_tous_pronostics_disponibles():
             corners_pct = 0.5
             cartons_pct = 0.5
             if est_active("9"):
-                # Si le modèle ML fournit ces données, on les utilise. Sinon, on met 50%.
                 corners_pct = float(m.get("over_95_corners", 0.5))
                 cartons_pct = float(m.get("over_35_cartons", 0.5))
 
@@ -288,12 +313,17 @@ def formater_coupon(coupon, langue="fr", montrer_details=True):
             
             # Affichage du Value Bet (Fonctionnalité 2)
             if m.get("is_value_bet") and est_active("2"):
-                texte += f"   💰 <b>Value Bet Détecté !</b> (Cote book : {m['cotes_book'].get('h', '?')})\n"
+                texte += f"   💰 <b>Value Bet Détecté !</b>\n"
 
             # Affichage Corners/Cartons (Fonctionnalité 9)
             if est_active("9"):
                 texte += f"   🚩 Corners > 9.5 : {round(m['corners_pct']*100, 1)}%\n"
                 texte += f"   🟨 Cartons > 3.5 : {round(m['cartons_pct']*100, 1)}%\n"
+
+            # Affichage 1ère Mi-Temps (Fonctionnalité 413)
+            if est_active("413"):
+                mt = calculer_proba_mi_temps(m)
+                texte += f"   ⏱️ 1ère MT ({mt['label_mt']}) : {round(mt['proba_mt']*100, 1)}%\n"
         else:
             texte += f"   👉 Mon conseil : {phrase}\n"
         
