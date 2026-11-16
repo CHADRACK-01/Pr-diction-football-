@@ -1,25 +1,26 @@
 # core/paris_builder.py
 """
-Génération des coupons du jour.
-- Utilise les prédictions déjà calculées (pas de recalcul)
-- Affiche les conseils sous forme de phrases positives (Format HTML)
+Génération des coupons du jour et calculs avancés (Value Bet, Corners, Cartons).
+- Utilise les prédictions déjà calculées.
+- Détecte les Value Bets (cote bookmaker > proba IA).
+- Affiche les conseils sous forme de phrases positives (Format HTML).
 """
 
 from datetime import datetime, timezone, timedelta
-
+from core.feature_flags import est_active
 from core.utils.logs import log_info, log_error, log_warning
 
 TZ_KINSHASA = timezone(timedelta(hours=1))
 
+# Seuils de confiance pour les coupons
 NIVEAUX = {
     "sur": {"min": 0.75, "max": 1.0, "matchs": 3},
     "modere": {"min": 0.65, "max": 0.75, "matchs": 5},
     "risque": {"min": 0.60, "max": 0.65, "matchs": 7},
 }
 
-
 def _meilleure_reco(prono):
-    """Retourne (label, proba)."""
+    """Retourne (label, proba) de la meilleure recommandation 1N2."""
     try:
         dc_1x = float(prono.get("dc_1x", 0.5))
         dc_x2 = float(prono.get("dc_x2", 0.5))
@@ -30,9 +31,8 @@ def _meilleure_reco(prono):
         log_error("Erreur calcul meilleure reco", "PARIS", exception=e)
         return "1X", 0.5
 
-
 def _traduire_pari(home, away, label_dc):
-    """Traduit les codes 1X, X2, 12 en phrases positives et compréhensibles."""
+    """Traduit les codes 1X, X2, 12 en phrases positives."""
     if label_dc == "1X":
         return f"<b>{home}</b> va gagner ou faire match nul"
     elif label_dc == "X2":
@@ -41,9 +41,21 @@ def _traduire_pari(home, away, label_dc):
         return "Un vainqueur sera désigné (pas de match nul)"
     return label_dc
 
+def _calculer_value_bet(proba_ia, cote_book):
+    """
+    Fonctionnalité 2 : Détecteur de Value Bet.
+    Calcule l'espérance mathématique.
+    Retourne True si c'est un Value Bet, False sinon.
+    """
+    if not cote_book or cote_book <= 1.0:
+        return False
+    # EV = (Probabilité * Cote) - 1
+    # Si EV > 0, c'est un Value Bet (la cote est plus haute que ce que la proba justifie)
+    ev = (proba_ia * cote_book) - 1
+    return ev > 0.05  # On demande au moins 5% d'avantage
 
 def get_tous_pronostics_disponibles():
-    """Récupère tous les pronostics calculés."""
+    """Récupère tous les pronostics calculés avec les options avancées."""
     from core.daily_matches import get_matchs_du_jour
 
     try:
@@ -61,18 +73,37 @@ def get_tous_pronostics_disponibles():
 
     for m in matchs:
         try:
-            reco_label = m.get("dc_label", "1X")
-            reco_pct = float(m.get("dc_pct", 0.5))
-
-            if reco_pct <= 0:
-                matchs_ignores += 1
-                continue
-
+            reco_label, reco_pct = _meilleure_reco(m)
+            
             # On garde l'idée de filtrer les cotes trop basses
-            cote = round(1 / reco_pct, 2)
+            cote = round(1 / reco_pct, 2) if reco_pct > 0 else 0
             if cote < 1.30:
                 matchs_ignores += 1
                 continue
+
+            # --- Calcul des Value Bets (Fonctionnalité 2) ---
+            cotes_book = m.get("cotes_book", {})
+            is_value_bet = False
+            if est_active("2") and cotes_book:
+                # On vérifie si la cote du bookmaker est intéressante pour notre recommandation
+                if reco_label == "1X" and "h" in cotes_book and "d" in cotes_book:
+                    # Cote combinée pour 1X (approximation)
+                    cote_1x = (cotes_book["h"] * cotes_book["d"]) / (cotes_book["h"] + cotes_book["d"])
+                    is_value_bet = _calculer_value_bet(reco_pct, cote_1x)
+                elif reco_label == "X2" and "a" in cotes_book and "d" in cotes_book:
+                    cote_x2 = (cotes_book["a"] * cotes_book["d"]) / (cotes_book["a"] + cotes_book["d"])
+                    is_value_bet = _calculer_value_bet(reco_pct, cote_x2)
+                elif reco_label == "12" and "h" in cotes_book and "a" in cotes_book:
+                    cote_12 = (cotes_book["h"] * cotes_book["a"]) / (cotes_book["h"] + cotes_book["a"])
+                    is_value_bet = _calculer_value_bet(reco_pct, cote_12)
+
+            # --- Corners et Cartons (Fonctionnalité 9) ---
+            corners_pct = 0.5
+            cartons_pct = 0.5
+            if est_active("9"):
+                # Si le modèle ML fournit ces données, on les utilise. Sinon, on met 50%.
+                corners_pct = float(m.get("over_95_corners", 0.5))
+                cartons_pct = float(m.get("over_35_cartons", 0.5))
 
             resultats.append({
                 "home": m.get("home"),
@@ -82,10 +113,10 @@ def get_tous_pronostics_disponibles():
                 "heure": m.get("heure"),
                 "reco_label": reco_label,
                 "reco_pct": reco_pct,
-                "btts": float(m.get("btts", 0.5)),
-                "over_25": float(m.get("over_25", 0.5)),
-                "analyse_pari": m.get("analyse_pari"),
-                # Transmission des probabilités 1N2 pour l'affichage
+                "is_value_bet": is_value_bet,
+                "cotes_book": cotes_book,
+                "corners_pct": corners_pct,
+                "cartons_pct": cartons_pct,
                 "p_h": float(m.get("p_h", 0.33)),
                 "p_d": float(m.get("p_d", 0.33)),
                 "p_a": float(m.get("p_a", 0.33)),
@@ -101,7 +132,6 @@ def get_tous_pronostics_disponibles():
         extra={"retenus": len(resultats), "ignores": matchs_ignores},
     )
     return resultats
-
 
 def construire_coupon(niveau, matchs_disponibles):
     """Construit un coupon pour un niveau donné."""
@@ -138,7 +168,6 @@ def construire_coupon(niveau, matchs_disponibles):
         "confiance_cumulee": round(confiance, 4),
     }
 
-
 def construire_coupon_outside(matchs_disponibles):
     """Coupon Outside (value, proba plus faible)."""
     candidats = [m for m in matchs_disponibles if 0.45 <= m["reco_pct"] <= 0.60]
@@ -161,7 +190,6 @@ def construire_coupon_outside(matchs_disponibles):
         "cote_totale": round(cote_totale, 2),
         "confiance_cumulee": round(confiance, 4),
     }
-
 
 def generer_coupons_du_jour():
     """Génère tous les coupons du jour."""
@@ -233,7 +261,6 @@ def generer_coupons_du_jour():
     )
     return {"weekend": est_weekend, "coupons": coupons}
 
-
 def formater_coupon(coupon, langue="fr", montrer_details=True):
     """Formate un coupon pour Telegram avec le ton du Coach Personnel (HTML)."""
     niveau_labels = {
@@ -259,10 +286,14 @@ def formater_coupon(coupon, langue="fr", montrer_details=True):
             texte += f"   👉 Mon conseil : {phrase}\n"
             texte += f"   📊 (Fiabilité : {round(m['reco_pct'] * 100, 1)}%)\n"
             
-            analyse = m.get("analyse_pari")
-            if analyse and analyse.get("cote_book"):
-                if analyse.get("is_value"):
-                    texte += f"   💰 <b>Value Bet</b> (Cote bookmaker : {analyse['cote_book']})\n"
+            # Affichage du Value Bet (Fonctionnalité 2)
+            if m.get("is_value_bet") and est_active("2"):
+                texte += f"   💰 <b>Value Bet Détecté !</b> (Cote book : {m['cotes_book'].get('h', '?')})\n"
+
+            # Affichage Corners/Cartons (Fonctionnalité 9)
+            if est_active("9"):
+                texte += f"   🚩 Corners > 9.5 : {round(m['corners_pct']*100, 1)}%\n"
+                texte += f"   🟨 Cartons > 3.5 : {round(m['cartons_pct']*100, 1)}%\n"
         else:
             texte += f"   👉 Mon conseil : {phrase}\n"
         
