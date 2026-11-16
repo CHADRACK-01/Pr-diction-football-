@@ -5,7 +5,7 @@ Affiche la météo et son impact sur un match.
 """
 
 import telebot
-from core.meteo import obtenir_meteo_simulee, formater_alerte_meteo
+from core.meteo import obtenir_meteo_reelle, obtenir_ville_equipe, formater_alerte_meteo
 from core.utils.logs import log_info, log_error
 
 
@@ -35,7 +35,12 @@ def enregistrer_meteo_handlers(bot):
 
             bot.reply_to(message, f"⏳ Analyse météo pour <b>{home_team} vs {away_team}</b>...", parse_mode="HTML")
 
-            meteo = obtenir_meteo_simulee()
+            # On devine la ville de l'équipe à domicile
+            ville = obtenir_ville_equipe(home_team)
+            
+            # On récupère la vraie météo (ou une valeur neutre)
+            meteo = obtenir_meteo_reelle(ville)
+            
             texte = formater_alerte_meteo(home_team, away_team, meteo)
             
             bot.reply_to(message, texte, parse_mode="HTML")
