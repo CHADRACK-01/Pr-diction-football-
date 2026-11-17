@@ -112,12 +112,38 @@ def executer_action(bot, call, data, user_id):
             except Exception as e:
                 log_error(message="Erreur paiements", module="ADMIN", user_context=ctx, exception=e)
 
-        elif data == "admin_bdd":
-            ADMIN_SESSIONS.pop(user_id, None)
-            bot.edit_message_text(
-                "🗄️ BASE DE DONNÉES", call.message.chat.id,
-                call.message.message_id, reply_markup=menu_bdd(),
-            )
+        elif data == "admin_admins":
+            try:
+                admins = get_tous_admins()
+                texte = "👑 ADMINS\n\n"
+                for a in admins:
+                    texte += f"- {a['user_id']} : {a['nom'] or 'Sans nom'}\n"
+                bot.send_message(call.message.chat.id, texte)
+            except Exception as e:
+                log_error(message="Erreur admins", module="ADMIN", user_context=ctx, exception=e)
+                bot.send_message(call.message.chat.id, "❌ Erreur admins.")
+
+        elif data == "admin_logs":
+            try:
+                logs = get_logs_admin(limite=15)
+                texte = "📝 LOGS\n\n"
+                for lg in logs:
+                    texte += f"- {lg['action']} (par {lg['admin_id']})\n"
+                bot.send_message(call.message.chat.id, texte)
+            except Exception as e:
+                log_error(message="Erreur logs", module="ADMIN", user_context=ctx, exception=e)
+                bot.send_message(call.message.chat.id, "❌ Erreur logs.")
+
+        elif data == "admin_bannis":
+            try:
+                bannis = get_liste_bannis()
+                texte = "🚫 BANNIS\n\n"
+                for b in bannis:
+                    texte += f"- {b['user_id']} : {b['raison'] or 'Sans raison'}\n"
+                bot.send_message(call.message.chat.id, texte)
+            except Exception as e:
+                log_error(message="Erreur bannis", module="ADMIN", user_context=ctx, exception=e)
+                bot.send_message(call.message.chat.id, "❌ Erreur bannis.")
 
         elif data.startswith("param_"):
             cle = data.replace("param_", "", 1)
@@ -145,13 +171,6 @@ def executer_action(bot, call, data, user_id):
             except Exception as e:
                 log_error(message="Erreur params", module="ADMIN", user_context=ctx, exception=e)
 
-        elif data == "admin_premium":
-            ADMIN_SESSIONS.pop(user_id, None)
-            bot.edit_message_text(
-                "💎 GESTION PREMIUM", call.message.chat.id,
-                call.message.message_id, reply_markup=menu_premium(),
-            )
-
         elif data == "admin_add_premium":
             ADMIN_SESSIONS[user_id] = {"action": "add_premium"}
             msg = bot.send_message(
@@ -164,18 +183,6 @@ def executer_action(bot, call, data, user_id):
             ADMIN_SESSIONS[user_id] = {"action": "remove_premium"}
             msg = bot.send_message(call.message.chat.id, "Envoie l'ID utilisateur :")
             bot.register_next_step_handler(msg, lambda m: _traiter_remove_premium(bot, m, ADMIN_SESSIONS))
-
-        elif data == "admin_codes":
-            ADMIN_SESSIONS.pop(user_id, None)
-            try:
-                dispo = compter_codes_disponibles()
-            except Exception:
-                dispo = "?"
-            bot.edit_message_text(
-                f"🎟️ CODES PREMIUM\n\nCodes disponibles : {dispo}",
-                call.message.chat.id, call.message.message_id,
-                reply_markup=menu_codes(),
-            )
 
         elif data in ("admin_gen_10", "admin_gen_30", "admin_gen_90"):
             jours = int(data.split("_")[-1])
@@ -595,10 +602,10 @@ def _traiter_broadcast(bot, message, sessions):
 # =========================================================
 # COMMANDES FEATURES (hors session)
 # =========================================================
-# Note : Ces commandes sont aussi ajoutées dans admin_handlers.py pour être actives
 def cmd_features(bot, message):
     from users import est_administrateur
-    if not est_administrateur(message.from_user.id): return
+    if not est_administrateur(message.from_user.id):
+        return
     from core.feature_flags import lister_features
     features = lister_features()
     texte = "⚙️ **GESTION DES FONCTIONNALITÉS**\n\n"
@@ -611,9 +618,11 @@ def cmd_features(bot, message):
     texte += "\nPour activer : `/activer 413`\nPour désactiver : `/desactiver 413`"
     bot.send_message(message.chat.id, texte, parse_mode="Markdown")
 
+
 def cmd_activer(bot, message):
     from users import est_administrateur
-    if not est_administrateur(message.from_user.id): return
+    if not est_administrateur(message.from_user.id):
+        return
     try:
         fid = message.text.split()[1]
         from core.feature_flags import activer_feature
@@ -622,9 +631,11 @@ def cmd_activer(bot, message):
     except Exception:
         bot.reply_to(message, "Format: /activer <id>")
 
+
 def cmd_desactiver(bot, message):
     from users import est_administrateur
-    if not est_administrateur(message.from_user.id): return
+    if not est_administrateur(message.from_user.id):
+        return
     try:
         fid = message.text.split()[1]
         from core.feature_flags import desactiver_feature
@@ -633,21 +644,22 @@ def cmd_desactiver(bot, message):
     except Exception:
         bot.reply_to(message, "Format: /desactiver <id>")
 
+
 def cmd_taux(bot, message):
     """Commande /taux pour voir et modifier les taux de change."""
     from users import est_administrateur
-    if not est_administrateur(message.from_user.id): 
+    if not est_administrateur(message.from_user.id):
         return
-    
+
     from core.devises import get_taux_change
     from users.admin import set_parametre
-    
+
     args = message.text.split()
     if len(args) < 3:
-        # Afficher les taux actuels
         taux_usd = get_taux_change("USD")
         taux_eur = get_taux_change("EUR")
-        bot.reply_to(message, 
+        bot.reply_to(
+            message,
             f"💱 <b>TAUX DE CHANGE ACTUELS</b>\n\n"
             f"1 USD = {taux_usd} CDF\n"
             f"1 EUR = {taux_eur} CDF\n\n"
@@ -655,7 +667,7 @@ def cmd_taux(bot, message):
             parse_mode="HTML"
         )
         return
-    
+
     devise = args[1].upper()
     try:
         nouveau_taux = float(args[2])
