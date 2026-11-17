@@ -4,9 +4,9 @@ Clavier admin avec tous les boutons.
 Réservé aux administrateurs pour l'instant.
 """
 
-import telebot
 from users import est_administrateur
 from core.utils.logs import log_info, log_error
+from telegram_bot.handlers.start import envoyer_menu_principal, _creer_clavier_admin
 
 
 def enregistrer_menu_commandes_handlers(bot):
@@ -15,46 +15,12 @@ def enregistrer_menu_commandes_handlers(bot):
     def cmd_menu(message):
         """Affiche le clavier admin avec tous les boutons."""
         user_id = message.from_user.id
-        
+
         if not est_administrateur(user_id):
             bot.reply_to(message, "⛔ Commande réservée aux administrateurs.")
             return
-    @bot.message_handler(func=lambda m: m.text == "↩️ Retour au Menu")
-    def retour_menu_admin(message):
-    """Retourne au menu admin."""
-    from telegram_bot.handlers.start import envoyer_menu_principal
-    envoyer_menu_principal(message.chat.id, message.from_user.id, bot)
-        
-        markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-        
-        # --- Boutons des nouvelles fonctionnalités ---
-        markup.add(
-            telebot.types.KeyboardButton("🌍 Langue"),
-            telebot.types.KeyboardButton("💎 Devise"),
-            telebot.types.KeyboardButton("📊 Fiabilité"),
-            telebot.types.KeyboardButton("🔍 Comparer"),
-            telebot.types.KeyboardButton("⚽ Série"),
-            telebot.types.KeyboardButton("💰 Cotes"),
-            telebot.types.KeyboardButton("📈 Bankroll"),
-            telebot.types.KeyboardButton("💸 Cash-out"),
-            telebot.types.KeyboardButton("⚠️ Piège"),
-            telebot.types.KeyboardButton("🌦️ Météo"),
-            telebot.types.KeyboardButton("🎯 Favoris"),
-            telebot.types.KeyboardButton("🎟️ Code Promo"),
-        )
-        
-        # --- Boutons admin existants ---
-        markup.add(
-            telebot.types.KeyboardButton("📊 Stats Admin"),
-            telebot.types.KeyboardButton("🚨 Panique"),
-            telebot.types.KeyboardButton("📸 Preuves"),
-            telebot.types.KeyboardButton("🎟️ Codes"),
-            telebot.types.KeyboardButton("🔧 Features"),
-            telebot.types.KeyboardButton("💱 Taux"),
-        )
-        
-        # --- Bouton retour ---
-        markup.add(telebot.types.KeyboardButton("↩️ Retour au Menu"))
+
+        markup = _creer_clavier_admin()
 
         bot.reply_to(
             message,
@@ -62,6 +28,17 @@ def enregistrer_menu_commandes_handlers(bot):
             reply_markup=markup,
             parse_mode="HTML"
         )
+
+    @bot.message_handler(func=lambda m: m.text == "↩️ Retour au Menu")
+    def retour_menu_admin(message):
+        """Retourne au menu principal (réservé aux administrateurs)."""
+        user_id = message.from_user.id
+
+        if not est_administrateur(user_id):
+            bot.reply_to(message, "⛔ Commande réservée aux administrateurs.")
+            return
+
+        envoyer_menu_principal(message.chat.id, user_id, bot)
 
     # =========================================================
     # GESTION DES CLICS SUR LES BOUTONS
@@ -77,11 +54,11 @@ def enregistrer_menu_commandes_handlers(bot):
         """Traite les clics sur les boutons admin."""
         text = message.text
         user_id = message.from_user.id
-        
+
         if not est_administrateur(user_id):
             bot.reply_to(message, "⛔ Commande réservée aux administrateurs.")
             return
-        
+
         # Mapping bouton -> commande
         mapping = {
             "🌍 Langue": "/langue",
@@ -103,11 +80,10 @@ def enregistrer_menu_commandes_handlers(bot):
             "🔧 Features": "/features",
             "💱 Taux": "/taux",
         }
-        
+
         commande = mapping.get(text)
         if commande:
             try:
-                from telebot.types import Message
                 fake_message = message
                 fake_message.text = commande
                 bot.process_new_messages([fake_message])
