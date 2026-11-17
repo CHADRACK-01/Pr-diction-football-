@@ -46,7 +46,7 @@ from telegram_bot.bookmakers_handlers import enregistrer_bookmakers_handlers
 from telegram_bot.cashout_handlers import enregistrer_cashout_handlers
 from telegram_bot.bankroll_handlers import enregistrer_bankroll_handlers
 from telegram_bot.menu_commandes_handlers import enregistrer_menu_commandes_handlers
-from telegram_bot.menu_commandes_handlers import enregistrer_menu_commandes_handlers
+
 
 
 
@@ -80,7 +80,6 @@ def enregistrer_handlers(bot):
         ("Bankroll", enregistrer_bankroll_handlers),
         ("Cashout", enregistrer_cashout_handlers),
         ("Fallback", enregistrer_fallback_handlers),
-        ("MenuCommandes", enregistrer_menu_commandes_handlers),
         ("MenuCommandes", enregistrer_menu_commandes_handlers),
     ]
 
