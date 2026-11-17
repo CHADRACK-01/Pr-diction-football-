@@ -64,6 +64,9 @@ def get_matchs_du_jour():
                 "p_h": float(prono.get("p_h", 0.33)),
                 "p_d": float(prono.get("p_d", 0.33)),
                 "p_a": float(prono.get("p_a", 0.33)),
+                "dc_1x": dc_1x,
+                "dc_x2": dc_x2,
+                "dc_12": dc_12,
                 "dc_label": meilleure[0],
                 "dc_pct": float(meilleure[1]),
             })
