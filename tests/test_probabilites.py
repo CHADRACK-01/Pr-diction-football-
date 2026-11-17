@@ -21,6 +21,17 @@ from core import nouveau_prediction
 FEATS = {"bm_h": 1.5, "bm_a": 1.2, "be_h": 1.3, "be_a": 1.1}
 
 
+class _ModeleFactice:
+    """Modèle minimal exposant ``classes_`` et ``predict_proba``."""
+
+    def __init__(self, classes, probas):
+        self.classes_ = classes
+        self.probas = probas
+
+    def predict_proba(self, X):
+        return [self.probas]
+
+
 def _preparer(monkeypatch, models=None, features=None):
     monkeypatch.setattr(
         nouveau_prediction, "_get_team_features", lambda h, a: dict(FEATS)
@@ -89,3 +100,43 @@ def test_get_matrice_poisson_cles_stables(monkeypatch):
         "proba_btts",
     }
     assert all({"score", "proba"} <= set(score) for score in matrice["top_scores"])
+
+
+def test_proba_classe_positive_respecte_l_ordre_des_classes():
+    modele_1_puis_0 = _ModeleFactice(["1", "0"], [0.7, 0.3])
+    modele_0_puis_1 = _ModeleFactice(["0", "1"], [0.3, 0.7])
+    # Quelle que soit la position de la classe positive, on obtient la même proba.
+    assert nouveau_prediction._proba_classe_positive(modele_1_puis_0, None) == 0.7
+    assert nouveau_prediction._proba_classe_positive(modele_0_puis_1, None) == 0.7
+
+
+def test_proba_classe_positive_sans_classe_positive_journalise(monkeypatch):
+    modele = _ModeleFactice(["alpha", "beta"], [0.4, 0.6])
+    avertissements = []
+    monkeypatch.setattr(
+        nouveau_prediction,
+        "log_warning",
+        lambda message, *a, **k: avertissements.append(message),
+    )
+    # Aucune classe positive : pas de valeur inventée, repli journalisé.
+    assert nouveau_prediction._proba_classe_positive(modele, None) is None
+    assert avertissements
+
+
+def test_over_25_et_btts_defaut_0_5_journalise(monkeypatch):
+    modeles = {
+        "1N2": object(),
+        "Over25": _ModeleFactice(["alpha", "beta"], [0.4, 0.6]),
+        "BTTS": _ModeleFactice(["alpha", "beta"], [0.4, 0.6]),
+    }
+    _preparer(monkeypatch, models=modeles)
+    avertissements = []
+    monkeypatch.setattr(
+        nouveau_prediction,
+        "log_warning",
+        lambda message, *a, **k: avertissements.append(message),
+    )
+    resultat = nouveau_prediction.predire_match_v2("A", "B")
+    assert resultat["over_25"] == 0.5
+    assert resultat["btts_yes"] == 0.5
+    assert len(avertissements) >= 2

@@ -41,7 +41,11 @@ VARIABLES_CONFIG = (
     "FACTEUR_MT",
     "BANDE_OUTSIDE_MIN",
     "BANDE_OUTSIDE_MAX",
+    "SEUIL_DIVERGENCE_DC",
+    "COEF_AVANTAGE_TERRAIN",
+    "POISSON_MAX_BUTS",
 )
+
 
 
 def lancer_code_config(env, code):
