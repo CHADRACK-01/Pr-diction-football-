@@ -54,7 +54,8 @@ def get_tous_parametres():
 # =========================================================
 def est_administrateur(user_id):
     """Vérifie si un utilisateur est administrateur (avec gestion d'erreur)."""
-    if user_id == 8653408729:
+    from config import ADMIN_ID
+    if ADMIN_ID is not None and user_id == ADMIN_ID:
         return True
     try:
         conn = get_connection()

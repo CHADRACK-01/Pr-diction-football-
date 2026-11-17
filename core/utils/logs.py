@@ -212,6 +212,9 @@ def _envoyer_telegram_sync(texte: str) -> bool:
     if not TOKEN:
         print("⚠️ TOKEN manquant : impossible d'envoyer l'alerte Telegram.")
         return False
+    if not ADMIN_ID:
+        print("⚠️ ADMIN_ID manquant.")
+        return False
     try:
         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
         payload = {

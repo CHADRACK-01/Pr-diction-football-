@@ -170,6 +170,29 @@ def _get_h2h(home_team, away_team):
     }
 
 
+def _probas_1n2(modele, X):
+    """Retourne (p_H, p_D, p_A) en respectant l'ordre réel des classes du modèle 1N2."""
+    classes = list(getattr(modele, "classes_", []))
+    probas = modele.predict_proba(X)[0]
+    mapping = dict(zip(classes, probas))
+    if {"H", "D", "A"}.issubset(mapping.keys()):
+        return float(mapping["H"]), float(mapping["D"]), float(mapping["A"])
+    log_warning(f"Classes 1N2 inattendues : {classes} — repli sur l'ordre p[0], p[1], p[2]", "PREDICTION")
+    return float(probas[0]), float(probas[1]), float(probas[2])
+
+
+def _proba_classe_positive(modele, X):
+    """Retourne la probabilité de la classe positive (1/true/yes/oui/y) d'un modèle binaire."""
+    classes = list(getattr(modele, "classes_", []))
+    probas = modele.predict_proba(X)[0]
+    mapping = dict(zip(classes, probas))
+    for valeur in ("1", "true", "yes", "oui", "y"):
+        for cle, proba in mapping.items():
+            if str(cle).lower() == valeur:
+                return float(proba)
+    return float(probas[1])
+
+
 def predire_match_v2(home_team, away_team, competition="default", cotes_book=None):
     """Fonction principale de prédiction."""
     home_team_db = NOMS_EQUIPES_MAPPING.get(home_team, home_team)
@@ -191,14 +214,12 @@ def predire_match_v2(home_team, away_team, competition="default", cotes_book=Non
 
         # Probabilités des modèles
         if "1N2" in models:
-            p = models["1N2"].predict_proba(X)[0]
-            result["p_h"], result["p_d"], result["p_a"] = float(p[0]), float(p[1]), float(p[2])
+            result["p_h"], result["p_d"], result["p_a"] = _probas_1n2(models["1N2"], X)
         else:
             result["p_h"], result["p_d"], result["p_a"] = 0.33, 0.33, 0.33
 
         if "DC_1X" in models:
-            p_dc = models["DC_1X"].predict_proba(X)[0]
-            result["dc_1x"] = float(p_dc[1])
+            result["dc_1x"] = _proba_classe_positive(models["DC_1X"], X)
             result["dc_x2"] = float(1 - result["p_h"])
             result["dc_12"] = float(1 - result["p_d"])
         else:
@@ -206,8 +227,8 @@ def predire_match_v2(home_team, away_team, competition="default", cotes_book=Non
             result["dc_x2"] = result["p_d"] + result["p_a"]
             result["dc_12"] = result["p_h"] + result["p_a"]
 
-        result["over_25"] = float(models["Over25"].predict_proba(X)[0][1]) if "Over25" in models else 0.5
-        result["btts_yes"] = float(models["BTTS"].predict_proba(X)[0][1]) if "BTTS" in models else 0.5
+        result["over_25"] = _proba_classe_positive(models["Over25"], X) if "Over25" in models else 0.5
+        result["btts_yes"] = _proba_classe_positive(models["BTTS"], X) if "BTTS" in models else 0.5
 
         # H2H
         result["h2h"] = _get_h2h(home_team_db, away_team_db)
