@@ -155,9 +155,54 @@ LOG_DEDUP_WINDOW_SEC = int(os.environ.get("LOG_DEDUP_WINDOW_SEC", "60"))
 LOG_RECAP_INTERVAL_SEC = int(os.environ.get("LOG_RECAP_INTERVAL_SEC", "3600"))
 
 # =========================================================
+# SEUILS PRÉDICTIFS
+# =========================================================
+_ERREURS_ENV = []
+
+
+def _lire_flottant(nom, defaut, mini, maxi):
+    """
+    Lit un seuil flottant depuis os.environ en contrôlant ses bornes.
+
+    Retourne ``defaut`` si la variable est absente. Si la variable est
+    présente mais non numérique ou hors bornes, l'échec est consigné dans
+    ``_ERREURS_ENV`` et ``None`` est retourné (aucun défaut silencieux).
+    """
+    brut = os.environ.get(nom)
+    if brut is None or brut.strip() == "":
+        return defaut
+    try:
+        valeur = float(brut)
+    except (TypeError, ValueError):
+        _ERREURS_ENV.append(f"{nom} invalide : {brut!r} (attendu un nombre)")
+        return None
+    if not (mini <= valeur <= maxi):
+        _ERREURS_ENV.append(f"{nom} hors bornes : {valeur} (attendu entre {mini} et {maxi})")
+        return None
+    return valeur
+
+
+VALUE_BET_MIN_EV = _lire_flottant("VALUE_BET_MIN_EV", 0.05, 0.0, 1.0)
+COTE_MIN_RECO = _lire_flottant("COTE_MIN_RECO", 1.30, 1.0, 100.0)
+SEUIL_CONF_SUR = _lire_flottant("SEUIL_CONF_SUR", 0.75, 0.0, 1.0)
+SEUIL_CONF_MODERE = _lire_flottant("SEUIL_CONF_MODERE", 0.65, 0.0, 1.0)
+SEUIL_CONF_RISQUE = _lire_flottant("SEUIL_CONF_RISQUE", 0.60, 0.0, 1.0)
+FACTEUR_MT = _lire_flottant("FACTEUR_MT", 0.80, 0.0, 1.0)
+BANDE_OUTSIDE_MIN = _lire_flottant("BANDE_OUTSIDE_MIN", 0.45, 0.0, 1.0)
+BANDE_OUTSIDE_MAX = _lire_flottant("BANDE_OUTSIDE_MAX", 0.60, 0.0, 1.0)
+
+# =========================================================
 # VÉRIFICATION DES VARIABLES CRITIQUES
 # =========================================================
-def verifier_configuration():
+def verifier_configuration() -> bool:
+    """
+    Vérifie la configuration critique et les seuils prédictifs.
+
+    Consigne les seuils invalides collectés dans ``_ERREURS_ENV``, exige
+    ``SUR >= MODERE >= RISQUE`` et ``OUTSIDE_MIN < OUTSIDE_MAX``. Lève une
+    ``RuntimeError`` si des variables critiques manquent ou si un seuil est
+    incohérent, sinon retourne ``True`` après avoir signalé les avertissements.
+    """
     problemes = []
     if not TOKEN:
         problemes.append("TELEGRAM_TOKEN manquant ou vide")
@@ -169,6 +214,20 @@ def verifier_configuration():
         problemes.append("ADMIN_ID manquant ou invalide")
     if not CANAL_ID:
         problemes.append("CANAL_ID manquant ou invalide")
+
+    problemes.extend(_ERREURS_ENV)
+
+    seuils_conf = (SEUIL_CONF_SUR, SEUIL_CONF_MODERE, SEUIL_CONF_RISQUE)
+    if all(valeur is not None for valeur in seuils_conf):
+        if not (SEUIL_CONF_SUR >= SEUIL_CONF_MODERE >= SEUIL_CONF_RISQUE):
+            problemes.append(
+                "Seuils de confiance incohérents : SUR >= MODERE >= RISQUE requis"
+            )
+    if BANDE_OUTSIDE_MIN is not None and BANDE_OUTSIDE_MAX is not None:
+        if not (BANDE_OUTSIDE_MIN < BANDE_OUTSIDE_MAX):
+            problemes.append(
+                "Bande Outside incohérente : BANDE_OUTSIDE_MIN < BANDE_OUTSIDE_MAX requis"
+            )
 
     if problemes:
         message = "❌ Configuration incomplète :\n" + "\n".join(f"  • {p}" for p in problemes)

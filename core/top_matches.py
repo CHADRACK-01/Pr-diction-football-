@@ -2,9 +2,10 @@
 from datetime import datetime, timezone, timedelta
 from core.paris_builder import get_tous_pronostics_disponibles
 from core.utils.logs import log_info, log_warning, log_error
+from config import SEUIL_CONF_SUR
 
 TZ_KINSHASA = timezone(timedelta(hours=1))
-SEUIL_CONFIANCE_MIN = 0.75
+SEUIL_CONFIANCE_MIN = SEUIL_CONF_SUR
 
 def _traduire_pari(home, away, label_dc):
     """Traduit les codes en phrases positives (HTML)."""
