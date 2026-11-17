@@ -52,9 +52,16 @@ def get_tous_parametres():
 # =========================================================
 # ADMINISTRATEURS
 # =========================================================
-def est_administrateur(user_id):
-    """Vérifie si un utilisateur est administrateur (avec gestion d'erreur)."""
+def est_administrateur(user_id: int) -> bool:
+    """
+    Indique si ``user_id`` est un administrateur.
+
+    Retourne ``True`` si l'identifiant correspond à ``ADMIN_ID`` ou s'il est
+    présent dans la table ``administrateurs``, ``False`` sinon (y compris en
+    cas d'erreur de la base de données).
+    """
     from config import ADMIN_ID
+
     if ADMIN_ID is not None and user_id == ADMIN_ID:
         return True
     try:
