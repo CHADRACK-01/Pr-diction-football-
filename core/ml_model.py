@@ -69,6 +69,10 @@ def charger_et_entrainer():
         nb_modeles = len(global_model_data["models"])
         log_info(f"✅ Modèle chargé : {nb_modeles} marchés disponibles.", "ML_MODEL")
 
+        modele_1n2 = global_model_data["models"].get("1N2")
+        if modele_1n2 is not None and hasattr(modele_1n2, "classes_"):
+            log_info(f"Classes 1N2 : {list(modele_1n2.classes_)}", "ML_MODEL")
+
         _is_loading = False
         return True
 
