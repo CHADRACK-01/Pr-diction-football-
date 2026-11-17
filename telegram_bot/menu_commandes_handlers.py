@@ -19,6 +19,11 @@ def enregistrer_menu_commandes_handlers(bot):
         if not est_administrateur(user_id):
             bot.reply_to(message, "⛔ Commande réservée aux administrateurs.")
             return
+    @bot.message_handler(func=lambda m: m.text == "↩️ Retour au Menu")
+    def retour_menu_admin(message):
+    """Retourne au menu admin."""
+    from telegram_bot.handlers.start import envoyer_menu_principal
+    envoyer_menu_principal(message.chat.id, message.from_user.id, bot)
         
         markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
         
