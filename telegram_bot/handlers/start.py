@@ -4,6 +4,7 @@ Handler /start + menu principal.
 - Gestion forcée de la langue après changement
 - Parrainage atomique (vérif enregistrement)
 - Logs enrichis
+- Détection admin pour afficher le clavier admin automatiquement
 """
 
 import telebot
@@ -30,10 +31,54 @@ def _contexte(user, chat_id=None):
     }
 
 
+def _creer_clavier_admin():
+    """Clavier complet pour les administrateurs."""
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    markup.add(
+        telebot.types.KeyboardButton("🌍 Langue"),
+        telebot.types.KeyboardButton("💎 Devise"),
+        telebot.types.KeyboardButton("📊 Fiabilité"),
+        telebot.types.KeyboardButton("🔍 Comparer"),
+        telebot.types.KeyboardButton("⚽ Série"),
+        telebot.types.KeyboardButton("💰 Cotes"),
+        telebot.types.KeyboardButton("📈 Bankroll"),
+        telebot.types.KeyboardButton("💸 Cash-out"),
+        telebot.types.KeyboardButton("⚠️ Piège"),
+        telebot.types.KeyboardButton("🌦️ Météo"),
+        telebot.types.KeyboardButton("🎯 Favoris"),
+        telebot.types.KeyboardButton("🎟️ Code Promo"),
+        telebot.types.KeyboardButton("📊 Stats Admin"),
+        telebot.types.KeyboardButton("🚨 Panique"),
+        telebot.types.KeyboardButton("📸 Preuves"),
+        telebot.types.KeyboardButton("🎟️ Codes"),
+        telebot.types.KeyboardButton("🔧 Features"),
+        telebot.types.KeyboardButton("💱 Taux"),
+        telebot.types.KeyboardButton("↩️ Retour au Menu"),
+    )
+    return markup
+
+
+def _creer_clavier_utilisateur():
+    """Clavier normal pour les utilisateurs."""
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    markup.add(
+        telebot.types.KeyboardButton("⚽ Faire un Pronostic"),
+        telebot.types.KeyboardButton("📅 Matchs du Jour"),
+        telebot.types.KeyboardButton("🎟️ Coupons"),
+        telebot.types.KeyboardButton("🏆 Top Affiches"),
+        telebot.types.KeyboardButton("📜 Historique"),
+        telebot.types.KeyboardButton("📊 Statistiques"),
+        telebot.types.KeyboardButton("🔔 Notifications"),
+        telebot.types.KeyboardButton("💎 Premium"),
+        telebot.types.KeyboardButton("🤝 Parrainage"),
+        telebot.types.KeyboardButton("🌍 Langue"),
+    )
+    return markup
+
+
 def envoyer_menu_principal(chat_id, user_id, bot, force_langue=None):
     """Affiche le menu principal (normal ou vitrine)."""
     try:
-        # ⚠️ CORRECTION : Si force_langue est fourni, on l'utilise
         langue = force_langue if force_langue else get_langue(user_id)
         user_info = get_user_info(user_id)
         nom = user_info["first_name"] if user_info else "Utilisateur"
@@ -96,29 +141,16 @@ def envoyer_menu_principal(chat_id, user_id, bot, force_langue=None):
         f"👇 Utilise les boutons ci-dessous :"
     )
 
-    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    markup.add(
-        telebot.types.KeyboardButton("⚽ Faire un Pronostic"),
-        telebot.types.KeyboardButton("📅 Matchs du Jour"),
-        telebot.types.KeyboardButton("🎟️ Coupons"),
-        telebot.types.KeyboardButton("🏆 Top Affiches"),
-        telebot.types.KeyboardButton("📜 Historique"),
-        telebot.types.KeyboardButton("📊 Statistiques"),
-        telebot.types.KeyboardButton("🔔 Notifications"),
-        telebot.types.KeyboardButton("💎 Premium"),
-        telebot.types.KeyboardButton("🤝 Parrainage"),
-        telebot.types.KeyboardButton("🌍 Langue"),
-    )
+    # Détection admin
     try:
-        if est_administrateur(user_id):
-            markup.add(telebot.types.KeyboardButton("👑 Panneau Admin"))
-    except Exception as e:
-        log_warning(
-            message="Impossible de vérifier le statut admin",
-            module="START",
-            user_context={"user_id": user_id},
-            exception=e,
-        )
+        is_admin = est_administrateur(user_id)
+    except Exception:
+        is_admin = False
+
+    if is_admin:
+        markup = _creer_clavier_admin()
+    else:
+        markup = _creer_clavier_utilisateur()
 
     try:
         bot.send_message(chat_id, presentation, reply_markup=markup)
@@ -257,7 +289,7 @@ def enregistrer_start_handlers(bot):
             if set_langue(user.id, langue):
                 bot.answer_callback_query(call.id, "OK")
                 
-                # ⚠️ CORRECTION : On force la relecture de la langue depuis la BDD
+                # On force la relecture de la langue depuis la BDD
                 nouvelle_langue = get_langue(user.id)
                 
                 bot.send_message(call.message.chat.id, get_text("langue_changee", nouvelle_langue))
@@ -272,4 +304,4 @@ def enregistrer_start_handlers(bot):
                 module="START",
                 user_context=ctx,
                 exception=e,
-            )
+)
