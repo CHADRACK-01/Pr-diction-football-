@@ -3,6 +3,7 @@
 Fallback pour les messages texte non reconnus.
 - Ne capture plus les sessions de pronostic (géré en BDD)
 - Ne capture plus les sessions admin (vérifié via ADMIN_SESSIONS)
+- Exclut les boutons du menu utilisateur et du menu admin
 """
 
 import telebot
@@ -26,6 +27,8 @@ def enregistrer_fallback_handlers(bot):
                 "⚽ Faire un Pronostic", "📅 Matchs du Jour", "🎟️ Coupons",
                 "🏆 Top Affiches", "📜 Historique", "📊 Statistiques",
                 "🔔 Notifications", "💎 Premium", "🤝 Parrainage",
+                "📊 Stats Admin", "🚨 Panique", "📸 Preuves",
+                "🎟️ Codes", "🔧 Features", "💱 Taux",
             )
         )
     )
