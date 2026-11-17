@@ -10,14 +10,24 @@ Génération des coupons du jour et calculs avancés (Value Bet, Corners, Carton
 from datetime import datetime, timezone, timedelta
 from core.feature_flags import est_active
 from core.utils.logs import log_info, log_error, log_warning
+from core.value_bet import est_value_bet
+from config import (
+    COTE_MIN_RECO,
+    FACTEUR_MT,
+    BANDE_OUTSIDE_MIN,
+    BANDE_OUTSIDE_MAX,
+    SEUIL_CONF_SUR,
+    SEUIL_CONF_MODERE,
+    SEUIL_CONF_RISQUE,
+)
 
 TZ_KINSHASA = timezone(timedelta(hours=1))
 
 # Seuils de confiance pour les coupons
 NIVEAUX = {
-    "sur": {"min": 0.75, "max": 1.0, "matchs": 3},
-    "modere": {"min": 0.65, "max": 0.75, "matchs": 5},
-    "risque": {"min": 0.60, "max": 0.65, "matchs": 7},
+    "sur": {"min": SEUIL_CONF_SUR, "max": 1.0, "matchs": 3},
+    "modere": {"min": SEUIL_CONF_MODERE, "max": SEUIL_CONF_SUR, "matchs": 5},
+    "risque": {"min": SEUIL_CONF_RISQUE, "max": SEUIL_CONF_MODERE, "matchs": 7},
 }
 
 def _meilleure_reco(prono):
@@ -42,17 +52,6 @@ def _traduire_pari(home, away, label_dc):
         return "Un vainqueur sera désigné (pas de match nul)"
     return label_dc
 
-def _calculer_value_bet(proba_ia, cote_book):
-    """
-    Fonctionnalité 2 : Détecteur de Value Bet.
-    Calcule l'espérance mathématique.
-    """
-    if not cote_book or cote_book <= 1.0:
-        return False
-    # EV = (Probabilité * Cote) - 1
-    ev = (proba_ia * cote_book) - 1
-    return ev > 0.05  # On demande au moins 5% d'avantage
-
 def calculer_proba_mi_temps(prono):
     """
     Fonctionnalité 413 : Estime les probabilités pour la 1ère mi-temps.
@@ -63,8 +62,8 @@ def calculer_proba_mi_temps(prono):
     p_a = float(prono.get("p_a", 0.33))
     
     # Ajustement empirique : moins de buts en 1ère période
-    p_h_mt = p_h * 0.80
-    p_a_mt = p_a * 0.80
+    p_h_mt = p_h * FACTEUR_MT
+    p_a_mt = p_a * FACTEUR_MT
     p_d_mt = 1.0 - (p_h_mt + p_a_mt)  # Le reste va au match nul
     
     # Déterminer la meilleure option pour la MT
@@ -105,7 +104,7 @@ def get_tous_pronostics_disponibles():
             reco_label, reco_pct = _meilleure_reco(m)
             
             cote = round(1 / reco_pct, 2) if reco_pct > 0 else 0
-            if cote < 1.30:
+            if cote < COTE_MIN_RECO:
                 matchs_ignores += 1
                 continue
 
@@ -115,13 +114,13 @@ def get_tous_pronostics_disponibles():
             if est_active("2") and cotes_book:
                 if reco_label == "1X" and "h" in cotes_book and "d" in cotes_book:
                     cote_1x = (cotes_book["h"] * cotes_book["d"]) / (cotes_book["h"] + cotes_book["d"])
-                    is_value_bet = _calculer_value_bet(reco_pct, cote_1x)
+                    is_value_bet = est_value_bet(reco_pct, cote_1x)
                 elif reco_label == "X2" and "a" in cotes_book and "d" in cotes_book:
                     cote_x2 = (cotes_book["a"] * cotes_book["d"]) / (cotes_book["a"] + cotes_book["d"])
-                    is_value_bet = _calculer_value_bet(reco_pct, cote_x2)
+                    is_value_bet = est_value_bet(reco_pct, cote_x2)
                 elif reco_label == "12" and "h" in cotes_book and "a" in cotes_book:
                     cote_12 = (cotes_book["h"] * cotes_book["a"]) / (cotes_book["h"] + cotes_book["a"])
-                    is_value_bet = _calculer_value_bet(reco_pct, cote_12)
+                    is_value_bet = est_value_bet(reco_pct, cote_12)
 
             # --- Corners et Cartons (Fonctionnalité 9) ---
             corners_pct = 0.5
@@ -195,7 +194,7 @@ def construire_coupon(niveau, matchs_disponibles):
 
 def construire_coupon_outside(matchs_disponibles):
     """Coupon Outside (value, proba plus faible)."""
-    candidats = [m for m in matchs_disponibles if 0.45 <= m["reco_pct"] <= 0.60]
+    candidats = [m for m in matchs_disponibles if BANDE_OUTSIDE_MIN <= m["reco_pct"] <= BANDE_OUTSIDE_MAX]
     if len(candidats) < 3:
         return None
 

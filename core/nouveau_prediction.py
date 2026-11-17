@@ -11,6 +11,7 @@ import math
 import numpy as np
 from core.ml_model import global_model_data
 from core.utils.logs import log_info, log_error, log_warning
+from core.value_bet import analyser_value_bet
 from users.db import db_fetchall
 
 # =========================================================
@@ -248,18 +249,16 @@ def predire_match_v2(home_team, away_team, competition="default", cotes_book=Non
         scores.sort(key=lambda x: x[2], reverse=True)
         result["top_scores"] = scores[:3]
 
-        # Value Bet
+        # Value Bet (verdict unifié via core.value_bet)
         result["analyse_pari"] = None
-        if cotes_book and "h" in cotes_book:
-            proba_book = 1 / cotes_book["h"]
-            if result["p_h"] > proba_book + 0.05:
-                result["analyse_pari"] = {
-                    "label": "1 (Domicile)",
-                    "proba": result["p_h"],
-                    "cote_bot": round(1 / result["p_h"], 2),
-                    "cote_book": cotes_book["h"],
-                    "is_value": True
-                }
+        if cotes_book:
+            issues = [
+                ("1 (Domicile)", result["p_h"], cotes_book.get("h")),
+                ("N (Nul)", result["p_d"], cotes_book.get("d")),
+                ("2 (Extérieur)", result["p_a"], cotes_book.get("a")),
+            ]
+            label, proba, cote_book = max(issues, key=lambda x: x[1])
+            result["analyse_pari"] = analyser_value_bet(proba, cote_book, label)
 
         return result
 
