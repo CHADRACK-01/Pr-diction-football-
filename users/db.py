@@ -390,6 +390,35 @@ def initialiser_tables():
                     actif INTEGER DEFAULT 0
                 )
             """,
+            # NOUVELLE TABLE : Bankroll (core/bankroll.py)
+            "bankroll": """
+                CREATE TABLE IF NOT EXISTS bankroll (
+                    user_id INTEGER PRIMARY KEY,
+                    montant_total REAL DEFAULT 0,
+                    strategie TEXT DEFAULT 'kelly_fractionne',
+                    pourcentage_mise REAL DEFAULT 2.0
+                )
+            """,
+            # NOUVELLE TABLE : Équipes favorites (core/equipes_favorites.py)
+            "equipes_favorites": """
+                CREATE TABLE IF NOT EXISTS equipes_favorites (
+                    user_id INTEGER,
+                    equipe TEXT,
+                    date_ajout TEXT DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (user_id, equipe)
+                )
+            """,
+            # NOUVELLE TABLE : Codes promo (core/codes_promo.py)
+            "codes_promo": """
+                CREATE TABLE IF NOT EXISTS codes_promo (
+                    code TEXT PRIMARY KEY,
+                    type_reduction TEXT,
+                    valeur REAL,
+                    limite_utilisation INTEGER DEFAULT 0,
+                    deja_utilise INTEGER DEFAULT 0,
+                    date_creation TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            """,
         }
 
         for nom, sql in tables.items():
@@ -483,6 +512,7 @@ def get_detail_tables():
         "paiements_attente", "codes_premium", "logs_admin",
         "resultats_pronostics", "sessions_pronostic",
         "fonctionnalites_actives",
+        "bankroll", "equipes_favorites", "codes_promo",
     ]
     resultats = []
     for table in tables:
