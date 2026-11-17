@@ -183,7 +183,11 @@ def _probas_1n2(modele, X):
 
 
 def _proba_classe_positive(modele, X):
-    """Retourne la probabilité de la classe positive (1/true/yes/oui/y) d'un modèle binaire."""
+    """Retourne la probabilité de la classe positive (1/true/yes/oui/y) d'un modèle binaire.
+
+    Retourne ``None`` si aucune classe positive n'est identifiée de façon fiable :
+    le repli silencieux sur l'ordre des probabilités est désactivé.
+    """
     classes = list(getattr(modele, "classes_", []))
     probas = modele.predict_proba(X)[0]
     mapping = dict(zip(classes, probas))
@@ -191,7 +195,20 @@ def _proba_classe_positive(modele, X):
         for cle, proba in mapping.items():
             if str(cle).lower() == valeur:
                 return float(proba)
-    return float(probas[1])
+    log_warning(
+        "Aucune classe positive identifiée : repli silencieux désactivé",
+        "PREDICTION",
+        extra={
+            "classes": classes,
+            "cle_retenue": classes[1] if len(classes) > 1 else None,
+        },
+    )
+    # Sans classe positive identifiée (ou sans couple de probabilités exploitable),
+    # on ne renvoie aucune valeur plutôt que d'inventer un repli sur probas[1].
+    if len(probas) < 2 or not classes:
+        return None
+    return None
+
 
 
 def predire_match_v2(home_team, away_team, competition="default", cotes_book=None):
@@ -243,7 +260,10 @@ def predire_match_v2(home_team, away_team, competition="default", cotes_book=Non
         # de divergence, journalisé sans écraser la source unique.
         if "DC_1X" in models:
             dc_1x_modele = _proba_classe_positive(models["DC_1X"], X)
-            if abs(dc_1x_modele - result["dc_1x"]) > SEUIL_DIVERGENCE_DC:
+            if (
+                dc_1x_modele is not None
+                and abs(dc_1x_modele - result["dc_1x"]) > SEUIL_DIVERGENCE_DC
+            ):
                 log_warning(
                     "Divergence entre le 1N2 et le modèle DC_1X",
                     "PREDICTION",
@@ -254,8 +274,25 @@ def predire_match_v2(home_team, away_team, competition="default", cotes_book=Non
                     },
                 )
 
-        result["over_25"] = _proba_classe_positive(models["Over25"], X) if "Over25" in models else 0.5
-        result["btts_yes"] = _proba_classe_positive(models["BTTS"], X) if "BTTS" in models else 0.5
+        over_25 = _proba_classe_positive(models["Over25"], X) if "Over25" in models else 0.5
+        if over_25 is None:
+            log_warning(
+                "Probabilité Over 2.5 indisponible, valeur par défaut 0.5 utilisée",
+                "PREDICTION",
+                extra={"modele": "Over25"},
+            )
+            over_25 = 0.5
+        result["over_25"] = over_25
+
+        btts_yes = _proba_classe_positive(models["BTTS"], X) if "BTTS" in models else 0.5
+        if btts_yes is None:
+            log_warning(
+                "Probabilité BTTS indisponible, valeur par défaut 0.5 utilisée",
+                "PREDICTION",
+                extra={"modele": "BTTS"},
+            )
+            btts_yes = 0.5
+        result["btts_yes"] = btts_yes
 
         # H2H
         result["h2h"] = _get_h2h(home_team_db, away_team_db)
@@ -285,6 +322,7 @@ def predire_match_v2(home_team, away_team, competition="default", cotes_book=Non
     except Exception as e:
         log_error("Erreur de prédiction", "PREDICTION", extra={"home": home_team, "away": away_team}, exception=e)
         return {"erreur": "Erreur de calcul. L'admin a été prévenu."}
+
 
 
 # =========================================================
