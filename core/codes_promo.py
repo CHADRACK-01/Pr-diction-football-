@@ -66,12 +66,22 @@ def valider_code_promo(code, user_id):
     )
 
     if not row:
-        return {"valide": False, "message": "Code introuvable."}
+        return {
+            "valide": False,
+            "type_reduction": None,
+            "valeur": None,
+            "message": "Code introuvable."
+        }
 
     type_reduction, valeur, limite, deja_utilise = row
 
     if limite > 0 and deja_utilise >= limite:
-        return {"valide": False, "message": "Code épuisé."}
+        return {
+            "valide": False,
+            "type_reduction": None,
+            "valeur": None,
+            "message": "Code épuisé."
+        }
 
     # Incrément atomique
     rowcount = db_execute(
@@ -85,7 +95,12 @@ def valider_code_promo(code, user_id):
     )
 
     if rowcount is None or rowcount == 0:
-        return {"valide": False, "message": "Code épuisé."}
+        return {
+            "valide": False,
+            "type_reduction": None,
+            "valeur": None,
+            "message": "Code épuisé."
+        }
 
     log_info(f"Code {code} validé pour user {user_id}", "CODES_PROMO")
     return {
