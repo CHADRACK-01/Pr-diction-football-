@@ -13,33 +13,24 @@ import sys
 # =========================================================
 TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
 
-# ADMIN_ID : identifiant de l'admin principal (fallback sûr : le tien)
+# ADMIN_ID : identifiant de l'admin principal (pas de fallback : absent -> None -> démarrage bloqué)
 ADMIN_ID_RAW = os.environ.get("ADMIN_ID", "").strip()
 try:
     ADMIN_ID = int(ADMIN_ID_RAW) if ADMIN_ID_RAW else None
 except (ValueError, TypeError):
     ADMIN_ID = None
-try:
-    ADMIN_ID = int(ADMIN_ID_RAW)
-except (ValueError, TypeError):
-    ADMIN_ID = 8653408729
 
 # CANAL_ID peut être un int négatif (-100...) ou un username (@canal)
 CANAL_ID_RAW = os.environ.get("CANAL_ID", "").strip()
-if CANAL_ID_RAW.startswith("@") or not CANAL_ID_RAW.startswith("-"):
+if not CANAL_ID_RAW:
     CANAL_ID = None
-else:
-    try:
-        CANAL_ID = int(CANAL_ID_RAW)
-    except (ValueError, TypeError):
-        CANAL_ID = None
-if CANAL_ID_RAW.startswith("@") or CANAL_ID_RAW.startswith("-") is False:
+elif CANAL_ID_RAW.startswith("@"):
     CANAL_ID = CANAL_ID_RAW
 else:
     try:
         CANAL_ID = int(CANAL_ID_RAW)
     except (ValueError, TypeError):
-        CANAL_ID = -1003999473611
+        CANAL_ID = None
 
 CANAL_USERNAME = os.environ.get("CANAL_USERNAME", "@pronosticsfootball01")
 CANAL_LIEN = os.environ.get("CANAL_LIEN", "https://t.me/pronosticsfootball01")
