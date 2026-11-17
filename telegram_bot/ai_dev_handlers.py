@@ -11,7 +11,7 @@ import os
 from users import est_administrateur
 from ai_dev.agent import preparer_mise_a_jour
 from ai_dev.tester import tester_code
-from ai_dev.updater import appliquer_mise_a_jour
+from ai_dev.updater import appliquer_mise_a_jour, AI_DEV_ENABLED
 from core.utils.logs import log_info, log_error
 
 PROPOSITIONS_IA = {}
@@ -24,6 +24,11 @@ def enregistrer_ai_dev_handlers(bot):
         
         if not est_administrateur(user_id):
             bot.reply_to(message, "⛔ Commande réservée à l'administrateur.")
+            return
+
+        # 🔒 Coupure de sécurité : on refuse avant l'appel IA (aucun appel inutile)
+        if not AI_DEV_ENABLED:
+            bot.reply_to(message, "🚫 Auto-modification désactivée (AI_DEV_ENABLED=false).")
             return
             
         texte = message.text.replace("/demander", "").strip()

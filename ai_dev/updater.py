@@ -13,6 +13,10 @@ from core.utils.logs import log_info, log_error, log_warning
 
 BACKUP_DIR = "backups_ia"
 
+# 🔒 Coupure de sécurité : l'auto-modification IA (écriture disque + push sur main)
+# est DÉSACTIVÉE par défaut. Il faut explicitement AI_DEV_ENABLED=true pour l'activer.
+AI_DEV_ENABLED = os.environ.get('AI_DEV_ENABLED', 'false').strip().lower() == 'true'
+
 def _creer_backup(chemin_fichier):
     """Crée une copie de sauvegarde du fichier original (si le fichier existe)."""
     # Si le fichier n'existe pas, pas besoin de backup (c'est une création)
@@ -35,6 +39,10 @@ def _creer_backup(chemin_fichier):
 
 def _git_commit_and_push(chemin_fichier, message):
     """Envoie la modification sur GitHub pour déclencher le redéploiement Render."""
+    # 🔒 Garde n°2 : aucun push git (donc aucune écriture sur main) si l'interrupteur est absent
+    if not AI_DEV_ENABLED:
+        return False, "🚫 Push désactivé : AI_DEV_ENABLED n'est pas à 'true'."
+
     try:
         # On se place à la racine du projet (là où se trouve .git)
         projet_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -74,6 +82,11 @@ def appliquer_mise_a_jour(chemin_fichier_original, chemin_fichier_test):
     Retourne (succes: bool, message: str).
     """
     log_info(f"Tentative d'application de la MAJ sur {chemin_fichier_original}", "AI_UPDATER")
+
+    # 🔒 Garde n°1 : refus AVANT le backup et AVANT toute écriture disque
+    if not AI_DEV_ENABLED:
+        log_warning("Application IA refusée : AI_DEV_ENABLED != true.", "AI_UPDATER")
+        return False, "🚫 Auto-modification désactivée. Aucun fichier n'a été modifié."
 
     if not os.path.exists(chemin_fichier_test):
         return False, "❌ Fichier de test introuvable. Mise à jour annulée."
