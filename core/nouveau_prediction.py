@@ -196,6 +196,9 @@ def _proba_classe_positive(modele, X):
 
 def predire_match_v2(home_team, away_team, competition="default", cotes_book=None):
     """Fonction principale de prédiction."""
+    from config import SEUIL_DIVERGENCE_DC
+    from core import poisson
+
     home_team_db = NOMS_EQUIPES_MAPPING.get(home_team, home_team)
     away_team_db = NOMS_EQUIPES_MAPPING.get(away_team, away_team)
 
@@ -208,7 +211,19 @@ def predire_match_v2(home_team, away_team, competition="default", cotes_book=Non
         return {"erreur": f"Pas assez d'historique pour {home_team} vs {away_team}."}
 
     feature_names = global_model_data.get("features", [])
-    X = np.array([[feats.get(f, 0) for f in feature_names]])
+    features_manquantes = [nom for nom in feature_names if nom not in feats]
+    if features_manquantes:
+        log_error(
+            "Features manquantes pour la prédiction",
+            "PREDICTION",
+            extra={
+                "home": home_team,
+                "away": away_team,
+                "features": features_manquantes,
+            },
+        )
+        return {"erreur": f"Données incomplètes pour {home_team} vs {away_team}."}
+    X = np.array([[feats[nom] for nom in feature_names]])
 
     try:
         result = {"home_team": home_team, "away_team": away_team, "competition": competition}
@@ -219,14 +234,25 @@ def predire_match_v2(home_team, away_team, competition="default", cotes_book=Non
         else:
             result["p_h"], result["p_d"], result["p_a"] = 0.33, 0.33, 0.33
 
+        # Doubles chances : source unique dérivée du 1N2 (comme prediction.py)
+        result["dc_1x"] = result["p_h"] + result["p_d"]
+        result["dc_x2"] = result["p_d"] + result["p_a"]
+        result["dc_12"] = result["p_h"] + result["p_a"]
+
+        # Le modèle DC_1X n'alimente plus dc_1x : il sert seulement de contrôle
+        # de divergence, journalisé sans écraser la source unique.
         if "DC_1X" in models:
-            result["dc_1x"] = _proba_classe_positive(models["DC_1X"], X)
-            result["dc_x2"] = float(1 - result["p_h"])
-            result["dc_12"] = float(1 - result["p_d"])
-        else:
-            result["dc_1x"] = result["p_h"] + result["p_d"]
-            result["dc_x2"] = result["p_d"] + result["p_a"]
-            result["dc_12"] = result["p_h"] + result["p_a"]
+            dc_1x_modele = _proba_classe_positive(models["DC_1X"], X)
+            if abs(dc_1x_modele - result["dc_1x"]) > SEUIL_DIVERGENCE_DC:
+                log_warning(
+                    "Divergence entre le 1N2 et le modèle DC_1X",
+                    "PREDICTION",
+                    extra={
+                        "dc_1x_1n2": round(result["dc_1x"], 4),
+                        "dc_1x_modele": round(dc_1x_modele, 4),
+                        "seuil_divergence": SEUIL_DIVERGENCE_DC,
+                    },
+                )
 
         result["over_25"] = _proba_classe_positive(models["Over25"], X) if "Over25" in models else 0.5
         result["btts_yes"] = _proba_classe_positive(models["BTTS"], X) if "BTTS" in models else 0.5
@@ -234,20 +260,14 @@ def predire_match_v2(home_team, away_team, competition="default", cotes_book=Non
         # H2H
         result["h2h"] = _get_h2h(home_team_db, away_team_db)
 
-        # Scores exacts (Loi de Poisson)
-        lambda_h = max(0.5, feats["bm_h"])
-        lambda_a = max(0.5, feats["bm_a"])
-        
-        def poisson(k, lamb):
-            return (lamb**k * math.exp(-lamb)) / math.factorial(k)
-        
-        scores = []
-        for i in range(4):
-            for j in range(4):
-                proba = poisson(i, lambda_h) * poisson(j, lambda_a) * 100
-                scores.append((i, j, proba))
-        scores.sort(key=lambda x: x[2], reverse=True)
-        result["top_scores"] = scores[:3]
+        # Scores exacts (loi de Poisson, module pur core/poisson.py)
+        lambda_h, lambda_a = poisson.calculer_lambdas(
+            feats["bm_h"], feats["bm_a"], feats["be_h"], feats["be_a"]
+        )
+        result["top_scores"] = [
+            (i, j, proba * 100)
+            for i, j, proba in poisson.top_scores(lambda_h, lambda_a, top=3)
+        ]
 
         # Value Bet (verdict unifié via core.value_bet)
         result["analyse_pari"] = None
@@ -270,11 +290,17 @@ def predire_match_v2(home_team, away_team, competition="default", cotes_book=Non
 # =========================================================
 # FONCTIONNALITÉ 414 : ACCÈS PRO AUX MATRICES DE POISSON
 # =========================================================
-def get_matrice_poisson(home_team, away_team, max_buts=5):
+def get_matrice_poisson(home_team, away_team, max_buts=None):
     """
     Calcule la matrice de Poisson complète pour un match.
     Retourne les probabilités de scores exacts, Over 2.5 et BTTS.
     """
+    from config import POISSON_MAX_BUTS
+    from core import poisson
+
+    if max_buts is None:
+        max_buts = POISSON_MAX_BUTS
+
     # Mapping des noms
     home_team_db = NOMS_EQUIPES_MAPPING.get(home_team, home_team)
     away_team_db = NOMS_EQUIPES_MAPPING.get(away_team, away_team)
@@ -282,34 +308,28 @@ def get_matrice_poisson(home_team, away_team, max_buts=5):
     feats = _get_team_features(home_team_db, away_team_db)
     if not feats:
         return None
-    
-    # Moyennes de buts attendues (lambda)
-    lambda_h = max(0.5, feats["bm_h"])
-    lambda_a = max(0.5, feats["bm_a"])
-    
-    def poisson(k, lamb):
-        return (lamb**k * math.exp(-lamb)) / math.factorial(k)
-    
-    matrice = []
-    for i in range(max_buts + 1):
-        for j in range(max_buts + 1):
-            proba = poisson(i, lambda_h) * poisson(j, lambda_a) * 100
-            matrice.append({
-                "score": f"{i}-{j}",
-                "proba": round(proba, 2)
-            })
-    
+
+    # Moyennes de buts attendues (lambda), corrigées par la défense adverse
+    lambda_h, lambda_a = poisson.calculer_lambdas(
+        feats["bm_h"], feats["bm_a"], feats["be_h"], feats["be_a"]
+    )
+
+    grille = poisson.matrice_scores(lambda_h, lambda_a, max_buts=max_buts)
+    matrice = [
+        {"score": f"{i}-{j}", "proba": round(proba * 100, 2)}
+        for (i, j), proba in grille.items()
+    ]
     # Trier par probabilité décroissante
     matrice.sort(key=lambda x: x["proba"], reverse=True)
-    
-    # Calcul des probabilités dérivées
-    proba_over_25 = sum(m["proba"] for m in matrice if int(m["score"].split("-")[0]) + int(m["score"].split("-")[1]) > 2.5)
-    proba_btts = sum(m["proba"] for m in matrice if int(m["score"].split("-")[0]) > 0 and int(m["score"].split("-")[1]) > 0)
-    
+
     return {
         "lambda_home": round(lambda_h, 2),
         "lambda_away": round(lambda_a, 2),
         "top_scores": matrice[:10],  # Top 10 des scores
-        "proba_over_25": round(proba_over_25, 2),
-        "proba_btts": round(proba_btts, 2),
+        "proba_over_25": round(
+            poisson.proba_over(lambda_h, lambda_a, max_buts=max_buts) * 100, 2
+        ),
+        "proba_btts": round(
+            poisson.proba_btts(lambda_h, lambda_a, max_buts=max_buts) * 100, 2
+        ),
     }

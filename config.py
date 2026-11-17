@@ -173,6 +173,34 @@ def _lire_flottant(nom, defaut, mini, maxi):
     return valeur
 
 
+def _lire_entier(nom, defaut, mini, maxi):
+    """
+    Lit un seuil entier depuis os.environ en contrôlant ses bornes.
+
+    Retourne ``defaut`` si la variable est absente. Si la variable est
+    présente mais non entière ou hors bornes, l'échec est consigné dans
+    ``_ERREURS_ENV`` et ``None`` est retourné (aucun défaut silencieux).
+    """
+    brut = os.environ.get(nom)
+    if brut is None or brut.strip() == "":
+        return defaut
+    try:
+        valeur = int(brut)
+    except (TypeError, ValueError):
+        _ERREURS_ENV.append(f"{nom} invalide : {brut!r} (attendu un entier)")
+        return None
+    if not (mini <= valeur <= maxi):
+        _ERREURS_ENV.append(f"{nom} hors bornes : {valeur} (attendu entre {mini} et {maxi})")
+        return None
+    return valeur
+
+
+# Seuils prédictifs complémentaires, surchargeables par l'environnement.
+SEUIL_DIVERGENCE_DC = _lire_flottant("SEUIL_DIVERGENCE_DC", 0.05, 0.0, 1.0)
+COEF_AVANTAGE_TERRAIN = _lire_flottant("COEF_AVANTAGE_TERRAIN", 0.10, 0.0, 1.0)
+POISSON_MAX_BUTS = _lire_entier("POISSON_MAX_BUTS", 5, 1, 20)
+
+
 VALUE_BET_MIN_EV = _lire_flottant("VALUE_BET_MIN_EV", 0.05, 0.0, 1.0)
 COTE_MIN_RECO = _lire_flottant("COTE_MIN_RECO", 1.30, 1.0, 100.0)
 SEUIL_CONF_SUR = _lire_flottant("SEUIL_CONF_SUR", 0.75, 0.0, 1.0)
