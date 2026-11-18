@@ -17,7 +17,7 @@ Contrats ou services liés : pipeline de prédiction, base de référence
 Rôle : Détecter toute régression silencieuse des prédictions.
 Avantage : Comparaison objective avant et après chaque changement.
 Inconvénient / vigilance : Corpus de référence à maintenir à jour.
-État : À faire
+État : Fait
 
 626 — Tests de bout en bout du parcours utilisateur
 Origine : Ajout
@@ -107,7 +107,7 @@ Contrats ou services liés : générateur aléatoire, modèles
 Rôle : Rendre les tests fiables et reproductibles.
 Avantage : Comparaisons de résultats fiables.
 Inconvénient / vigilance : Certaines variabilités sont légitimes.
-État : À faire
+État : Fait
 
 632 — Rapport de couverture par module
 Origine : Ajout
@@ -152,7 +152,7 @@ Contrats ou services liés : base de données
 Rôle : Sécuriser les évolutions de schéma.
 Avantage : Déploiements sans surprise.
 Inconvénient / vigilance : Base de test à maintenir.
-État : À faire
+État : Fait
 
 635 — Vérification des valeurs par défaut des configurations
 Origine : Ajout
@@ -167,7 +167,7 @@ Contrats ou services liés : système de configuration
 Rôle : Éviter les démarrages en configuration incomplète.
 Avantage : Comportement sûr sans réglage explicite.
 Inconvénient / vigilance : Défauts à revoir à chaque évolution.
-État : À faire
+État : Fait
 
 636 — Journal de santé des tests en intégration continue
 Origine : Ajout
@@ -347,7 +347,7 @@ Contrats ou services liés : table fonctionnalites_actives
 Rôle : Éviter les listes divergentes de fonctionnalités.
 Avantage : Référentiel unique et fiable.
 Inconvénient / vigilance : La table ne stocke aujourd'hui que feature_id et actif.
-État : À faire
+État : Fait
 
 648 — Métadonnées d'interrupteur (propriétaire, date)
 Origine : Ajout
@@ -362,7 +362,7 @@ Contrats ou services liés : table fonctionnalites_actives
 Rôle : Savoir qui décide et pourquoi un interrupteur existe.
 Avantage : Responsabilisation et audit facilités.
 Inconvénient / vigilance : Nécessite d'étendre le schéma actuel limité à feature_id et actif.
-État : À faire
+État : Fait
 
 649 — Historique des bascules d'interrupteurs
 Origine : Ajout
@@ -377,7 +377,7 @@ Contrats ou services liés : table fonctionnalites_actives
 Rôle : Comprendre l'évolution de l'état des fonctionnalités.
 Avantage : Diagnostic rapide des changements.
 Inconvénient / vigilance : La table actuelle n'enregistre que l'état courant.
-État : À faire
+État : Fait
 
 650 — Interrupteurs par environnement
 Origine : Ajout
