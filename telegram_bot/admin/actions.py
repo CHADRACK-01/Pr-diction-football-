@@ -606,15 +606,20 @@ def cmd_features(bot, message):
     from users import est_administrateur
     if not est_administrateur(message.from_user.id):
         return
-    from core.feature_flags import lister_features
-    features = lister_features()
+    from core.feature_flags import lister_catalogue
+    catalogue = lister_catalogue()
     texte = "⚙️ **GESTION DES FONCTIONNALITÉS**\n\n"
-    if not features:
+    if not catalogue:
         texte += "Aucune fonctionnalité enregistrée."
     else:
-        for fid, actif in features.items():
-            statut = "✅ ACTIF" if actif else "❌ INACTIF"
-            texte += f"• {fid} : {statut}\n"
+        for fid, infos in catalogue.items():
+            statut = "✅ ACTIF" if infos.get("actif") else "❌ INACTIF"
+            libelle = infos.get("libelle") or fid
+            categorie = infos.get("categorie")
+            if categorie:
+                texte += f"• {libelle} ({categorie}) : {statut}\n"
+            else:
+                texte += f"• {libelle} : {statut}\n"
     texte += "\nPour activer : `/activer 413`\nPour désactiver : `/desactiver 413`"
     bot.send_message(message.chat.id, texte, parse_mode="Markdown")
 
