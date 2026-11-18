@@ -249,6 +249,50 @@ def _ajouter_colonnes_manquantes(conn, table, colonnes):
                 )
 
 
+def _assurer_schema_catalogue(conn):
+    """Crée et migre les tables du catalogue des fonctionnalités.
+
+    À appeler lors de l'initialisation de la base, à côté des appels existants
+    à _ajouter_colonnes_manquantes (matchs, resultats_pronostics, sessions_pronostic).
+    """
+    colonnes_features = {
+        "libelle": "TEXT",
+        "categorie": "TEXT",
+        "priorite": "INTEGER",
+        "proprietaire": "TEXT",
+        "date_creation": "TEXT",
+        "date_expiration": "TEXT",
+    }
+    try:
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS fonctionnalites_actives ("
+            "feature_id TEXT PRIMARY KEY, "
+            "actif INTEGER NOT NULL DEFAULT 0, "
+            "libelle TEXT, "
+            "categorie TEXT, "
+            "priorite INTEGER, "
+            "proprietaire TEXT, "
+            "date_creation TEXT, "
+            "date_expiration TEXT)"
+        )
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS historique_features ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "feature_id TEXT NOT NULL, "
+            "actif INTEGER NOT NULL, "
+            "auteur_id INTEGER, "
+            "date_bascule TEXT DEFAULT CURRENT_TIMESTAMP)"
+        )
+        conn.commit()
+    except Exception as e:
+        log_error(
+            message="Impossible de créer les tables du catalogue des fonctionnalités",
+            module="DATABASE",
+            exception=e,
+        )
+    _ajouter_colonnes_manquantes(conn, "fonctionnalites_actives", colonnes_features)
+
+
 def initialiser_tables():
     log_info("Début de l'initialisation des tables...", "DATABASE")
 
