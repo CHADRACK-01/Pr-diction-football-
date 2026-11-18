@@ -12,7 +12,18 @@ import requests
 from core.utils.logs import log_info, log_error, log_warning
 
 # Mode TEST : Liste vide pour autoriser tous les fichiers
-FICHIERS_INTERDITS = []
+# Fichiers que l'IA ne doit JAMAIS modifier automatiquement.
+FICHIERS_INTERDITS = [
+    "config.py",
+    "app.py",
+    "core/paiement_auto.py",
+    "core/payments.py",
+    "core/securite.py",
+    "users/paiements.py",
+    "users/db.py",
+    "telegram_bot/payment_handlers.py",
+    "telegram_bot/admin/actions.py",
+]
 
 PROMPT_SYSTEME = """Tu es le développeur principal d'un bot Telegram de pronostic football en Python.
 Tu reçois une demande de modification. Tu dois renvoyer UNIQUEMENT un objet JSON valide avec ce format exact :
@@ -66,8 +77,9 @@ def _appeler_google(instruction, contenu_actuel):
     if not api_key:
         return {"erreur": "Clé GOOGLE_AI_API_KEY manquante."}
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={api_key}"
-    headers = {"Content-Type": "application/json"}
+    # Clé dans l'en-tête (et non dans l'URL) pour qu'elle n'apparaisse pas dans les logs.
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent"
+    headers = {"Content-Type": "application/json", "x-goog-api-key": api_key}
     
     contexte_code = f"Code actuel du fichier :\n```python\n{contenu_actuel}\n```" if contenu_actuel else "Le fichier est nouveau, il n'existe pas encore."
     prompt_complet = f"{PROMPT_SYSTEME}\n\n{contexte_code}\n\nDemande : {instruction}"
