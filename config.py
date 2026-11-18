@@ -12,6 +12,8 @@ import sys
 # TELEGRAM
 # =========================================================
 TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
+# Secret envoyé par Telegram dans l'en-tête X-Telegram-Bot-Api-Secret-Token
+TELEGRAM_WEBHOOK_SECRET = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
 
 # ADMIN_ID : identifiant de l'admin principal (pas de fallback : absent -> None -> démarrage bloqué)
 ADMIN_ID_RAW = os.environ.get("ADMIN_ID", "").strip()
@@ -233,6 +235,8 @@ def verifier_configuration() -> bool:
         problemes.append("ADMIN_ID manquant ou invalide")
     if not CANAL_ID:
         problemes.append("CANAL_ID manquant ou invalide")
+    if not MODE_TEST and not TELEGRAM_WEBHOOK_SECRET:
+        problemes.append("TELEGRAM_WEBHOOK_SECRET manquant (requis pour le webhook)")
 
     problemes.extend(_ERREURS_ENV)
 
