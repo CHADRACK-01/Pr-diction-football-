@@ -1,6 +1,8 @@
 PRONOSTIC FOOTBALL — LES 547 FONCTIONNALITÉS Inventaire des fichiers
 existants et plan détaillé des fonctions à coder 427 fonctionnalités du
-catalogue initial + 120 ajouts = 547
+catalogue initial + 120 ajouts = 547. Une extension est en cours : le
+fichier 06_Fonctionnalites_548_a_624.txt ajoute les fonctionnalités 548 à
+624 (77 entrées), en vue d’étendre le catalogue à 700 fonctionnalités.
 
 Périmètre exact
 
