@@ -1,11 +1,7 @@
 # core/feature_flags.py
 from users.db import db_execute, db_fetchone, db_fetchall
 
-try:
-    from core.logger import log_error
-except Exception:  # pragma: no cover - repli si le logger n'est pas disponible
-    def log_error(*args, **kwargs):
-        return None
+from core.utils.logs import log_error
 
 def est_active(feature_id):
     """Vérifie si une fonctionnalité est active (par défaut : False)."""
