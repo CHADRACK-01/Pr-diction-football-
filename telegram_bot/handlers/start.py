@@ -58,8 +58,8 @@ def _creer_clavier_admin():
     return markup
 
 
-def _creer_clavier_utilisateur():
-    """Clavier normal pour les utilisateurs."""
+def _creer_clavier_utilisateur(user_id=None):
+    """Clavier normal pour les utilisateurs (+ Panneau Admin pour un admin)."""
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(
         telebot.types.KeyboardButton("⚽ Faire un Pronostic"),
@@ -73,6 +73,11 @@ def _creer_clavier_utilisateur():
         telebot.types.KeyboardButton("🤝 Parrainage"),
         telebot.types.KeyboardButton("🌍 Langue"),
     )
+    try:
+        if user_id is not None and est_administrateur(user_id):
+            markup.add(telebot.types.KeyboardButton("👑 Panneau Admin"))
+    except Exception:
+        pass
     return markup
 
 
@@ -141,16 +146,9 @@ def envoyer_menu_principal(chat_id, user_id, bot, force_langue=None):
         f"👇 Utilise les boutons ci-dessous :"
     )
 
-    # Détection admin
-    try:
-        is_admin = est_administrateur(user_id)
-    except Exception:
-        is_admin = False
-
-    if is_admin:
-        markup = _creer_clavier_admin()
-    else:
-        markup = _creer_clavier_utilisateur()
+    # Le clavier utilisateur est servi à tous ; il ajoute « Panneau Admin »
+    # automatiquement lorsque l'utilisateur est administrateur.
+    markup = _creer_clavier_utilisateur(user_id)
 
     try:
         bot.send_message(chat_id, presentation, reply_markup=markup)
@@ -171,7 +169,7 @@ def envoyer_menu_principal(chat_id, user_id, bot, force_langue=None):
         log_warning(
             message="Impossible de vérifier l'abonnement au canal",
             module="START",
-            user_context={"user_id": user_id},
+            user_context={"user_id": user_id, "chat_id": chat_id},
             exception=e,
         )
         is_member = True
@@ -187,7 +185,7 @@ def envoyer_menu_principal(chat_id, user_id, bot, force_langue=None):
             log_warning(
                 message="Impossible d'envoyer le bouton canal",
                 module="START",
-                user_context={"user_id": user_id},
+                user_context={"user_id": user_id, "chat_id": chat_id},
                 exception=e,
             )
 

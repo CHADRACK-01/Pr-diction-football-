@@ -96,6 +96,16 @@ def menu_admin_bas():
         telebot.types.KeyboardButton("💎 Gérer Premium"),
         telebot.types.KeyboardButton("🔍 Lancer l'Audit"),
         telebot.types.KeyboardButton("⚙️ Gérer les Fonctionnalités"), # NOUVEAU
+        # Boutons paramétrés (sous-claviers de sélection)
+        telebot.types.KeyboardButton("🔍 Comparer"),
+        telebot.types.KeyboardButton("⚽ Série"),
+        telebot.types.KeyboardButton("💰 Cotes"),
+        telebot.types.KeyboardButton("🎯 Favoris"),
+        telebot.types.KeyboardButton("🌦️ Météo"),
+        telebot.types.KeyboardButton("⚠️ Piège"),
+        telebot.types.KeyboardButton("💸 Cash-out"),
+        telebot.types.KeyboardButton("📈 Bankroll"),
+        telebot.types.KeyboardButton("🎟️ Code Promo"),
         telebot.types.KeyboardButton("🔙 Quitter Admin")
     )
     return markup
