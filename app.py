@@ -13,6 +13,7 @@ import os
 os.environ["LOKY_MAX_CPU_COUNT"] = "1"
 
 import time
+import hmac
 import threading
 import telebot
 import requests
@@ -367,8 +368,20 @@ def _lancer_scheduler_apres_delai():
 # =========================================================
 # ROUTES FLASK
 # =========================================================
-@app.route(f"/{TOKEN}", methods=["POST"])
+@app.route("/webhook", methods=["POST"])
 def webhook():
+    # Telegram envoie le secret dans l'en-tête X-Telegram-Bot-Api-Secret-Token.
+    # Le token du bot n'est plus dans l'URL, donc il n'apparaît plus dans les logs.
+    secret_attendu = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
+    secret_recu = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+    if not secret_attendu or not hmac.compare_digest(secret_attendu, secret_recu):
+        log_warning(
+            message="Webhook refusé : secret invalide ou absent",
+            module="FLASK",
+            extra={"ip": request.remote_addr},
+        )
+        return "Forbidden", 403
+
     try:
         _initialiser_bdd_si_necessaire()
     except Exception:
@@ -474,6 +487,7 @@ def nettoyer():
 
 
 @app.route("/debug_model")
+@admin_required
 def debug_model():
     try:
         from users.db import get_connection
