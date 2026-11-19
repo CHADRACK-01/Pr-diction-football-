@@ -6,6 +6,7 @@ Handler /start + menu principal.
 - Logs enrichis
 - Détection admin pour afficher le clavier admin automatiquement
 - BOUTONS_MENU : source unique des libellés de boutons (utilisée par fallback)
+- Bouton Devise ajouté au clavier utilisateur (cohérent avec /devise)
 """
 
 import telebot
@@ -31,9 +32,9 @@ BOUTONS_MENU = frozenset({
     "⚽ Faire un Pronostic", "📅 Matchs du Jour", "🎟️ Coupons",
     "🏆 Top Affiches", "📜 Historique", "📊 Statistiques",
     "🔔 Notifications", "💎 Premium", "🤝 Parrainage",
-    "🌍 Langue", "👑 Panneau Admin",
+    "🌍 Langue", "💎 Devise", "👑 Panneau Admin",
     # Menu admin (boutons paramétrés + boutons simples)
-    "💎 Devise", "📊 Fiabilité", "🔍 Comparer", "⚽ Série",
+    "📊 Fiabilité", "🔍 Comparer", "⚽ Série",
     "💰 Cotes", "📈 Bankroll", "💸 Cash-out", "⚠️ Piège",
     "🌦️ Météo", "🎯 Favoris", "🎟️ Code Promo",
     "📊 Stats Admin", "🚨 Panique", "📸 Preuves",
@@ -93,6 +94,7 @@ def _creer_clavier_utilisateur(user_id=None):
         telebot.types.KeyboardButton("💎 Premium"),
         telebot.types.KeyboardButton("🤝 Parrainage"),
         telebot.types.KeyboardButton("🌍 Langue"),
+        telebot.types.KeyboardButton("💎 Devise"),  # ← AJOUTÉ
     )
     try:
         if user_id is not None and est_administrateur(user_id):
