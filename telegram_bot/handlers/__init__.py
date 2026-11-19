@@ -1,6 +1,14 @@
 """
 Point d'entrée des handlers Telegram.
 Ce fichier orchestre l'enregistrement de tous les modules.
+
+ORDRE CRITIQUE :
+1. Start (le plus prioritaire)
+2. Admin / Panique
+3. Fonctionnalités
+4. Paiements / Prédictions / IA
+5. MenuCommandes AVANT Fallback (sinon fallback intercepte les boutons admin)
+6. Fallback EN DERNIER (attrape tout ce qui n'a pas été traité)
 """
 
 # 1. Le Start en PREMIER
@@ -23,7 +31,7 @@ from telegram_bot.handlers.parrainage import enregistrer_parrainage_handlers
 from telegram_bot.devises_handlers import enregistrer_devises_handlers
 from telegram_bot.preuves_handlers import enregistrer_preuves_handlers
 
-# NOUVEAU : Les Codes Promo (manuels)
+# Codes Promo (manuels)
 from telegram_bot.codes_promo_handlers import enregistrer_codes_promo_handlers
 from telegram_bot.utilisation_code_handlers import enregistrer_utilisation_code_handlers
 
@@ -31,11 +39,10 @@ from telegram_bot.utilisation_code_handlers import enregistrer_utilisation_code_
 from telegram_bot.payment_handlers import enregistrer_payment_handlers
 from telegram_bot.prediction_handlers import enregistrer_prediction_handlers
 
-# NOUVEAU : Le Bot Auto-évolutif (IA)
+# Le Bot Auto-évolutif (IA)
 from telegram_bot.ai_dev_handlers import enregistrer_ai_dev_handlers
 
-# 5. Le Fallback en TOUT DERNIER
-from telegram_bot.handlers.fallback import enregistrer_fallback_handlers
+# 5. Fonctionnalités annexes (commandes admin paramétrées)
 from telegram_bot.momentum_handlers import enregistrer_momentum_handlers
 from telegram_bot.fiabilite_handlers import enregistrer_fiabilite_handlers
 from telegram_bot.pieges_handlers import enregistrer_pieges_handlers
@@ -45,17 +52,21 @@ from telegram_bot.meteo_handlers import enregistrer_meteo_handlers
 from telegram_bot.bookmakers_handlers import enregistrer_bookmakers_handlers
 from telegram_bot.cashout_handlers import enregistrer_cashout_handlers
 from telegram_bot.bankroll_handlers import enregistrer_bankroll_handlers
+
+# 6. MenuCommandes AVANT Fallback (sinon les boutons admin sont interceptés)
 from telegram_bot.menu_commandes_handlers import enregistrer_menu_commandes_handlers
 
-
-
+# 7. Le Fallback en TOUT DERNIER
+from telegram_bot.handlers.fallback import enregistrer_fallback_handlers
 
 
 def enregistrer_handlers(bot):
     handlers_modules = [
+        # --- Priorité haute ---
         ("Start", enregistrer_start_handlers),
         ("Admin", enregistrer_admin_handlers),
         ("Panique", enregistrer_panique_handlers),
+        # --- Fonctionnalités principales ---
         ("Pronostic", enregistrer_pronostic_handlers),
         ("Premium", enregistrer_premium_handlers),
         ("Premium Menu", enregistrer_premium_menu_handlers),
@@ -65,8 +76,10 @@ def enregistrer_handlers(bot):
         ("Parrainage", enregistrer_parrainage_handlers),
         ("Devises", enregistrer_devises_handlers),
         ("Preuves", enregistrer_preuves_handlers),
-        ("CodesPromo", enregistrer_codes_promo_handlers),          # NOUVEAU
-        ("UtilisationCode", enregistrer_utilisation_code_handlers), # NOUVEAU
+        # --- Codes promo ---
+        ("CodesPromo", enregistrer_codes_promo_handlers),
+        ("UtilisationCode", enregistrer_utilisation_code_handlers),
+        # --- Paiements & prédictions ---
         ("Paiement", enregistrer_payment_handlers),
         ("Prédiction", enregistrer_prediction_handlers),
         ("Fiabilite", enregistrer_fiabilite_handlers),
@@ -79,8 +92,10 @@ def enregistrer_handlers(bot):
         ("AI_Dev", enregistrer_ai_dev_handlers),
         ("Bankroll", enregistrer_bankroll_handlers),
         ("Cashout", enregistrer_cashout_handlers),
-        ("Fallback", enregistrer_fallback_handlers),
+        # --- Menu admin (doit passer AVANT Fallback) ---
         ("MenuCommandes", enregistrer_menu_commandes_handlers),
+        # --- Fallback EN DERNIER ---
+        ("Fallback", enregistrer_fallback_handlers),
     ]
 
     for nom, enregistrer in handlers_modules:
