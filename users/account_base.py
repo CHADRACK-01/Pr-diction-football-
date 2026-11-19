@@ -310,13 +310,23 @@ def get_langue(user_id):
 
 
 def set_langue(user_id, langue):
-    """Change la langue d'un utilisateur."""
-    if langue not in ("fr", "en", "ln"):
+    """Change la langue d'un utilisateur.
+
+    Les langues valides sont lues depuis core.translations.LANGUES_DISPONIBLES
+    (source unique de vérité) — plus de hardcode ici.
+    """
+    # Import local pour éviter un cycle au chargement du module
+    from core.translations import LANGUES_DISPONIBLES
+
+    if langue not in LANGUES_DISPONIBLES:
         log_warning(
             message="Langue non supportée",
             module="ACCOUNTS",
             user_context={"user_id": user_id},
-            extra={"langue_demandee": langue},
+            extra={
+                "langue_demandee": langue,
+                "langues_valides": list(LANGUES_DISPONIBLES.keys()),
+            },
         )
         return False
 
