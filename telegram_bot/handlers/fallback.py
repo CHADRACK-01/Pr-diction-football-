@@ -3,7 +3,8 @@
 Fallback pour les messages texte non reconnus.
 - Ne capture plus les sessions de pronostic (géré en BDD)
 - Ne capture plus les sessions admin (vérifié via ADMIN_SESSIONS)
-- Exclut les boutons du menu utilisateur et du menu admin
+- Exclut TOUS les boutons du menu utilisateur ET du menu admin
+  (source unique : telegram_bot.handlers.start.BOUTONS_MENU)
 """
 
 import telebot
@@ -14,6 +15,31 @@ from core.session import get_session
 from core.utils.logs import log_info, log_error, log_warning
 from core.urgence import est_en_panique
 
+# Import différé pour éviter les cycles au chargement
+def _boutons_menu():
+    """Retourne l'ensemble des libellés de boutons à exclure du fallback."""
+    try:
+        from telegram_bot.handlers.start import BOUTONS_MENU
+        return BOUTONS_MENU
+    except Exception as e:
+        # Fallback de secours si l'import échoue (ne devrait jamais arriver)
+        log_warning(
+            message="Impossible d'importer BOUTONS_MENU, utilisation liste locale",
+            module="FALLBACK",
+            exception=e,
+        )
+        return frozenset({
+            "↩️ Retour au Menu", "🌍 Langue", "👑 Panneau Admin",
+            "⚽ Faire un Pronostic", "📅 Matchs du Jour", "🎟️ Coupons",
+            "🏆 Top Affiches", "📜 Historique", "📊 Statistiques",
+            "🔔 Notifications", "💎 Premium", "🤝 Parrainage",
+            "📊 Stats Admin", "🚨 Panique", "📸 Preuves",
+            "🎟️ Codes", "🔧 Features", "💱 Taux",
+            "💎 Devise", "📊 Fiabilité", "🔍 Comparer", "⚽ Série",
+            "💰 Cotes", "📈 Bankroll", "💸 Cash-out", "⚠️ Piège",
+            "🌦️ Météo", "🎯 Favoris", "🎟️ Code Promo",
+        })
+
 
 def enregistrer_fallback_handlers(bot):
 
@@ -22,14 +48,7 @@ def enregistrer_fallback_handlers(bot):
             m.text
             and not m.text.startswith("/")
             and not m.text.startswith("#")
-            and m.text not in (
-                "↩️ Retour au Menu", "🌍 Langue", "👑 Panneau Admin",
-                "⚽ Faire un Pronostic", "📅 Matchs du Jour", "🎟️ Coupons",
-                "🏆 Top Affiches", "📜 Historique", "📊 Statistiques",
-                "🔔 Notifications", "💎 Premium", "🤝 Parrainage",
-                "📊 Stats Admin", "🚨 Panique", "📸 Preuves",
-                "🎟️ Codes", "🔧 Features", "💱 Taux",
-            )
+            and m.text not in _boutons_menu()
         )
     )
     def handle_menu_fallback(message):
@@ -102,6 +121,19 @@ def enregistrer_fallback_handlers(bot):
         except Exception as e:
             log_warning(
                 message="Impossible de vérifier les sessions admin",
+                module="FALLBACK",
+                user_context=ctx,
+                exception=e,
+            )
+
+        # Sélection admin en cours (boutons paramétrés) ? On ignore
+        try:
+            from telegram_bot.admin.selection import ADMIN_SELECTIONS
+            if user_id in ADMIN_SELECTIONS:
+                return
+        except Exception as e:
+            log_warning(
+                message="Impossible de vérifier les sélections admin",
                 module="FALLBACK",
                 user_context=ctx,
                 exception=e,
