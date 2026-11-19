@@ -5,12 +5,14 @@ Génération des coupons du jour et calculs avancés (Value Bet, Corners, Carton
 - Détecte les Value Bets (cote bookmaker > proba IA).
 - Estime les probabilités pour la 1ère mi-temps.
 - Affiche les conseils sous forme de phrases positives (Format HTML).
+- Traduction des paris centralisée dans core.formatting.
 """
 
 from datetime import datetime, timezone, timedelta
 from core.feature_flags import est_active
 from core.utils.logs import log_info, log_error, log_warning
 from core.value_bet import est_value_bet
+from core.formatting import traduire_pari
 from config import (
     COTE_MIN_RECO,
     FACTEUR_MT,
@@ -30,6 +32,7 @@ NIVEAUX = {
     "risque": {"min": SEUIL_CONF_RISQUE, "max": SEUIL_CONF_MODERE, "matchs": 7},
 }
 
+
 def _meilleure_reco(prono):
     """Retourne (label, proba) de la meilleure recommandation 1N2."""
     try:
@@ -42,15 +45,6 @@ def _meilleure_reco(prono):
         log_error("Erreur calcul meilleure reco", "PARIS", exception=e)
         return "1X", 0.5
 
-def _traduire_pari(home, away, label_dc):
-    """Traduit les codes 1X, X2, 12 en phrases positives."""
-    if label_dc == "1X":
-        return f"<b>{home}</b> va gagner ou faire match nul"
-    elif label_dc == "X2":
-        return f"<b>{away}</b> va gagner ou faire match nul"
-    elif label_dc == "12":
-        return "Un vainqueur sera désigné (pas de match nul)"
-    return label_dc
 
 def calculer_proba_mi_temps(prono):
     """
@@ -60,12 +54,12 @@ def calculer_proba_mi_temps(prono):
     p_h = float(prono.get("p_h", 0.33))
     p_d = float(prono.get("p_d", 0.33))
     p_a = float(prono.get("p_a", 0.33))
-    
+
     # Ajustement empirique : moins de buts en 1ère période
     p_h_mt = p_h * FACTEUR_MT
     p_a_mt = p_a * FACTEUR_MT
     p_d_mt = 1.0 - (p_h_mt + p_a_mt)  # Le reste va au match nul
-    
+
     # Déterminer la meilleure option pour la MT
     options = [
         ("1X", p_h_mt + p_d_mt),
@@ -73,7 +67,7 @@ def calculer_proba_mi_temps(prono):
         ("12", p_h_mt + p_a_mt)
     ]
     best_mt = max(options, key=lambda x: x[1])
-    
+
     return {
         "p_h_mt": round(p_h_mt, 3),
         "p_d_mt": round(p_d_mt, 3),
@@ -81,6 +75,7 @@ def calculer_proba_mi_temps(prono):
         "label_mt": best_mt[0],
         "proba_mt": best_mt[1]
     }
+
 
 def get_tous_pronostics_disponibles():
     """Récupère tous les pronostics calculés avec les options avancées."""
@@ -102,7 +97,7 @@ def get_tous_pronostics_disponibles():
     for m in matchs:
         try:
             reco_label, reco_pct = _meilleure_reco(m)
-            
+
             cote = round(1 / reco_pct, 2) if reco_pct > 0 else 0
             if cote < COTE_MIN_RECO:
                 matchs_ignores += 1
@@ -157,6 +152,7 @@ def get_tous_pronostics_disponibles():
     )
     return resultats
 
+
 def construire_coupon(niveau, matchs_disponibles):
     """Construit un coupon pour un niveau donné."""
     if niveau not in NIVEAUX:
@@ -192,6 +188,7 @@ def construire_coupon(niveau, matchs_disponibles):
         "confiance_cumulee": round(confiance, 4),
     }
 
+
 def construire_coupon_outside(matchs_disponibles):
     """Coupon Outside (value, proba plus faible)."""
     candidats = [m for m in matchs_disponibles if BANDE_OUTSIDE_MIN <= m["reco_pct"] <= BANDE_OUTSIDE_MAX]
@@ -214,6 +211,7 @@ def construire_coupon_outside(matchs_disponibles):
         "cote_totale": round(cote_totale, 2),
         "confiance_cumulee": round(confiance, 4),
     }
+
 
 def generer_coupons_du_jour():
     """Génère tous les coupons du jour."""
@@ -285,6 +283,7 @@ def generer_coupons_du_jour():
     )
     return {"weekend": est_weekend, "coupons": coupons}
 
+
 def formater_coupon(coupon, langue="fr", montrer_details=True):
     """Formate un coupon pour Telegram avec le ton du Coach Personnel (HTML)."""
     niveau_labels = {
@@ -302,14 +301,14 @@ def formater_coupon(coupon, langue="fr", montrer_details=True):
     texte = f"<b>{titre}</b>\n━━━━━━━━━━━━━━━━━━━━\n\n"
 
     for i, m in enumerate(coupon.get("matchs", []), 1):
-        phrase = _traduire_pari(m['home'], m['away'], m['reco_label'])
-        
+        phrase = traduire_pari(m['home'], m['away'], m['reco_label'])
+
         texte += f"{i}. <b>{m['home']} vs {m['away']}</b>\n"
-        
+
         if montrer_details:
             texte += f"   👉 Mon conseil : {phrase}\n"
             texte += f"   📊 (Fiabilité : {round(m['reco_pct'] * 100, 1)}%)\n"
-            
+
             # Affichage du Value Bet (Fonctionnalité 2)
             if m.get("is_value_bet") and est_active("2"):
                 texte += f"   💰 <b>Value Bet Détecté !</b>\n"
@@ -325,7 +324,7 @@ def formater_coupon(coupon, langue="fr", montrer_details=True):
                 texte += f"   ⏱️ 1ère MT ({mt['label_mt']}) : {round(mt['proba_mt']*100, 1)}%\n"
         else:
             texte += f"   👉 Mon conseil : {phrase}\n"
-        
+
         texte += "\n"
 
     if montrer_details:
