@@ -10,6 +10,29 @@ from core.daily_matches import get_matchs_du_jour, formater_matchs_du_jour
 from core.utils.logs import log_info, log_error, log_warning
 
 
+# Verrou pour éviter les doubles chargements du même utilisateur
+_CHARGEMENTS_EN_COURS = set()
+_CHARGEMENTS_LOCK = threading.Lock()
+
+
+def _deja_en_cours(user_id):
+    """Retourne True si un chargement est déjà en cours pour ce user."""
+    with _CHARGEMENTS_LOCK:
+        return user_id in _CHARGEMENTS_EN_COURS
+
+
+def _marquer_debut(user_id):
+    """Marque le début d'un chargement pour ce user."""
+    with _CHARGEMENTS_LOCK:
+        _CHARGEMENTS_EN_COURS.add(user_id)
+
+
+def _marquer_fin(user_id):
+    """Marque la fin d'un chargement pour ce user."""
+    with _CHARGEMENTS_LOCK:
+        _CHARGEMENTS_EN_COURS.discard(user_id)
+
+
 def _envoyer_message_securise(bot, chat_id, texte):
     """Envoie un message en HTML (gère la limite de 4096 caractères)."""
     limite = 4000
@@ -54,77 +77,84 @@ def _modifier_message_silencieux(bot, chat_id, message_id, texte):
 
 
 def _charger_modele_en_arriere_plan(bot, chat_id, message_id, user_id, langue, action):
+    """Charge le modèle IA (si nécessaire) puis exécute l'action demandée.
+
+    Protégé contre les doubles clics via _CHARGEMENTS_EN_COURS.
+    """
     from core.ml_model import global_model_data, charger_et_entrainer
-    
-    _modifier_message_silencieux(bot, chat_id, message_id, "⏳ Chargement du modèle IA en cours...")
-    
+
     try:
-        if global_model_data.get('models') is None:
-            success = charger_et_entrainer()
-        else:
-            success = True
-    except Exception as e:
-        log_error("Erreur chargement modèle", "PREMIUM", exception=e)
-        _modifier_message_silencieux(bot, chat_id, message_id, "❌ Erreur lors du chargement du modèle.")
-        return
-    
-    if not success:
-        _modifier_message_silencieux(bot, chat_id, message_id, "❌ Impossible de charger le modèle.")
-        return
-    
-    try:
-        # --- MATCHS DU JOUR ---
-        if action == "matchs_du_jour":
-            matchs = get_matchs_du_jour()
-            if not matchs:
-                _modifier_message_silencieux(bot, chat_id, message_id, "📅 Aucun match disponible aujourd'hui.")
-                return
-            is_prem = est_premium(user_id)
-            nb_max = None if is_prem else 50
-            texte = formater_matchs_du_jour(matchs, langue, est_premium=is_prem, nb_max=nb_max)
-            _supprimer_message_silencieux(bot, chat_id, message_id)
-            _envoyer_message_securise(bot, chat_id, texte)
-            
-        # --- COUPONS ---
-        elif action == "coupons":
-            data = generer_coupons_du_jour()
-            coupons = data['coupons']
-            if not coupons:
-                _modifier_message_silencieux(bot, chat_id, message_id, "🎟️ Aucun coupon disponible aujourd'hui.")
-                return
-            is_premium_user = est_premium(user_id)
-            _supprimer_message_silencieux(bot, chat_id, message_id)
-            if is_premium_user:
-                for coupon in coupons:
-                    if coupon['cote_totale'] >= 1.30:
-                        texte = formater_coupon(coupon, langue, montrer_details=True)
-                        _envoyer_message_securise(bot, chat_id, texte)
+        _modifier_message_silencieux(bot, chat_id, message_id, "⏳ Chargement du modèle IA en cours...")
+
+        try:
+            if global_model_data.get('models') is None:
+                success = charger_et_entrainer()
             else:
-                coupon_modere = next((c for c in coupons if c['niveau'] == 'modere'), coupons[0])
-                texte = formater_coupon(coupon_modere, langue, montrer_details=False)
+                success = True
+        except Exception as e:
+            log_error("Erreur chargement modèle", "PREMIUM", exception=e)
+            _modifier_message_silencieux(bot, chat_id, message_id, "❌ Erreur lors du chargement du modèle.")
+            return
+
+        if not success:
+            _modifier_message_silencieux(bot, chat_id, message_id, "❌ Impossible de charger le modèle.")
+            return
+
+        try:
+            # --- MATCHS DU JOUR ---
+            if action == "matchs_du_jour":
+                matchs = get_matchs_du_jour()
+                if not matchs:
+                    _modifier_message_silencieux(bot, chat_id, message_id, "📅 Aucun match disponible aujourd'hui.")
+                    return
+                is_prem = est_premium(user_id)
+                nb_max = None if is_prem else 50
+                texte = formater_matchs_du_jour(matchs, langue, est_premium=is_prem, nb_max=nb_max)
+                _supprimer_message_silencieux(bot, chat_id, message_id)
                 _envoyer_message_securise(bot, chat_id, texte)
-                
-        # --- TOP AFFICHES ---
-        elif action == "top_affiches":
-            affiches = get_top_affiches(limite=10)
-            if not affiches:
-                _modifier_message_silencieux(bot, chat_id, message_id, "🏆 Aucune affiche à fort potentiel aujourd'hui.")
-                return
-            affiches_filtrees = [a for a in affiches if round(1/a['reco_pct'], 2) >= 1.30]
-            if not affiches_filtrees:
-                _modifier_message_silencieux(bot, chat_id, message_id, "🏆 Aucune affiche avec une cote intéressante aujourd'hui.")
-                return
-            is_premium_user = est_premium(user_id)
-            _supprimer_message_silencieux(bot, chat_id, message_id)
-            if is_premium_user:
-                texte = formater_top_affiches(affiches_filtrees, langue, montrer_details=True)
-            else:
-                texte = formater_top_affiches(affiches_filtrees[:1], langue, montrer_details=False)
-            _envoyer_message_securise(bot, chat_id, texte)
-            
-    except Exception as e:
-        log_error(f"Erreur action '{action}'", "PREMIUM", exception=e)
-        _modifier_message_silencieux(bot, chat_id, message_id, "❌ Erreur lors de la génération.")
+
+            # --- COUPONS ---
+            elif action == "coupons":
+                data = generer_coupons_du_jour()
+                coupons = data['coupons']
+                if not coupons:
+                    _modifier_message_silencieux(bot, chat_id, message_id, "🎟️ Aucun coupon disponible aujourd'hui.")
+                    return
+                is_premium_user = est_premium(user_id)
+                _supprimer_message_silencieux(bot, chat_id, message_id)
+                if is_premium_user:
+                    for coupon in coupons:
+                        if coupon['cote_totale'] >= 1.30:
+                            texte = formater_coupon(coupon, langue, montrer_details=True)
+                            _envoyer_message_securise(bot, chat_id, texte)
+                else:
+                    coupon_modere = next((c for c in coupons if c['niveau'] == 'modere'), coupons[0])
+                    texte = formater_coupon(coupon_modere, langue, montrer_details=False)
+                    _envoyer_message_securise(bot, chat_id, texte)
+
+            # --- TOP AFFICHES ---
+            elif action == "top_affiches":
+                affiches = get_top_affiches(limite=10)
+                if not affiches:
+                    _modifier_message_silencieux(bot, chat_id, message_id, "🏆 Aucune affiche à fort potentiel aujourd'hui.")
+                    return
+                affiches_filtrees = [a for a in affiches if round(1/a['reco_pct'], 2) >= 1.30]
+                if not affiches_filtrees:
+                    _modifier_message_silencieux(bot, chat_id, message_id, "🏆 Aucune affiche avec une cote intéressante aujourd'hui.")
+                    return
+                is_premium_user = est_premium(user_id)
+                _supprimer_message_silencieux(bot, chat_id, message_id)
+                if is_premium_user:
+                    texte = formater_top_affiches(affiches_filtrees, langue, montrer_details=True)
+                else:
+                    texte = formater_top_affiches(affiches_filtrees[:1], langue, montrer_details=False)
+                _envoyer_message_securise(bot, chat_id, texte)
+
+        except Exception as e:
+            log_error(f"Erreur action '{action}'", "PREMIUM", exception=e)
+            _modifier_message_silencieux(bot, chat_id, message_id, "❌ Erreur lors de la génération.")
+    finally:
+        _marquer_fin(user_id)
 
 
 def enregistrer_premium_handlers(bot):
@@ -141,6 +171,12 @@ def enregistrer_premium_handlers(bot):
                 return
         except Exception:
             return
+
+        # Anti double-clic
+        if _deja_en_cours(user_id):
+            bot.reply_to(message, "⏳ Chargement déjà en cours, patiente quelques secondes...")
+            return
+        _marquer_debut(user_id)
 
         msg = bot.reply_to(message, "⏳ Chargement du modèle IA en cours...")
         threading.Thread(
@@ -162,6 +198,11 @@ def enregistrer_premium_handlers(bot):
         except Exception:
             return
 
+        if _deja_en_cours(user_id):
+            bot.reply_to(message, "⏳ Chargement déjà en cours, patiente quelques secondes...")
+            return
+        _marquer_debut(user_id)
+
         msg = bot.reply_to(message, "⏳ Chargement du modèle IA en cours...")
         threading.Thread(
             target=_charger_modele_en_arriere_plan,
@@ -181,6 +222,11 @@ def enregistrer_premium_handlers(bot):
                 return
         except Exception:
             return
+
+        if _deja_en_cours(user_id):
+            bot.reply_to(message, "⏳ Chargement déjà en cours, patiente quelques secondes...")
+            return
+        _marquer_debut(user_id)
 
         msg = bot.reply_to(message, "⏳ Chargement du modèle IA en cours...")
         threading.Thread(
