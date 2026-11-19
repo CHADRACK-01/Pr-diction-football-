@@ -2,10 +2,14 @@
 """
 Fonctionnalité 5 : Simulateur de Cash-Out.
 Calcule le montant que l'utilisateur récupérerait s'il arrêtait son pari.
+
+Formatage : utilise core.devises.formater_prix pour cohérence avec le reste
+du bot (espaces comme séparateur de milliers, symbole de devise).
 """
 
 import os
 import requests
+from core.devises import formater_prix
 from core.utils.logs import log_info, log_warning, log_error
 
 ODDS_API_KEY = os.environ.get("ODDS_API_KEY", "")
@@ -66,7 +70,10 @@ def get_cote_actuelle(home_team, away_team, sport="soccer_epl", bookmaker="betwi
 
 
 def formater_cashout(home_team, away_team, mise, cote_initiale, cote_actuelle, cashout):
-    """Formate le résultat pour Telegram."""
+    """Formate le résultat pour Telegram (HTML).
+
+    Utilise formater_prix pour cohérence (séparateur espace, devise CDF).
+    """
     if cashout <= 0:
         return "❌ Impossible de calculer le cash-out."
 
@@ -76,13 +83,16 @@ def formater_cashout(home_team, away_team, mise, cote_initiale, cote_actuelle, c
     texte = f"💸 <b>SIMULATEUR DE CASH-OUT</b>\n"
     texte += f"━━━━━━━━━━━━━━━━━━━━\n\n"
     texte += f"🏟️ {home_team} vs {away_team}\n\n"
-    texte += f"💵 Mise : {mise:,.0f} CDF\n"
+    texte += f"💵 Mise : {formater_prix(mise, 'CDF')}\n"
     texte += f"🎯 Cote initiale : {cote_initiale}\n"
     texte += f"🎯 Cote actuelle : {cote_actuelle}\n\n"
-    texte += f"💰 <b>Cash-out actuel : {cashout:,.0f} CDF</b>\n\n"
+    texte += f"💰 <b>Cash-out actuel : {formater_prix(cashout, 'CDF')}</b>\n\n"
     texte += f"📊 <b>Détail :</b>\n"
-    texte += f"• Gain potentiel (si pari gagnant) : {gain_initial:,.0f} CDF\n"
-    texte += f"• Différence avec la mise : {difference:+,.0f} CDF\n\n"
+    texte += f"• Gain potentiel (si pari gagnant) : {formater_prix(gain_initial, 'CDF')}\n"
+
+    # Différence : formater manuellement car formater_prix ne gère pas le signe
+    signe = "+" if difference >= 0 else "−"
+    texte += f"• Différence avec la mise : {signe}{formater_prix(abs(difference), 'CDF')}\n\n"
 
     if cashout > mise:
         texte += f"✅ <i>Tu es en profit. Le cash-out est intéressant.</i>\n"
