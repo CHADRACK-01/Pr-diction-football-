@@ -6,6 +6,9 @@ Commande /devise : permet à l'utilisateur de choisir sa devise préférée
 La colonne `devise` est créée localement au premier appel via ALTER TABLE
 pour ne pas dépendre de users/db.py. Les taux de change proviennent de
 core/devises.py.
+
+⚠️ Depuis le LOT 8, get_taux_change peut retourner None si le taux est
+indisponible. On gère ce cas en affichant un message explicite.
 """
 
 import telebot
@@ -112,6 +115,14 @@ def _texte_devise(devise):
     )
 
 
+def _ligne_taux(devise):
+    """Retourne la ligne d'affichage du taux, ou un avertissement si indisponible."""
+    taux = get_taux_change(devise)
+    if taux is None:
+        return f"Taux : <i>indisponible pour le moment</i>"
+    return f"Taux : 1 {devise} = {taux} CDF"
+
+
 def enregistrer_devises_handlers(bot):
     """Enregistre les handlers de la commande /devise."""
 
@@ -135,7 +146,7 @@ def enregistrer_devises_handlers(bot):
                 exception=e,
             )
 
-    @bot.message_handler(func=lambda m: m.text == "💱 Devise")
+    @bot.message_handler(func=lambda m: m.text == "💎 Devise")
     def bouton_devise(message):
         user_id = message.from_user.id
         try:
@@ -166,11 +177,10 @@ def enregistrer_devises_handlers(bot):
                 return
 
             bot.answer_callback_query(call.id, "✅ Devise enregistrée")
-            taux = get_taux_change(devise)
             texte = (
                 "💱 <b>Devise enregistrée</b>\n\n"
                 f"Devise : <b>{devise}</b>\n"
-                f"Taux : 1 {devise} = {taux} CDF\n"
+                f"{_ligne_taux(devise)}\n"
                 f"Exemple : 10 000 CDF = <b>{formater_prix(10000, devise)}</b>"
             )
             bot.edit_message_text(
