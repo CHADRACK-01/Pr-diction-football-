@@ -166,14 +166,20 @@ def _get_h2h(home_team, away_team):
     }
 
 
+# Convention du contrat (core/contrat_modele.py) : 0 = domicile, 1 = nul, 2 = extérieur
+CLASSES_1N2_CONTRAT = {0: "H", 1: "D", 2: "A"}
+
+
 def _probas_1n2(modele, X):
     """Retourne (p_H, p_D, p_A) en respectant l'ordre réel des classes du modèle 1N2."""
-    classes = list(getattr(modele, "classes_", []))
+    classes_brutes = list(getattr(modele, "classes_", []))
+    # np.int64(0) == 0 et hash identique : la conversion par dictionnaire fonctionne
+    classes = [CLASSES_1N2_CONTRAT.get(c, c) for c in classes_brutes]
     probas = modele.predict_proba(X)[0]
     mapping = dict(zip(classes, probas))
     if {"H", "D", "A"}.issubset(mapping.keys()):
         return float(mapping["H"]), float(mapping["D"]), float(mapping["A"])
-    log_warning(f"Classes 1N2 inattendues : {classes} — repli sur l'ordre p[0], p[1], p[2]", "PREDICTION")
+    log_warning(f"Classes 1N2 inattendues : {classes_brutes} — repli sur l'ordre p[0], p[1], p[2]", "PREDICTION")
     return float(probas[0]), float(probas[1]), float(probas[2])
 
 
@@ -212,6 +218,11 @@ def predire_match_v2(home_team, away_team, competition="default", cotes_book=Non
     away_team_db = NOMS_EQUIPES_MAPPING.get(away_team, away_team)
 
     models = global_model_data.get("models")
+    if not models:
+        # Chargement à la demande : le modèle peut ne pas être prêt au premier message
+        from core.ml_model import charger_et_entrainer
+        charger_et_entrainer()
+        models = global_model_data.get("models")
     if not models:
         return {"erreur": "Modèle IA non chargé. Réessaie dans un instant."}
 
