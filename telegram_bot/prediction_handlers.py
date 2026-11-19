@@ -2,18 +2,8 @@
 import telebot
 from users import get_langue, est_premium
 from core.feature_flags import est_active
+from core.formatting import traduire_pari
 from core.utils.logs import log_info, log_error, log_warning
-
-
-def _traduire_pari(home, away, label_dc):
-    """Traduit les codes 1X, X2, 12 en phrases positives."""
-    if label_dc == "1X":
-        return f"<b>{home}</b> va gagner ou faire match nul"
-    elif label_dc == "X2":
-        return f"<b>{away}</b> va gagner ou faire match nul"
-    elif label_dc == "12":
-        return "L'un des deux équipes va gagner (pas de match nul )"
-    return label_dc
 
 
 def _formater_bulletin_premium(resultat, langue="fr"):
@@ -22,10 +12,10 @@ def _formater_bulletin_premium(resultat, langue="fr"):
         h = resultat.get('home_team', '?')
         a = resultat.get('away_team', '?')
         p_h, p_d, p_a = resultat.get('p_h', 0.33), resultat.get('p_d', 0.33), resultat.get('p_a', 0.33)
-        
+
         dc_1x, dc_x2, dc_12 = resultat.get('dc_1x', 0.5), resultat.get('dc_x2', 0.5), resultat.get('dc_12', 0.5)
         label_dc, proba_dc = max([("1X", dc_1x), ("X2", dc_x2), ("12", dc_12)], key=lambda x: x[1])
-        phrase_conseil = _traduire_pari(h, a, label_dc)
+        phrase_conseil = traduire_pari(h, a, label_dc)
 
         btts = resultat.get('btts_yes', 0.5)
         over = resultat.get('over_25', 0.5)
@@ -54,7 +44,7 @@ def _formater_bulletin_premium(resultat, langue="fr"):
                 txt += f"{i}. {h} {sh} - {sa} {a} ({round(p, 1)}%)\n"
             txt += "\n"
 
-        if h2h and h2h['total'] > 0:
+        if h2h and h2h.get('total', 0) > 0:
             txt += f"📊 <b>HISTORIQUE (5 matchs) :</b>\n"
             txt += f"{h} a gagné {h2h['victoires_h']} fois, {h2h['nuls']} nul(s), {a} a gagné {h2h['victoires_a']} fois.\n\n"
 
@@ -96,10 +86,10 @@ def _formater_bulletin_free(resultat, langue="fr"):
         h = resultat.get('home_team', '?')
         a = resultat.get('away_team', '?')
         p_h, p_d, p_a = resultat.get('p_h', 0.33), resultat.get('p_d', 0.33), resultat.get('p_a', 0.33)
-        
+
         dc_1x, dc_x2, dc_12 = resultat.get('dc_1x', 0.5), resultat.get('dc_x2', 0.5), resultat.get('dc_12', 0.5)
         label_dc, proba_dc = max([("1X", dc_1x), ("X2", dc_x2), ("12", dc_12)], key=lambda x: x[1])
-        phrase_conseil = _traduire_pari(h, a, label_dc)
+        phrase_conseil = traduire_pari(h, a, label_dc)
 
         txt = f"⚽ <b>{h} vs {a}</b>\n\n"
         txt += f"👋 Voici mon analyse :\n\n"
@@ -121,7 +111,7 @@ def _formater_bulletin_free(resultat, langue="fr"):
 
 def enregistrer_prediction_handlers(bot):
     log_info("Module prediction_handlers chargé.", "PREDICTION")
-    
+
     @bot.message_handler(commands=['myid'])
     def cmd_myid(message):
         try:
