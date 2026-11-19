@@ -3,7 +3,7 @@
 Génération des coupons du jour et calculs avancés (Value Bet, Corners, Cartons, 1ère MT).
 - Utilise les prédictions déjà calculées.
 - Détecte les Value Bets (cote bookmaker > proba IA).
-- Estime les probabilités pour la 1ère mi-temps.
+- Estime les probabilités pour la 1ère mi-temps (Poisson cohérent).
 - Affiche les conseils sous forme de phrases positives (Format HTML).
 - Traduction des paris centralisée dans core.formatting.
 """
@@ -32,6 +32,11 @@ NIVEAUX = {
     "risque": {"min": SEUIL_CONF_RISQUE, "max": SEUIL_CONF_MODERE, "matchs": 7},
 }
 
+# Proportion des buts marqués en 1ère mi-temps (empirique grands championnats).
+# On garde FACTEUR_MT comme borne pour compatibilité config, mais on utilise
+# une valeur métier stable indépendante du match entier (voir _calculer_*_mt).
+PROPORTION_BUTS_MT = 0.45
+
 
 def _meilleure_reco(prono):
     """Retourne (label, proba) de la meilleure recommandation 1N2."""
@@ -46,35 +51,89 @@ def _meilleure_reco(prono):
         return "1X", 0.5
 
 
+def _lambdas_depuis_prono(prono):
+    """Extrait les espérances de buts (λ) du pronostic si disponibles.
+
+    Retourne (lambda_home, lambda_away) ou None si les données manquent.
+    """
+    try:
+        from core.poisson import calculer_lambdas
+
+        # Les moyennes de buts sont normalement transmises par
+        # core.daily_matches / core.nouveau_prediction. Si absentes, on ne
+        # peut pas dériver un Poisson fiable.
+        bm_h = prono.get("bm_h")
+        bm_a = prono.get("bm_a")
+        be_h = prono.get("be_h")
+        be_a = prono.get("be_a")
+
+        if None in (bm_h, bm_a, be_h, be_a):
+            return None
+
+        return calculer_lambdas(
+            float(bm_h), float(bm_a), float(be_h), float(be_a)
+        )
+    except Exception as e:
+        log_warning(
+            message="Impossible de calculer les lambdas pour la MT",
+            module="PARIS",
+            exception=e,
+        )
+        return None
+
+
 def calculer_proba_mi_temps(prono):
+    """Estime les probabilités pour la 1ère mi-temps via Poisson.
+
+    Retourne un dict {p_h_mt, p_d_mt, p_a_mt, label_mt, proba_mt}
+    ou ``None`` si les lambdas ne sont pas disponibles.
+
+    Principe :
+    - On considère que ~45 % des buts sont marqués en 1ère MT.
+    - λ_MT_dom = λ_match_dom × 0.45, idem extérieur.
+    - On calcule P(1), P(N), P(2) en MT via Poisson.
+    - On en déduit les doubles chances 1X, X2, 12.
+    - On retourne la meilleure option.
     """
-    Fonctionnalité 413 : Estime les probabilités pour la 1ère mi-temps.
-    Généralement, les équipes marquent moins en 1ère mi-temps (environ 40% des buts).
-    """
-    p_h = float(prono.get("p_h", 0.33))
-    p_d = float(prono.get("p_d", 0.33))
-    p_a = float(prono.get("p_a", 0.33))
+    lambdas = _lambdas_depuis_prono(prono)
+    if lambdas is None:
+        return None
 
-    # Ajustement empirique : moins de buts en 1ère période
-    p_h_mt = p_h * FACTEUR_MT
-    p_a_mt = p_a * FACTEUR_MT
-    p_d_mt = 1.0 - (p_h_mt + p_a_mt)  # Le reste va au match nul
+    try:
+        from core import poisson
 
-    # Déterminer la meilleure option pour la MT
-    options = [
-        ("1X", p_h_mt + p_d_mt),
-        ("X2", p_a_mt + p_d_mt),
-        ("12", p_h_mt + p_a_mt)
-    ]
-    best_mt = max(options, key=lambda x: x[1])
+        lambda_h, lambda_a = lambdas
+        lambda_h_mt = lambda_h * PROPORTION_BUTS_MT
+        lambda_a_mt = lambda_a * PROPORTION_BUTS_MT
 
-    return {
-        "p_h_mt": round(p_h_mt, 3),
-        "p_d_mt": round(p_d_mt, 3),
-        "p_a_mt": round(p_a_mt, 3),
-        "label_mt": best_mt[0],
-        "proba_mt": best_mt[1]
-    }
+        # Probabilités 1N2 en MT (grille Poisson renormalisée)
+        grille = poisson.matrice_scores(lambda_h_mt, lambda_a_mt, max_buts=5)
+        p_h_mt = sum(p for (i, j), p in grille.items() if i > j)
+        p_d_mt = sum(p for (i, j), p in grille.items() if i == j)
+        p_a_mt = sum(p for (i, j), p in grille.items() if i < j)
+
+        # Doubles chances
+        options = [
+            ("1X", p_h_mt + p_d_mt),
+            ("X2", p_a_mt + p_d_mt),
+            ("12", p_h_mt + p_a_mt),
+        ]
+        label_mt, proba_mt = max(options, key=lambda x: x[1])
+
+        return {
+            "p_h_mt": round(p_h_mt, 4),
+            "p_d_mt": round(p_d_mt, 4),
+            "p_a_mt": round(p_a_mt, 4),
+            "label_mt": label_mt,
+            "proba_mt": proba_mt,
+        }
+    except Exception as e:
+        log_error(
+            "Erreur calcul proba MT (Poisson)",
+            "PARIS",
+            exception=e,
+        )
+        return None
 
 
 def get_tous_pronostics_disponibles():
@@ -139,6 +198,11 @@ def get_tous_pronostics_disponibles():
                 "p_h": float(m.get("p_h", 0.33)),
                 "p_d": float(m.get("p_d", 0.33)),
                 "p_a": float(m.get("p_a", 0.33)),
+                # Transmettre les lambdas si disponibles pour la MT
+                "bm_h": m.get("bm_h"),
+                "bm_a": m.get("bm_a"),
+                "be_h": m.get("be_h"),
+                "be_a": m.get("be_a"),
             })
         except Exception as e:
             log_error("Erreur traitement match pour coupons", "PARIS", exception=e)
@@ -319,9 +383,15 @@ def formater_coupon(coupon, langue="fr", montrer_details=True):
                 texte += f"   🟨 Cartons > 3.5 : {round(m['cartons_pct']*100, 1)}%\n"
 
             # Affichage 1ère Mi-Temps (Fonctionnalité 413)
+            # On masque la ligne si les lambdas ne sont pas disponibles
+            # (calculer_proba_mi_temps retourne None) — pas de valeur trompeuse.
             if est_active("413"):
                 mt = calculer_proba_mi_temps(m)
-                texte += f"   ⏱️ 1ère MT ({mt['label_mt']}) : {round(mt['proba_mt']*100, 1)}%\n"
+                if mt is not None:
+                    texte += (
+                        f"   ⏱️ 1ère MT ({mt['label_mt']}) : "
+                        f"{round(mt['proba_mt'] * 100, 1)}%\n"
+                    )
         else:
             texte += f"   👉 Mon conseil : {phrase}\n"
 
