@@ -53,49 +53,36 @@ def _contexte(user, chat_id=None):
     }
 
 
+# Boutons du menu utilisateur, affichés à TOUS (y compris l'admin)
+BOUTONS_UTILISATEUR = [
+    "⚽ Faire un Pronostic", "📅 Matchs du Jour", "🎟️ Coupons",
+    "🏆 Top Affiches", "📜 Historique", "📊 Statistiques",
+    "🔔 Notifications", "💎 Premium", "🤝 Parrainage",
+    "🌍 Langue", "💎 Devise",
+]
+
+# Boutons réservés à l'administrateur, ajoutés sous le menu utilisateur
+BOUTONS_ADMIN_SUPPLEMENTAIRES = [
+    "📊 Fiabilité", "🔍 Comparer", "⚽ Série", "💰 Cotes",
+    "📈 Bankroll", "💸 Cash-out", "⚠️ Piège", "🌦️ Météo",
+    "🎯 Favoris", "🎟️ Code Promo", "📊 Stats Admin", "🚨 Panique",
+    "📸 Preuves", "🎟️ Codes", "🔧 Features", "💱 Taux",
+    "↩️ Retour au Menu",
+]
+
+
 def _creer_clavier_admin():
-    """Clavier complet pour les administrateurs."""
+    """Clavier de l'administrateur : menu utilisateur complet + boutons admin."""
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    markup.add(
-        telebot.types.KeyboardButton("🌍 Langue"),
-        telebot.types.KeyboardButton("💎 Devise"),
-        telebot.types.KeyboardButton("📊 Fiabilité"),
-        telebot.types.KeyboardButton("🔍 Comparer"),
-        telebot.types.KeyboardButton("⚽ Série"),
-        telebot.types.KeyboardButton("💰 Cotes"),
-        telebot.types.KeyboardButton("📈 Bankroll"),
-        telebot.types.KeyboardButton("💸 Cash-out"),
-        telebot.types.KeyboardButton("⚠️ Piège"),
-        telebot.types.KeyboardButton("🌦️ Météo"),
-        telebot.types.KeyboardButton("🎯 Favoris"),
-        telebot.types.KeyboardButton("🎟️ Code Promo"),
-        telebot.types.KeyboardButton("📊 Stats Admin"),
-        telebot.types.KeyboardButton("🚨 Panique"),
-        telebot.types.KeyboardButton("📸 Preuves"),
-        telebot.types.KeyboardButton("🎟️ Codes"),
-        telebot.types.KeyboardButton("🔧 Features"),
-        telebot.types.KeyboardButton("💱 Taux"),
-        telebot.types.KeyboardButton("↩️ Retour au Menu"),
-    )
+    markup.add(*[telebot.types.KeyboardButton(b) for b in BOUTONS_UTILISATEUR])
+    markup.add(*[telebot.types.KeyboardButton(b) for b in BOUTONS_ADMIN_SUPPLEMENTAIRES])
     return markup
 
 
 def _creer_clavier_utilisateur(user_id=None):
     """Clavier normal pour les utilisateurs (+ Panneau Admin pour un admin)."""
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    markup.add(
-        telebot.types.KeyboardButton("⚽ Faire un Pronostic"),
-        telebot.types.KeyboardButton("📅 Matchs du Jour"),
-        telebot.types.KeyboardButton("🎟️ Coupons"),
-        telebot.types.KeyboardButton("🏆 Top Affiches"),
-        telebot.types.KeyboardButton("📜 Historique"),
-        telebot.types.KeyboardButton("📊 Statistiques"),
-        telebot.types.KeyboardButton("🔔 Notifications"),
-        telebot.types.KeyboardButton("💎 Premium"),
-        telebot.types.KeyboardButton("🤝 Parrainage"),
-        telebot.types.KeyboardButton("🌍 Langue"),
-        telebot.types.KeyboardButton("💎 Devise"),  # ← AJOUTÉ
-    )
+    markup.add(*[telebot.types.KeyboardButton(b) for b in BOUTONS_UTILISATEUR])
     try:
         if user_id is not None and est_administrateur(user_id):
             markup.add(telebot.types.KeyboardButton("👑 Panneau Admin"))
