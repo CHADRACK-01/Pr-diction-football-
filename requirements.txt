@@ -6,8 +6,8 @@ requests
 Flask
 gunicorn
 joblib
-scikit-learn
 xgboost
 lightgbm
 libsql
 pytest
+scikit-learn==1.6.1
