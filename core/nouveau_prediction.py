@@ -29,7 +29,7 @@ NOMS_EQUIPES_MAPPING = {
     "VfL Bochum 1848": "Bochum", "1. FC Köln": "FC Koln",
     "SV Darmstadt 98": "Darmstadt", "1. FC Heidenheim 1846": "Heidenheim",
     "FC St. Pauli": "St Pauli", "Holstein Kiel": "Holstein Kiel",
-    
+
     # France
     "Paris Saint-Germain FC": "Paris SG", "Paris Saint-Germain": "Paris SG",
     "Olympique de Marseille": "Marseille", "Olympique Lyonnais": "Lyon",
@@ -41,7 +41,7 @@ NOMS_EQUIPES_MAPPING = {
     "FC Metz": "Metz", "Le Havre AC": "Le Havre", "Clermont Foot 63": "Clermont",
     "FC Lorient": "Lorient", "Angers SCO": "Angers",
     "AS Saint-Etienne": "St Etienne", "AJ Auxerre": "Auxerre",
-    
+
     # Espagne
     "Real Madrid CF": "Real Madrid", "FC Barcelona": "Barcelona",
     "Atletico de Madrid": "Ath Madrid", "Atlético Madrid": "Ath Madrid",
@@ -56,13 +56,13 @@ NOMS_EQUIPES_MAPPING = {
     "Girona FC": "Girona", "Real Valladolid CF": "Valladolid",
     "Levante UD": "Levante", "Elche CF": "Elche", "CD Leganes": "Leganes",
     "Real Zaragoza": "Zaragoza", "Real Oviedo": "Oviedo", "Sporting Gijon": "Sp Gijon",
-    
+
     # Angleterre
     "Manchester City FC": "Man City", "Manchester United FC": "Man United",
     "Newcastle United FC": "Newcastle", "Nottingham Forest FC": "Nott'm Forest",
     "Tottenham Hotspur FC": "Tottenham", "Wolverhampton Wanderers FC": "Wolves",
     "Brighton & Hove Albion FC": "Brighton", "West Ham United FC": "West Ham",
-    
+
     # Italie
     "AS Roma": "Roma", "SS Lazio": "Lazio", "Juventus FC": "Juventus",
     "AC Milan": "Milan", "FC Internazionale Milano": "Inter",
@@ -152,7 +152,7 @@ def _get_h2h(home_team, away_team):
     )
     if not rows:
         return None
-    
+
     victoires_h, nuls, victoires_a = 0, 0, 0
     for r in rows:
         h, a, fthg, ftag = r[0], r[1], r[2], r[3]
@@ -164,7 +164,7 @@ def _get_h2h(home_team, away_team):
             if ftag > fthg: victoires_h += 1
             elif ftag == fthg: nuls += 1
             else: victoires_a += 1
-            
+
     return {
         "victoires_h": victoires_h, "nuls": nuls, "victoires_a": victoires_a,
         "total": len(rows)
@@ -203,12 +203,9 @@ def _proba_classe_positive(modele, X):
             "cle_retenue": classes[1] if len(classes) > 1 else None,
         },
     )
-    # Sans classe positive identifiée (ou sans couple de probabilités exploitable),
-    # on ne renvoie aucune valeur plutôt que d'inventer un repli sur probas[1].
     if len(probas) < 2 or not classes:
         return None
     return None
-
 
 
 def predire_match_v2(home_team, away_team, competition="default", cotes_book=None):
@@ -306,6 +303,14 @@ def predire_match_v2(home_team, away_team, competition="default", cotes_book=Non
             for i, j, proba in poisson.top_scores(lambda_h, lambda_a, top=3)
         ]
 
+        # Transmettre les lambdas (pour la MT et la matrice Poisson)
+        result["bm_h"] = feats["bm_h"]
+        result["bm_a"] = feats["bm_a"]
+        result["be_h"] = feats["be_h"]
+        result["be_a"] = feats["be_a"]
+        result["lambda_h"] = lambda_h
+        result["lambda_a"] = lambda_a
+
         # Value Bet (verdict unifié via core.value_bet)
         result["analyse_pari"] = None
         if cotes_book:
@@ -324,17 +329,28 @@ def predire_match_v2(home_team, away_team, competition="default", cotes_book=Non
         return {"erreur": "Erreur de calcul. L'admin a été prévenu."}
 
 
-
 # =========================================================
 # FONCTIONNALITÉ 414 : ACCÈS PRO AUX MATRICES DE POISSON
 # =========================================================
 def get_matrice_poisson(home_team, away_team, max_buts=None):
-    """
-    Calcule la matrice de Poisson complète pour un match.
-    Retourne les probabilités de scores exacts, Over 2.5 et BTTS.
+    """Calcule la matrice de Poisson complète pour un match.
+
+    Retourne ``None`` si :
+    - le modèle IA n'est pas chargé (on refuse de donner l'illusion d'une
+      prédiction IA alors qu'on n'a que des moyennes de buts)
+    - l'historique est insuffisant
     """
     from config import POISSON_MAX_BUTS
     from core import poisson
+
+    # ⚠️ Garde : refuser si le modèle n'est pas chargé.
+    if not global_model_data.get("models"):
+        log_warning(
+            "get_matrice_poisson appelée sans modèle chargé",
+            "PREDICTION",
+            extra={"home": home_team, "away": away_team},
+        )
+        return None
 
     if max_buts is None:
         max_buts = POISSON_MAX_BUTS
