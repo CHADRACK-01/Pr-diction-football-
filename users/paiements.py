@@ -79,41 +79,22 @@ def get_demande(demande_id):
 
 def get_demandes_en_attente(limite=20):
     """Récupère les demandes en attente."""
-    rows = db_fetchall(
-        """
-        SELECT * FROM paiements_attente
-        WHERE statut = 'en_attente'
-        ORDER BY date_demande DESC
-        LIMIT ?
-        """,
-        params=[limite],
-        db_context={"table": "paiements_attente", "operation": "list_pending"},
-    )
-    # db_fetchall retourne des tuples, on les convertit en dicts
-    if not rows:
-        return []
-    # On refait une requête via fetchone_dict pour avoir les colonnes
     from users.db import get_connection
+    conn = None
     try:
         conn = get_connection()
-        try:
-            cur = conn.execute(
-                """
-                SELECT * FROM paiements_attente
-                WHERE statut = 'en_attente'
-                ORDER BY date_demande DESC
-                LIMIT ?
-                """,
-                (limite,),
-            )
-            rows = cur.fetchall()
-            columns = [d[0] for d in cur.description]
-            return [dict(zip(columns, r)) for r in rows]
-        finally:
-            try:
-                conn.close()
-            except Exception:
-                pass
+        cur = conn.execute(
+            """
+            SELECT * FROM paiements_attente
+            WHERE statut = 'en_attente'
+            ORDER BY date_demande DESC
+            LIMIT ?
+            """,
+            (limite,),
+        )
+        rows = cur.fetchall()
+        columns = [d[0] for d in cur.description]
+        return [dict(zip(columns, r)) for r in rows]
     except Exception as e:
         log_error(
             message="Impossible de récupérer les demandes en attente",
@@ -121,6 +102,12 @@ def get_demandes_en_attente(limite=20):
             exception=e,
         )
         return []
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
 
 def valider_demande(demande_id, admin_id):
@@ -313,7 +300,12 @@ def generer_lot_codes(jours, quantite):
 
 def utiliser_code(code, user_id):
     """
-    Utilise un code Premium (ATOMIQUE).
+    Utilise un code Premium (table codes_premium, format PREM-XXXXXXXX).
+
+    Cette fonction gère UNIQUEMENT les codes "premium" générés par
+    generer_code() (table codes_premium). Les codes promo manuels
+    (/codepromo) sont gérés par core.codes_promo.
+
     Retourne {"jours": N} si succès, {"erreur": "..."} sinon.
     """
     if not code or not isinstance(code, str):
@@ -321,7 +313,7 @@ def utiliser_code(code, user_id):
 
     code = code.strip().upper()
 
-    # 1. Vérifier l'existence (lecture seule, pas critique pour la race)
+    # 1. Vérification préliminaire (lecture seule)
     row = db_fetchone(
         "SELECT jours, utilise FROM codes_premium WHERE code = ?",
         params=[code],
@@ -330,7 +322,7 @@ def utiliser_code(code, user_id):
 
     if not row:
         log_warning(
-            message="Code introuvable",
+            message="Code Premium introuvable",
             module="PAIEMENTS",
             user_context={"user_id": user_id},
             extra={"code": code},
@@ -340,7 +332,7 @@ def utiliser_code(code, user_id):
     jours, utilise = row
     if utilise:
         log_warning(
-            message="Code déjà utilisé (vérif préliminaire)",
+            message="Code Premium déjà utilisé (vérif préliminaire)",
             module="PAIEMENTS",
             user_context={"user_id": user_id},
             extra={"code": code},
@@ -358,10 +350,19 @@ def utiliser_code(code, user_id):
         db_context={"table": "codes_premium", "operation": "utiliser"},
     )
 
-    if rowcount is None or rowcount == 0:
+    if rowcount is None:
+        log_error(
+            message="Erreur DB lors de l'utilisation du code",
+            module="PAIEMENTS",
+            user_context={"user_id": user_id},
+            extra={"code": code},
+        )
+        return {"erreur": "Erreur technique. Réessaie."}
+
+    if rowcount == 0:
         # Race condition : un autre utilisateur a utilisé le code entre-temps
         log_warning(
-            message="Code utilisé par un autre utilisateur (race condition détectée)",
+            message="Code Premium déjà utilisé (race condition)",
             module="PAIEMENTS",
             user_context={"user_id": user_id},
             extra={"code": code},
@@ -369,7 +370,7 @@ def utiliser_code(code, user_id):
         return {"erreur": "Code déjà utilisé"}
 
     log_info(
-        f"Code utilisé : +{jours}j pour {user_id}",
+        f"Code Premium utilisé : +{jours}j pour {user_id}",
         "PAIEMENTS",
         user_context={"user_id": user_id},
         extra={"code": code, "jours": jours},
