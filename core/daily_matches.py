@@ -4,6 +4,7 @@ Programme des matchs du jour.
 - Restaure la normalisation des noms d'équipes (via NOMS_EQUIPES_MAPPING)
 - Utilise le moteur de prédiction V2 (core.nouveau_prediction)
 - Formate en HTML (cohérent avec les autres handlers)
+- Traduction des paris centralisée dans core.formatting
 """
 
 from datetime import datetime, timezone, timedelta
@@ -11,6 +12,7 @@ from datetime import datetime, timezone, timedelta
 from core.ml_model import global_model_data
 from core.prediction import predire_match
 from core.api.orchestrator import collecter_tous_les_matchs
+from core.formatting import traduire_pari
 from core.utils.logs import log_info, log_warning, log_error
 from config import CHAMPIONNATS, INFOS_COMPETITIONS, MAPPING_COMPETITIONS
 
@@ -65,24 +67,6 @@ def _charger_modele_si_necessaire():
     except Exception as e:
         log_error("Erreur chargement modèle", "MATCHS", exception=e)
         return False
-
-
-# =========================================================
-# TRADUCTION DES PARIS (déléguée à core.formatting au LOT 5)
-# =========================================================
-def _traduire_pari(home, away, label_dc):
-    """Traduit les codes 1X, X2, 12 en phrases positives (HTML).
-
-    NOTE : cette fonction sera remplacée par core.formatting.traduire_pari
-    au LOT 5 (déduplication). En attendant, comportement identique.
-    """
-    if label_dc == "1X":
-        return f"<b>{home}</b> va gagner ou faire match nul"
-    if label_dc == "X2":
-        return f"<b>{away}</b> va gagner ou faire match nul"
-    if label_dc == "12":
-        return "Un vainqueur sera désigné"
-    return label_dc
 
 
 # =========================================================
@@ -218,7 +202,7 @@ def formater_matchs_du_jour(matchs, langue="fr", est_premium=False, nb_max=None)
 
             info = INFOS_COMPETITIONS.get(m.get("nom_competition"), {})
             emoji_pays = info.get("emoji", "🏆")
-            phrase_conseil = _traduire_pari(m["home"], m["away"], m["dc_label"])
+            phrase_conseil = traduire_pari(m["home"], m["away"], m["dc_label"])
 
             texte += f"⚽ <b>{m['home']} vs {m['away']}</b>\n"
             texte += f"   🕐 {heure} | 🏆 {m['nom_competition']} {emoji_pays}\n"
