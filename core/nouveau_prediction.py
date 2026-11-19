@@ -8,8 +8,13 @@ Moteur de prédiction V2.
 """
 
 import math
+import threading
+from datetime import datetime, timezone, timedelta
+
 import numpy as np
 from core.ml_model import global_model_data
+
+TZ_KINSHASA = timezone(timedelta(hours=1))
 from core.utils.logs import log_info, log_error, log_warning
 from core.value_bet import analyser_value_bet
 from users.db import db_fetchall
@@ -77,67 +82,57 @@ NOMS_EQUIPES_MAPPING = {
 }
 
 
-def _get_team_features(home_team, away_team):
-    """Calcule les features pour un match en interrogeant l'historique."""
-    rows = db_fetchall(
-        """
-        SELECT date, home_team, away_team, fthg, ftag, ftr
-        FROM matchs
-        WHERE (home_team = ? OR away_team = ?) AND fthg IS NOT NULL
-        ORDER BY date DESC LIMIT 50
-        """,
-        params=[home_team, home_team],
-    )
-    rows_away = db_fetchall(
-        """
-        SELECT date, home_team, away_team, fthg, ftag, ftr
-        FROM matchs
-        WHERE (home_team = ? OR away_team = ?) AND fthg IS NOT NULL
-        ORDER BY date DESC LIMIT 50
-        """,
-        params=[away_team, away_team],
-    )
+_etat_lock = threading.Lock()
 
-    if not rows or not rows_away:
+
+def _etat_a_jour():
+    """Renvoie l'état des équipes, avancé avec les matchs postérieurs au modèle.
+
+    Seuls les matchs de date strictement postérieure à la dernière date déjà
+    intégrée dans l'état (etat.date_max) sont ajoutés : un match n'est jamais
+    compté deux fois, même si la fonction est appelée plusieurs fois.
+    """
+    etat = global_model_data.get("etat")
+    if etat is None:
         return None
+    with _etat_lock:
+        rows = db_fetchall(
+            """
+            SELECT date, home_team, away_team, fthg, ftag, ftr
+            FROM matchs
+            WHERE fthg IS NOT NULL AND ftag IS NOT NULL AND ftr IS NOT NULL
+              AND date > ?
+            ORDER BY date, id
+            """,
+            params=[etat.date_max or ""],
+            db_context={"table": "matchs", "operation": "features_maj"},
+        )
+        for r in rows:
+            etat.mettre_a_jour({
+                "date": r[0], "home": r[1], "away": r[2],
+                "fthg": r[3], "ftag": r[4], "ftr": r[5],
+            })
+    return etat
 
-    bm_h, be_h, forme_h = [], [], []
-    for r in rows:
-        h, a, fthg, ftag, ftr = r[1], r[2], r[3], r[4], r[5]
-        if h == home_team:
-            bm_h.append(fthg); be_h.append(ftag)
-            forme_h.append(1 if ftr == 'H' else 0.5 if ftr == 'D' else 0)
-        else:
-            bm_h.append(ftag); be_h.append(fthg)
-            forme_h.append(1 if ftr == 'A' else 0.5 if ftr == 'D' else 0)
 
-    bm_a, be_a, forme_a = [], [], []
-    for r in rows_away:
-        h, a, fthg, ftag, ftr = r[1], r[2], r[3], r[4], r[5]
-        if h == away_team:
-            bm_a.append(fthg); be_a.append(ftag)
-            forme_a.append(1 if ftr == 'H' else 0.5 if ftr == 'D' else 0)
-        else:
-            bm_a.append(ftag); be_a.append(fthg)
-            forme_a.append(1 if ftr == 'A' else 0.5 if ftr == 'D' else 0)
+def _get_team_features(home_team, away_team, date=None):
+    """Features du match, calculées exactement comme à l'entraînement (core/features.py).
 
-    elo_home = 1500 + (sum(forme_h) / len(forme_h)) * 200 if forme_h else 1500
-    elo_away = 1500 + (sum(forme_a) / len(forme_a)) * 200 if forme_a else 1500
-
-    return {
-        "elo_home": elo_home, "elo_away": elo_away, "elo_diff": elo_home - elo_away,
-        "forme_h": sum(forme_h) / len(forme_h) if forme_h else 0.5,
-        "forme_a": sum(forme_a) / len(forme_a) if forme_a else 0.5,
-        "forme_diff": (sum(forme_h) / len(forme_h) if forme_h else 0.5) - (sum(forme_a) / len(forme_a) if forme_a else 0.5),
-        "bm_h": sum(bm_h) / len(bm_h) if bm_h else 1.3,
-        "be_h": sum(be_h) / len(be_h) if be_h else 1.3,
-        "bm_a": sum(bm_a) / len(bm_a) if bm_a else 1.1,
-        "be_a": sum(be_a) / len(be_a) if be_a else 1.4,
-        "diff_attaque": (sum(bm_h)/len(bm_h) if bm_h else 1.3) - (sum(bm_a)/len(bm_a) if bm_a else 1.1),
-        "diff_defense": (sum(be_a)/len(be_a) if be_a else 1.4) - (sum(be_h)/len(be_h) if be_h else 1.3),
-        "h2h_goals_home": 0, "h2h_goals_away": 0, "h2h_n": 0,
-        "repos_h": 7, "repos_a": 7, "home_adv_ratio": 0.45,
-    }
+    Renvoie None si l'historique d'une des équipes est insuffisant.
+    """
+    etat = _etat_a_jour()
+    if etat is None:
+        return None
+    jour = date or datetime.now(TZ_KINSHASA).strftime("%Y-%m-%d")
+    feats = etat.predire(home_team, away_team, jour)
+    if feats is None:
+        return None
+    # Alias utilisés par le calcul Poisson (buts marqués / encaissés par équipe)
+    feats["bm_h"] = feats["marques_h"]
+    feats["be_h"] = feats["encaisses_h"]
+    feats["bm_a"] = feats["marques_a"]
+    feats["be_a"] = feats["encaisses_a"]
+    return feats
 
 
 def _get_h2h(home_team, away_team):
