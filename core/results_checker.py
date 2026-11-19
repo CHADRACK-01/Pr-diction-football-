@@ -1,10 +1,9 @@
 # core/results_checker.py
 """
 Vérification des résultats des pronostics de la veille.
-⚠️ CORRECTIONS :
 - date_match en Kinshasa (pas UTC)
-- est_gagnant reste NULL si non trouvé (mais tentatives limitées)
-- Limite de 5 tentatives (au-delà : match considéré "perdu/annulé")
+- est_gagnant : NULL (à vérifier), 1 (gagné), 0 (perdu), -1 (abandonné)
+- Limite de MAX_TENTATIVES tentatives, puis abandon explicite (est_gagnant = -1)
 - Normalisation robuste des noms
 """
 
@@ -18,6 +17,9 @@ from core.utils.logs import log_info, log_error, log_warning
 
 TZ_KINSHASA = timezone(timedelta(hours=1))
 MAX_TENTATIVES = 5
+
+# Valeur sentinelle : pronostic abandonné (résultat introuvable après N essais)
+STATUT_ABANDONNE = -1
 
 PREFIXES_SUFFIXES = [
     "fc", "afc", "cf", "sc", "ac", "as", "ss", "us", "rc", "rcd",
@@ -46,7 +48,7 @@ def _normaliser_nom(nom):
             extra={"nom": str(nom)[:100]},
             exception=e,
         )
-        return nom.lower().strip()
+        return str(nom).lower().strip()
 
 
 def _extraire_scores(match_api):
@@ -75,7 +77,7 @@ def _recuperer_resultats_api(date_str):
         )
         return {}
 
-    url = f"https://api.football-data.org/v4/matches"
+    url = "https://api.football-data.org/v4/matches"
     params = {"dateFrom": date_str, "dateTo": date_str}
     headers = {"X-Auth-Token": FOOTBALL_DATA_KEY}
 
@@ -141,10 +143,25 @@ def _recuperer_resultats_api(date_str):
     return resultats
 
 
+def _evaluer_pronostic(reco, sh, sa):
+    """Retourne True/False selon que le pronostic est gagnant/perdant."""
+    if reco == "1X" and sh >= sa:
+        return True
+    if reco == "X2" and sa >= sh:
+        return True
+    if reco == "12" and sh != sa:
+        return True
+    return False
+
+
 def verifier_resultats_veille():
     """
     Vérifie les pronostics de la veille.
-    Retourne {total, gagnes, pourcentage, texte}.
+
+    - Ne traite que les pronostics non encore résolus (est_gagnant IS NULL)
+      ET encore en cours de vérification (tentatives < MAX_TENTATIVES).
+    - Marque est_gagnant = -1 (STATUT_ABANDONNE) après MAX_TENTATIVES échecs.
+    - Retourne {total, gagnes, pourcentage, texte}.
     """
     hier = (datetime.now(TZ_KINSHASA) - timedelta(days=1)).strftime("%Y-%m-%d")
 
@@ -154,14 +171,16 @@ def verifier_resultats_veille():
             "texte": "❌ Clé API manquante.",
         }
 
-    # 1. Lire les pronostics non vérifiés
+    # 1. Lire les pronostics non vérifiés ET encore en cours (pas abandonnés)
     pronos = db_fetchall(
         """
         SELECT id, home_team, away_team, pronostic_reco, tentatives_verification
         FROM resultats_pronostics
-        WHERE date_match = ? AND est_gagnant IS NULL
+        WHERE date_match = ?
+          AND est_gagnant IS NULL
+          AND COALESCE(tentatives_verification, 0) < ?
         """,
-        params=[hier],
+        params=[hier, MAX_TENTATIVES],
         db_context={"table": "resultats_pronostics", "operation": "list_verif"},
     )
 
@@ -180,7 +199,7 @@ def verifier_resultats_veille():
     total = 0
     non_trouves = 0
     a_mettre_a_jour = []  # (id, est_gagnant, tentatives)
-    a_abandonner = []     # ids à marquer NULL définitif
+    a_abandonner = []     # (id, tentatives)
 
     for p in pronos:
         try:
@@ -194,25 +213,21 @@ def verifier_resultats_veille():
 
             if api_key in resultats_api:
                 sh, sa = resultats_api[api_key]
-                est_gagnant = False
-                if reco == "1X" and sh >= sa:
-                    est_gagnant = True
-                elif reco == "X2" and sa >= sh:
-                    est_gagnant = True
-                elif reco == "12" and sh != sa:
-                    est_gagnant = True
+                est_gagnant_bool = _evaluer_pronostic(reco, sh, sa)
 
-                if est_gagnant:
+                if est_gagnant_bool:
                     gagnes += 1
-                a_mettre_a_jour.append((est_gagnant, tentatives + 1, p_id))
+
+                a_mettre_a_jour.append(
+                    (int(est_gagnant_bool), tentatives + 1, p_id)
+                )
             else:
                 non_trouves += 1
-                if tentatives + 1 >= MAX_TENTATIVES:
-                    # On abandonne : on met est_gagnant à NULL mais on incrémente
-                    # tentatives pour ne plus le requérir
-                    a_abandonner.append((tentatives + 1, p_id))
+                nouvelle_tentative = tentatives + 1
+                if nouvelle_tentative >= MAX_TENTATIVES:
+                    a_abandonner.append((nouvelle_tentative, p_id))
                 else:
-                    a_mettre_a_jour.append((None, tentatives + 1, p_id))
+                    a_mettre_a_jour.append((None, nouvelle_tentative, p_id))
         except Exception as e:
             log_warning(
                 message="Erreur de comparaison d'un pronostic",
@@ -225,19 +240,23 @@ def verifier_resultats_veille():
     # 4. Mettre à jour la BDD
     for est_gagnant, tentatives, p_id in a_mettre_a_jour:
         db_execute(
-            "UPDATE resultats_pronostics SET est_gagnant = ?, tentatives_verification = ? WHERE id = ?",
-            params=[
-                1 if est_gagnant is True else (0 if est_gagnant is False else None),
-                tentatives,
-                p_id,
-            ],
+            """
+            UPDATE resultats_pronostics
+            SET est_gagnant = ?, tentatives_verification = ?
+            WHERE id = ?
+            """,
+            params=[est_gagnant, tentatives, p_id],
             db_context={"table": "resultats_pronostics", "operation": "update_verif"},
         )
 
     for tentatives, p_id in a_abandonner:
         db_execute(
-            "UPDATE resultats_pronostics SET tentatives_verification = ? WHERE id = ?",
-            params=[tentatives, p_id],
+            """
+            UPDATE resultats_pronostics
+            SET est_gagnant = ?, tentatives_verification = ?
+            WHERE id = ?
+            """,
+            params=[STATUT_ABANDONNE, tentatives, p_id],
             db_context={"table": "resultats_pronostics", "operation": "abandon_verif"},
         )
         log_warning(
