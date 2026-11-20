@@ -41,6 +41,12 @@ def enregistrer_bookmakers_handlers(bot):
             bot.reply_to(message, f"⏳ Récupération des cotes pour <b>{home_team} vs {away_team}</b>...", parse_mode="HTML")
 
             resultats = get_cotes_match(home_team, away_team, sport)
+            # Historique horodaté : aucun appel API en plus, on garde ce qui vient d'être lu
+            try:
+                from core.cotes_historiques import enregistrer_snapshot
+                enregistrer_snapshot(home_team, away_team, resultats)
+            except Exception as e_hist:
+                log_error("Historique des cotes non enregistré", "BOOKMAKERS", exception=e_hist)
             
             texte = formater_comparateur_bookmakers(home_team, away_team, resultats)
             
