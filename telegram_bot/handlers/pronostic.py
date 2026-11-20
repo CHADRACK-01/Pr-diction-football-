@@ -13,27 +13,8 @@ from core.session import (
 from users.matchs import get_equipes_saison_en_cours
 from core.utils.logs import log_info, log_error, log_warning
 
-
-def _creer_clavier_principal(user_id):
-    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    markup.add(
-        telebot.types.KeyboardButton("⚽ Faire un Pronostic"),
-        telebot.types.KeyboardButton("📅 Matchs du Jour"),
-        telebot.types.KeyboardButton("🎟️ Coupons"),
-        telebot.types.KeyboardButton("🏆 Top Affiches"),
-        telebot.types.KeyboardButton("📜 Historique"),
-        telebot.types.KeyboardButton("📊 Statistiques"),
-        telebot.types.KeyboardButton("🔔 Notifications"),
-        telebot.types.KeyboardButton("💎 Premium"),
-        telebot.types.KeyboardButton("🤝 Parrainage"),
-        telebot.types.KeyboardButton("🌍 Langue"),
-    )
-    try:
-        if est_administrateur(user_id):
-            markup.add(telebot.types.KeyboardButton("👑 Panneau Admin"))
-    except Exception:
-        pass
-    return markup
+# IMPORTATION DU CLAVIER CENTRALISÉ
+from telegram_bot.handlers.start import creer_clavier_utilisateur
 
 
 def _creer_clavier_competitions():
@@ -216,10 +197,12 @@ def enregistrer_pronostic_handlers(bot):
         competition_reelle = MAPPING_COMPETITIONS.get(comp_code, comp_code)
 
         clear_session(user_id)
+        
+        # UTILISATION DU CLAVIER CENTRALISÉ ICI
         bot.send_message(
             message.chat.id,
             f"⏳ Calcul de la prédiction pour <b>{equipe_dom} vs {equipe_ext}</b>...",
-            reply_markup=_creer_clavier_principal(user_id), parse_mode="HTML"
+            reply_markup=creer_clavier_utilisateur(user_id), parse_mode="HTML"
         )
 
         try:
