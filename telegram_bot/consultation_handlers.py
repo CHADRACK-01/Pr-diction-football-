@@ -1,7 +1,9 @@
 # telegram_bot/consultation_handlers.py
 """
 Handlers des commandes de consultation :
-/fiabilite, /serie, /piege, /comparer et /meteo.
+
+/fiabilite, /serie, /piege, /comparer, /meteo, /favoris, /cotes,
+/cashout, /bankroll (/mise), /preuves, /devise, /codepromo, /utilisercode.
 """
 
 import telebot
@@ -14,7 +16,15 @@ from core.equipes_favorites import ajouter_favori, supprimer_favori, lister_favo
 from core.bookmakers import get_cotes_match, formater_comparateur_bookmakers
 from core.cashout import get_cote_actuelle, simuler_cashout, formater_cashout
 from core.bankroll import set_bankroll, get_bankroll, calculer_mise, formater_bankroll
-from core.utils.logs import log_info, log_error
+from core.utils.logs import log_info, log_error, log_warning
+from users.admin import est_administrateur
+from users.db import db_fetchall, db_execute, db_fetchone
+from users.credits import crediter_premium, deja_credite
+from core.codes_promo import creer_code_promo, valider_code_promo
+from core.devises import formater_prix, get_taux_change
+
+
+DEVISES_VALIDES = ("CDF", "USD", "EUR")
 
 
 def enregistrer_fiabilite_handlers(bot):
@@ -402,13 +412,6 @@ def enregistrer_bankroll_handlers(bot):
             bot.reply_to(message, "❌ La proba et la cote doivent être des nombres.")
 
 
-from users.admin import est_administrateur
-from users.db import db_fetchall
-from users.credits import crediter_premium, deja_credite
-from core.codes_promo import creer_code_promo, valider_code_promo
-from core.utils.logs import log_warning
-
-
 def enregistrer_preuves_handlers(bot):
 
     @bot.message_handler(commands=['preuves'])
@@ -453,15 +456,6 @@ def enregistrer_preuves_handlers(bot):
                 log_warning(message=f"Erreur d'envoi du message /preuves pour {user_id}", module="PREUVES", user_context={"user_id": user_id}, exception=e)
         except Exception as e:
             log_warning(message=f"Erreur commande /preuves pour {user_id}", module="PREUVES", user_context={"user_id": user_id}, exception=e)
-
-
-# --- Commande /devise (absorbée depuis devises_handlers.py) ---
-# Imports requis par le bloc déplacé (à regrouper en tête du module).
-from core.devises import formater_prix, get_taux_change
-from users.db import db_execute, db_fetchone
-from core.utils.logs import log_error
-
-DEVISES_VALIDES = ("CDF", "USD", "EUR")
 
 
 def _assurer_colonne_devise():
