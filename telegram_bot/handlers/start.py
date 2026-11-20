@@ -79,7 +79,7 @@ def _creer_clavier_admin():
     return markup
 
 
-def _creer_clavier_utilisateur(user_id=None):
+def creer_clavier_utilisateur(user_id=None):
     """Clavier normal pour les utilisateurs (+ Panneau Admin pour un admin)."""
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(*[telebot.types.KeyboardButton(b) for b in BOUTONS_UTILISATEUR])
@@ -168,7 +168,7 @@ def envoyer_menu_principal(chat_id, user_id, bot, force_langue=None):
     if est_admin:
         markup = _creer_clavier_admin()
     else:
-        markup = _creer_clavier_utilisateur(user_id)
+        markup = creer_clavier_utilisateur(user_id)
 
     try:
         bot.send_message(chat_id, presentation, reply_markup=markup)
