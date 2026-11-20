@@ -129,13 +129,22 @@ def enregistrer_pronostic_handlers(bot):
     def retour_menu(message):
         user_id = message.from_user.id
         clear_session(user_id)
+        # Sélection admin en cours : on l'annule (le menu admin est renvoyé par annuler_selection)
+        if _selection_admin_active(user_id):
+            try:
+                from telegram_bot.admin.selection import annuler_selection
+                annuler_selection(user_id, bot, message.chat.id)
+            except Exception as e:
+                log_error("Erreur annulation sélection admin", "PRONOSTIC", exception=e)
+            return
         try:
             from telegram_bot.handlers.start import envoyer_menu_principal
             envoyer_menu_principal(message.chat.id, user_id, bot)
         except Exception as e:
             log_error("Erreur retour menu", "PRONOSTIC", exception=e)
 
-    @bot.message_handler(func=lambda m: m.text and _detecter_competition(m.text)[0] is not None)
+    @bot.message_handler(func=lambda m: m.text and _detecter_competition(m.text)[0] is not None
+                                       and not _selection_admin_active(m.from_user.id))
     def handle_choix_competition(message):
         user_id = message.from_user.id
         langue = get_langue(user_id)
@@ -268,6 +277,15 @@ def enregistrer_pronostic_handlers(bot):
             incrementer_compteur(user_id)
         except Exception as e:
             log_error("Erreur compteur", "PRONOSTIC", exception=e)
+
+
+def _selection_admin_active(user_id):
+    """True si l'utilisateur est en pleine sélection admin (boutons paramétrés)."""
+    try:
+        from telegram_bot.admin.selection import ADMIN_SELECTIONS
+        return user_id in ADMIN_SELECTIONS
+    except Exception:
+        return False
 
 
 def _est_en_session(user_id, etape):
