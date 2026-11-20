@@ -10,6 +10,7 @@ import threading
 import telebot
 from datetime import datetime, timedelta
 
+from users.credits import crediter_premium
 from users import (
     get_langue, set_premium, ajouter_jours_premium,
     creer_demande_paiement, utiliser_code,
@@ -356,7 +357,8 @@ def enregistrer_payment_handlers(bot):
 
         jours = resultat["jours"]
         try:
-            ajouter_jours_premium(user_id, jours)
+            if crediter_premium(f"code:{code}", user_id, jours, "code") == "echec":
+                raise RuntimeError("crédit refusé")
             bot.reply_to(message, get_text("pay_code_ok", langue, jours=jours))
             log_info(f"Code utilisé : +{jours}j", "PAIEMENT", user_context=ctx)
         except Exception as e:
@@ -393,7 +395,9 @@ def enregistrer_payment_handlers(bot):
 
         if valider_demande(demande_id, admin_id):
             jours = _jours_pour_abo(demande["abonnement"])
-            ajouter_jours_premium(demande["user_id"], jours)
+            resultat_credit = crediter_premium(f"paiement:{demande_id}", demande["user_id"], jours, "paiement")
+            if resultat_credit == "echec":
+                log_error("Paiement validé mais crédit Premium échoué", "PAIEMENT", extra={"demande_id": demande_id})
 
             bot.answer_callback_query(call.id, "✅ Validé")
             bot.send_message(call.message.chat.id, f"✅ Paiement #{demande_id} validé. +{jours}j pour user {demande['user_id']}")
