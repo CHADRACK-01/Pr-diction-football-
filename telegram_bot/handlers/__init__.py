@@ -43,12 +43,14 @@ from telegram_bot.prediction_handlers import enregistrer_prediction_handlers
 from telegram_bot.ai_dev_handlers import enregistrer_ai_dev_handlers
 
 # 5. Fonctionnalités annexes (commandes admin paramétrées)
-from telegram_bot.momentum_handlers import enregistrer_momentum_handlers
-from telegram_bot.fiabilite_handlers import enregistrer_fiabilite_handlers
-from telegram_bot.pieges_handlers import enregistrer_pieges_handlers
-from telegram_bot.comparateur_handlers import enregistrer_comparateur_handlers
+from telegram_bot.consultation_handlers import (
+    enregistrer_fiabilite_handlers,
+    enregistrer_momentum_handlers,
+    enregistrer_pieges_handlers,
+    enregistrer_comparateur_handlers,
+    enregistrer_meteo_handlers,
+)
 from telegram_bot.favoris_handlers import enregistrer_favoris_handlers
-from telegram_bot.meteo_handlers import enregistrer_meteo_handlers
 from telegram_bot.bookmakers_handlers import enregistrer_bookmakers_handlers
 from telegram_bot.cashout_handlers import enregistrer_cashout_handlers
 from telegram_bot.bankroll_handlers import enregistrer_bankroll_handlers
