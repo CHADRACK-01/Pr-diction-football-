@@ -49,11 +49,11 @@ from telegram_bot.consultation_handlers import (
     enregistrer_pieges_handlers,
     enregistrer_comparateur_handlers,
     enregistrer_meteo_handlers,
+    enregistrer_favoris_handlers,
+    enregistrer_bookmakers_handlers,
+    enregistrer_cashout_handlers,
+    enregistrer_bankroll_handlers,
 )
-from telegram_bot.favoris_handlers import enregistrer_favoris_handlers
-from telegram_bot.bookmakers_handlers import enregistrer_bookmakers_handlers
-from telegram_bot.cashout_handlers import enregistrer_cashout_handlers
-from telegram_bot.bankroll_handlers import enregistrer_bankroll_handlers
 
 # 6. MenuCommandes AVANT Fallback (sinon les boutons admin sont interceptés)
 from telegram_bot.menu_commandes_handlers import enregistrer_menu_commandes_handlers
