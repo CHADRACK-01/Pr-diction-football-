@@ -7,9 +7,13 @@ Handlers des commandes de consultation :
 """
 
 import telebot
-from core.fiabilite import calculer_fiabilite_par_championnat, formater_fiabilite
-from core.momentum import calculer_serie_equipe, formater_serie
-from core.pieges import detecter_piege
+from core.consultation import (
+    calculer_fiabilite_par_championnat,
+    formater_fiabilite,
+    calculer_serie_equipe,
+    formater_serie,
+    detecter_piege,
+)
 from core.comparateur import analyser_domicile_exterieur, formater_comparateur
 from core.meteo import obtenir_meteo_reelle, obtenir_ville_equipe, formater_alerte_meteo
 from core.equipes_favorites import ajouter_favori, supprimer_favori, lister_favoris
