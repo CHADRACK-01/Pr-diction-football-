@@ -1,0 +1,2251 @@
+PRONOSTIC FOOTBALL — LES 547 FONCTIONNALITÉS
+
+PARTIE B — Fonctionnalités 1 à 137
+
+Ce fichier contient les fonctionnalités 1 à 137, dans l'ordre du document original.
+
+
+1. Alertes Live / But en direct : Le bot t’envoie un message dès qu’un but tombe et te dit si ton pari est validé.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P1/P2 Emplacement principal : core/api/ Autres fichiers concernés :
+core/api/ ; core/results_checker.py ; workers/live_worker.py (à créer)
+Fichier cible principal :
+core/api//feature_alertes_live_but_en_direct_le_bot_t_envoie.py Fonction
+à coder / vérifier :
+traiter_alertes_live_but_en_direct_le_bot_t_envoie() Contrats ou
+services liés : LiveFeedService. / LivePredictionService.* Rôle :
+Collecter et traiter les événements du match, actualiser l’état et
+informer l’utilisateur. Avantage : Donne des informations rapides et
+contextualisées pendant le match. Inconvénient / vigilance : Dépend
+fortement de la latence et de la fiabilité du fournisseur ; risque de
+fausses alertes si les événements sont dupliqués. État : À
+auditer/tester — Tests unitaires + intégration + métrique métier
+
+2. Détecteur de Value Bet : Il compare la proba IA et la cote du bookmaker. Si la cote est trop haute, il te dit “VALUE”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P1/P2 Emplacement principal : core/paris_builder.py Autres fichiers
+concernés : core/paris_builder.py ; core/top_matches.py ;
+domain/betting/* (à créer) Fichier cible principal :
+core/paris_builder.py Fonction à coder / vérifier :
+calculer_detecteur_de_value_bet_il_compare_la_proba() Contrats ou
+services liés : OddsService.* / MarketModel.* / RiskService.* Rôle :
+Analyser les cotes, marchés et expositions avant de présenter une
+recommandation. Avantage : Rend les recommandations plus mesurables et
+aide à contrôler le risque financier. Inconvénient / vigilance : Les
+cotes changent vite et les probabilités restent incertaines ; ne jamais
+présenter un pari comme garanti. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+3. Tracker de Chute de Cotes : Alerte quand une cote chute vite, ex: 2.40 -> 1.85, signe d’une info importante.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P1/P2 Emplacement principal : core/paris_builder.py Autres fichiers
+concernés : core/paris_builder.py ; core/top_matches.py ;
+domain/betting/* (à créer) Fichier cible principal :
+core/paris_builder.py Fonction à coder / vérifier :
+envoyer_tracker_de_chute_de_cotes_alerte_quand_une() Contrats ou
+services liés : OddsService.* / MarketModel.* / RiskService.* Rôle :
+Analyser les cotes, marchés et expositions avant de présenter une
+recommandation. Avantage : Rend les recommandations plus mesurables et
+aide à contrôler le risque financier. Inconvénient / vigilance : Les
+cotes changent vite et les probabilités restent incertaines ; ne jamais
+présenter un pari comme garanti. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+4. Alerte Compo Officielle / Absents : 1h avant le match, il te dit qui est absent et il recalcule le prono.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/api/ Autres fichiers concernés :
+core/api/ ; core/api/orchestrator.py ; scripts/* ; users/matchs.py
+Fichier cible principal :
+core/api//feature_alerte_compo_officielle_absents_1h_avant_l.py Fonction
+à coder / vérifier :
+envoyer_alerte_compo_officielle_absents_1h_avant_l() Contrats ou
+services liés : ProviderRegistry. / MatchRepository.* /
+DataQualityService.* Rôle : Préparer, planifier ou distribuer un contenu
+à la bonne audience et au bon moment. Avantage : Améliore la
+communication et automatise les tâches de diffusion. Inconvénient /
+vigilance : Peut générer du spam, des doublons ou dépasser les limites
+de l’API ; prévoir préférences, quotas et file persistante. État : À
+auditer/tester — Tests unitaires + intégration + métrique métier
+
+5. Simulateur de Cash-Out : Tu entres ta mise, il te dit combien tu gagnes si tu arrêtes ton pari maintenant.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/paris_builder.py Autres fichiers
+concernés : core/paris_builder.py ; core/top_matches.py ;
+domain/betting/* (à créer) Fichier cible principal :
+core/paris_builder.py Fonction à coder / vérifier :
+evaluer_simulateur_de_cash_out_tu_entres_ta_mise_i() Contrats ou
+services liés : OddsService.* / MarketModel.* / RiskService.* Rôle :
+Analyser les cotes, marchés et expositions avant de présenter une
+recommandation. Avantage : Rend les recommandations plus mesurables et
+aide à contrôler le risque financier. Inconvénient / vigilance : Les
+cotes changent vite et les probabilités restent incertaines ; ne jamais
+présenter un pari comme garanti. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+6. Mode Lingala + Français : Bouton /langue pour mettre tout le bot en Lingala simple.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/translations.py Autres fichiers
+concernés : core/translations.py ; telegram_bot/handlers/* ;
+users/account_base.py Fichier cible principal : core/translations.py
+Fonction à coder / vérifier :
+gerer_mode_lingala_francais_bouton_langue_pour_m() Contrats ou services
+liés : UserExperienceService.* / PreferenceService.* Rôle : Collecter,
+normaliser, enrichir ou vérifier les données sportives utilisées par le
+bot. Avantage : Améliore la couverture et réduit les incohérences entre
+fournisseurs. Inconvénient / vigilance : Les fournisseurs peuvent être
+incomplets, indisponibles ou contradictoires ; conserver provenance,
+fraîcheur et identifiants stables. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+7. Historique Vérifiable Public : Commande /preuves, tu vois les 30 derniers jours gagnés/perdus, impossible à modifier.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P1/P2 Emplacement principal : core/nouveau_prediction.py Autres fichiers
+concernés : core/nouveau_prediction.py ; core/ml_model.py ; ml/* (à
+créer) Fichier cible principal : core/nouveau_prediction.py Fonction à
+coder / vérifier : calculer_historique_verifiable_public_commande_preu()
+Contrats ou services liés : PredictionService.* / CalibrationService.* /
+ModelRegistry.* Rôle : Calculer, calibrer, expliquer ou contrôler les
+prédictions à partir de données historiques et récentes. Avantage :
+Améliore la cohérence, la mesure et la traçabilité de la qualité
+prédictive. Inconvénient / vigilance : Un modèle peut se tromper ou
+dériver ; exige des données fiables, des tests temporels et une
+surveillance continue. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+8. Filtre Anti-Piège : Badge rouge sur les matchs dangereux comme les derbys avec beaucoup de cartons.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/paris_builder.py Autres fichiers
+concernés : core/paris_builder.py ; core/top_matches.py ;
+domain/betting/* (à créer) Fichier cible principal :
+core/paris_builder.py Fonction à coder / vérifier :
+gerer_filtre_anti_piege_badge_rouge_sur_les_matc() Contrats ou services
+liés : OddsService.* / MarketModel.* / RiskService.* Rôle : Collecter,
+normaliser, enrichir ou vérifier les données sportives utilisées par le
+bot. Avantage : Améliore la couverture et réduit les incohérences entre
+fournisseurs. Inconvénient / vigilance : Les fournisseurs peuvent être
+incomplets, indisponibles ou contradictoires ; conserver provenance,
+fraîcheur et identifiants stables. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+9. Prono Spécial Corners / Cartons : En plus du 1N2, il propose Over corners/cartons pour les matchs offensifs.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/paris_builder.py Autres fichiers
+concernés : core/paris_builder.py ; core/top_matches.py ;
+domain/betting/* (à créer) Fichier cible principal :
+core/paris_builder.py Fonction à coder / vérifier :
+calculer_prono_special_corners_cartons_en_plus_du_1() Contrats ou
+services liés : OddsService.* / MarketModel.* / RiskService.* Rôle :
+Calculer, calibrer, expliquer ou contrôler les prédictions à partir de
+données historiques et récentes. Avantage : Améliore la cohérence, la
+mesure et la traçabilité de la qualité prédictive. Inconvénient /
+vigilance : Un modèle peut se tromper ou dériver ; exige des données
+fiables, des tests temporels et une surveillance continue. État : À
+auditer/tester — Tests unitaires + intégration + métrique métier
+
+10. Calendrier Perso “Mes Équipes” : Tu choisis 5 équipes favorites, tu ne reçois que leurs pronos.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/api/ Autres fichiers concernés :
+core/api/ ; core/api/orchestrator.py ; scripts/* ; users/matchs.py
+Fichier cible principal :
+core/api//feature_calendrier_perso_mes_equipes_tu_choisis_5_.py Fonction
+à coder / vérifier :
+calculer_calendrier_perso_mes_equipes_tu_choisis_5_() Contrats ou
+services liés : ProviderRegistry. / MatchRepository.* /
+DataQualityService.* Rôle : Collecter, normaliser, enrichir ou vérifier
+les données sportives utilisées par le bot. Avantage : Améliore la
+couverture et réduit les incohérences entre fournisseurs. Inconvénient /
+vigilance : Les fournisseurs peuvent être incomplets, indisponibles ou
+contradictoires ; conserver provenance, fraîcheur et identifiants
+stables. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+11. Ticket de la Semaine en PDF : Belle image/PDF du combiné à partager sur Statut WhatsApp.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative : P3
+Emplacement principal : core/paris_builder.py Autres fichiers concernés
+: core/paris_builder.py ; core/top_matches.py ; domain/betting/* (à
+créer) Fichier cible principal : core/paris_builder.py Fonction à coder
+/ vérifier : evaluer_ticket_de_la_semaine_en_pdf_belle_image_pd()
+Contrats ou services liés : OddsService.* / MarketModel.* /
+RiskService.* Rôle : Analyser les cotes, marchés et expositions avant de
+présenter une recommandation. Avantage : Rend les recommandations plus
+mesurables et aide à contrôler le risque financier. Inconvénient /
+vigilance : Les cotes changent vite et les probabilités restent
+incertaines ; ne jamais présenter un pari comme garanti. État : À
+auditer/tester — Tests unitaires + intégration + métrique métier
+
+12. Quiz / Sondage Avant Match : “Qui va marquer en premier ?” Bonne réponse = points XP.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative : P3
+Emplacement principal : core/api/ Autres fichiers concernés : core/api/
+; core/api/orchestrator.py ; scripts/* ; users/matchs.py Fichier cible
+principal :
+core/api//feature_quiz_sondage_avant_match_qui_va_marquer_en.py Fonction
+à coder / vérifier : gerer_quiz_sondage_avant_match_qui_va_marquer_en()
+Contrats ou services liés : ProviderRegistry. / MatchRepository.* /
+DataQualityService.* Rôle : Collecter, normaliser, enrichir ou vérifier
+les données sportives utilisées par le bot. Avantage : Améliore la
+couverture et réduit les incohérences entre fournisseurs. Inconvénient /
+vigilance : Les fournisseurs peuvent être incomplets, indisponibles ou
+contradictoires ; conserver provenance, fraîcheur et identifiants
+stables. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+13. Mode Sans Internet / SMS Résumé : Version ultra-courte “ARS 1-0, O2.5 62%”, très peu de data.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : application/use_cases/ Autres fichiers
+concernés : application/use_cases/ ; domain/* (à créer) Fichier cible
+principal :
+application/use_cases//feature_mode_sans_internet_sms_resume_version_ultr.py
+Fonction à coder / vérifier :
+gerer_mode_sans_internet_sms_resume_version_ultr() Contrats ou services
+liés : FeatureUseCase. Rôle : Collecter, normaliser, enrichir ou
+vérifier les données sportives utilisées par le bot. Avantage : Améliore
+la couverture et réduit les incohérences entre fournisseurs.
+Inconvénient / vigilance : Les fournisseurs peuvent être incomplets,
+indisponibles ou contradictoires ; conserver provenance, fraîcheur et
+identifiants stables. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+14. Comparateur de Bookmakers RDC : Montre la cote Winner.bet vs 1xBet vs BetWinner pour le même match.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P1/P2 Emplacement principal : core/paris_builder.py Autres fichiers
+concernés : core/paris_builder.py ; core/top_matches.py ;
+domain/betting/* (à créer) Fichier cible principal :
+core/paris_builder.py Fonction à coder / vérifier :
+evaluer_comparateur_de_bookmakers_rdc_montre_la_co() Contrats ou
+services liés : OddsService.* / MarketModel.* / RiskService.* Rôle :
+Analyser les cotes, marchés et expositions avant de présenter une
+recommandation. Avantage : Rend les recommandations plus mesurables et
+aide à contrôler le risque financier. Inconvénient / vigilance : Les
+cotes changent vite et les probabilités restent incertaines ; ne jamais
+présenter un pari comme garanti. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+15. Analyse Vidéo Courte Auto : Texte prêt pour TikTok “3 raisons de jouer Under 2.5 ce soir”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative : P3
+Emplacement principal : core/broadcast_manager.py Autres fichiers
+concernés : core/broadcast_manager.py ; core/canal_manager.py ;
+telegram_bot/handlers/ Fichier cible principal :
+core/broadcast_manager.py Fonction à coder / vérifier :
+gerer_analyse_video_courte_auto_texte_pret_pour_() Contrats ou services
+liés : NotificationService. / CampaignService.* Rôle : Préparer,
+planifier ou distribuer un contenu à la bonne audience et au bon moment.
+Avantage : Améliore la communication et automatise les tâches de
+diffusion. Inconvénient / vigilance : Peut générer du spam, des doublons
+ou dépasser les limites de l’API ; prévoir préférences, quotas et file
+persistante. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+16. Avertissement Jeu Responsable : Après 3 pertes d’affilée, il propose une pause de 24h.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/translations.py Autres fichiers
+concernés : core/translations.py ; telegram_bot/handlers/* ;
+users/account_base.py Fichier cible principal : core/translations.py
+Fonction à coder / vérifier :
+gerer_avertissement_jeu_responsable_apres_3_pert() Contrats ou services
+liés : UserExperienceService.* / PreferenceService.* Rôle : Collecter,
+normaliser, enrichir ou vérifier les données sportives utilisées par le
+bot. Avantage : Améliore la couverture et réduit les incohérences entre
+fournisseurs. Inconvénient / vigilance : Les fournisseurs peuvent être
+incomplets, indisponibles ou contradictoires ; conserver provenance,
+fraîcheur et identifiants stables. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+17. Groupe VIP Auto-Modéré : Paiement = ajout auto au groupe VIP, expiration = retrait auto.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P0/P1 Emplacement principal : users/paiements.py Autres fichiers
+concernés : users/paiements.py ; core/payments.py ;
+telegram_bot/payment_handlers.py Fichier cible principal :
+users/paiements.py Fonction à coder / vérifier :
+gerer_groupe_vip_auto_modere_paiement_ajout_auto() Contrats ou services
+liés : PaymentService.* / PaymentHandler.* Rôle : Gérer les paiements,
+droits d’accès, abonnements ou commissions associés à la fonctionnalité.
+Avantage : Automatise les opérations commerciales et réduit les
+traitements manuels. Inconvénient / vigilance : Les erreurs et doublons
+ont des conséquences financières ; transactions atomiques, idempotence
+et audit obligatoires. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+18. Prono Championnats Africains : Linafoot, CAN, Ligue des Champions CAF, Afrique du Sud.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/api/ Autres fichiers concernés :
+core/api/ ; core/api/orchestrator.py ; scripts/* ; users/matchs.py
+Fichier cible principal :
+core/api//feature_prono_championnats_africains_linafoot_can_.py Fonction
+à coder / vérifier :
+calculer_prono_championnats_africains_linafoot_can_() Contrats ou
+services liés : ProviderRegistry. / MatchRepository.* /
+DataQualityService.* Rôle : Collecter, normaliser, enrichir ou vérifier
+les données sportives utilisées par le bot. Avantage : Améliore la
+couverture et réduit les incohérences entre fournisseurs. Inconvénient /
+vigilance : Les fournisseurs peuvent être incomplets, indisponibles ou
+contradictoires ; conserver provenance, fraîcheur et identifiants
+stables. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+19. Mode “Copier le Ticket en 1 Clic” : Code à coller direct sur Winner.bet / 1xBet, pas de recherche manuelle.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : application/use_cases/ Autres fichiers
+concernés : application/use_cases/ ; domain/* (à créer) Fichier cible
+principal :
+application/use_cases//feature_mode_copier_le_ticket_en_1_clic_code_a_col.py
+Fonction à coder / vérifier :
+gerer_mode_copier_le_ticket_en_1_clic_code_a_col() Contrats ou services
+liés : FeatureUseCase. Rôle : Analyser les cotes, marchés et expositions
+avant de présenter une recommandation. Avantage : Rend les
+recommandations plus mesurables et aide à contrôler le risque financier.
+Inconvénient / vigilance : Les cotes changent vite et les probabilités
+restent incertaines ; ne jamais présenter un pari comme garanti. État :
+À auditer/tester — Tests unitaires + intégration + métrique métier
+
+20. Statistiques de l’IA en Temps Réel : /stats_ia montre “Cette semaine 68% sur Over 2.5”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/api/ Autres fichiers concernés :
+core/api/ ; core/results_checker.py ; workers/live_worker.py (à créer)
+Fichier cible principal :
+core/api//feature_statistiques_de_l_ia_en_temps_reel_stats_i.py Fonction
+à coder / vérifier :
+calculer_statistiques_de_l_ia_en_temps_reel_stats_i() Contrats ou
+services liés : LiveFeedService. / LivePredictionService.* Rôle :
+Collecter et traiter les événements du match, actualiser l’état et
+informer l’utilisateur. Avantage : Donne des informations rapides et
+contextualisées pendant le match. Inconvénient / vigilance : Dépend
+fortement de la latence et de la fiabilité du fournisseur ; risque de
+fausses alertes si les événements sont dupliqués. État : À
+auditer/tester — Tests unitaires + intégration + métrique métier
+
+21. Coach IA en Chat Libre : Tu écris “Que penses-tu de Real-Barça ?” et il répond avec une analyse.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/nouveau_prediction.py Autres fichiers
+concernés : core/nouveau_prediction.py ; core/ml_model.py ; ml/* (à
+créer) Fichier cible principal : core/nouveau_prediction.py Fonction à
+coder / vérifier : calculer_coach_ia_en_chat_libre_tu_ecris_que_penses()
+Contrats ou services liés : PredictionService.* / CalibrationService.* /
+ModelRegistry.* Rôle : Calculer, calibrer, expliquer ou contrôler les
+prédictions à partir de données historiques et récentes. Avantage :
+Améliore la cohérence, la mesure et la traçabilité de la qualité
+prédictive. Inconvénient / vigilance : Un modèle peut se tromper ou
+dériver ; exige des données fiables, des tests temporels et une
+surveillance continue. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+22. Détecteur de Série / Momentum : Repère les équipes en feu, ex: “7 victoires d’affilée à domicile”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/api/ Autres fichiers concernés :
+core/api/ ; core/api/orchestrator.py ; scripts/* ; users/matchs.py
+Fichier cible principal :
+core/api//feature_detecteur_de_serie_momentum_repere_les_equ.py Fonction
+à coder / vérifier : gerer_detecteur_de_serie_momentum_repere_les_equ()
+Contrats ou services liés : ProviderRegistry. / MatchRepository.* /
+DataQualityService.* Rôle : Collecter, normaliser, enrichir ou vérifier
+les données sportives utilisées par le bot. Avantage : Améliore la
+couverture et réduit les incohérences entre fournisseurs. Inconvénient /
+vigilance : Les fournisseurs peuvent être incomplets, indisponibles ou
+contradictoires ; conserver provenance, fraîcheur et identifiants
+stables. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+23. Spécialiste Match Nul : Filtre pour les nuls à grosse cote 3.30+ avec proba IA >32%.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P1/P2 Emplacement principal : core/paris_builder.py Autres fichiers
+concernés : core/paris_builder.py ; core/top_matches.py ;
+domain/betting/* (à créer) Fichier cible principal :
+core/paris_builder.py Fonction à coder / vérifier :
+calculer_specialiste_match_nul_filtre_pour_les_nuls() Contrats ou
+services liés : OddsService.* / MarketModel.* / RiskService.* Rôle :
+Analyser les cotes, marchés et expositions avant de présenter une
+recommandation. Avantage : Rend les recommandations plus mesurables et
+aide à contrôler le risque financier. Inconvénient / vigilance : Les
+cotes changent vite et les probabilités restent incertaines ; ne jamais
+présenter un pari comme garanti. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+24. Alerte But Tardif : Détecte les équipes qui marquent après la 75e, propose un pari live.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P1/P2 Emplacement principal : core/api/ Autres fichiers concernés :
+core/api/ ; core/results_checker.py ; workers/live_worker.py (à créer)
+Fichier cible principal :
+core/api//feature_alerte_but_tardif_detecte_les_equipes_qui_.py Fonction
+à coder / vérifier :
+traiter_alerte_but_tardif_detecte_les_equipes_qui_() Contrats ou
+services liés : LiveFeedService. / LivePredictionService.* Rôle :
+Collecter et traiter les événements du match, actualiser l’état et
+informer l’utilisateur. Avantage : Donne des informations rapides et
+contextualisées pendant le match. Inconvénient / vigilance : Dépend
+fortement de la latence et de la fiabilité du fournisseur ; risque de
+fausses alertes si les événements sont dupliqués. État : À
+auditer/tester — Tests unitaires + intégration + métrique métier
+
+25. Stats Arbitre : “Arbitre X: 5.8 cartons / match”, utile pour jouer Over cartons.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/paris_builder.py Autres fichiers
+concernés : core/paris_builder.py ; core/top_matches.py ;
+domain/betting/* (à créer) Fichier cible principal :
+core/paris_builder.py Fonction à coder / vérifier :
+gerer_stats_arbitre_arbitre_x_5_8_cartons_match_() Contrats ou services
+liés : OddsService.* / MarketModel.* / RiskService.* Rôle : Collecter,
+normaliser, enrichir ou vérifier les données sportives utilisées par le
+bot. Avantage : Améliore la couverture et réduit les incohérences entre
+fournisseurs. Inconvénient / vigilance : Les fournisseurs peuvent être
+incomplets, indisponibles ou contradictoires ; conserver provenance,
+fraîcheur et identifiants stables. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+26. Modèle xG : Montre les buts attendus selon les occasions, pas seulement les scores.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P1/P2 Emplacement principal : core/nouveau_prediction.py Autres fichiers
+concernés : core/nouveau_prediction.py ; core/ml_model.py ; ml/* (à
+créer) Fichier cible principal : core/nouveau_prediction.py Fonction à
+coder / vérifier : calculer_modele_xg_montre_les_buts_attendus_selon_l()
+Contrats ou services liés : PredictionService.* / CalibrationService.* /
+ModelRegistry.* Rôle : Calculer, calibrer, expliquer ou contrôler les
+prédictions à partir de données historiques et récentes. Avantage :
+Améliore la cohérence, la mesure et la traçabilité de la qualité
+prédictive. Inconvénient / vigilance : Un modèle peut se tromper ou
+dériver ; exige des données fiables, des tests temporels et une
+surveillance continue. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+27. Impact Transfert / Entraîneur : “Nouvel entraîneur: +2 buts / match”, explique le changement de forme.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/api/ Autres fichiers concernés :
+core/api/ ; core/api/orchestrator.py ; scripts/* ; users/matchs.py
+Fichier cible principal :
+core/api//feature_impact_transfert_entraineur_nouvel_entrain.py Fonction
+à coder / vérifier : gerer_impact_transfert_entraineur_nouvel_entrain()
+Contrats ou services liés : ProviderRegistry. / MatchRepository.* /
+DataQualityService.* Rôle : Collecter, normaliser, enrichir ou vérifier
+les données sportives utilisées par le bot. Avantage : Améliore la
+couverture et réduit les incohérences entre fournisseurs. Inconvénient /
+vigilance : Les fournisseurs peuvent être incomplets, indisponibles ou
+contradictoires ; conserver provenance, fraîcheur et identifiants
+stables. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+28. Comparateur Domicile / Extérieur : “Chelsea 78% à domicile, 22% à l’extérieur”, évite les pièges.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : application/use_cases/ Autres fichiers
+concernés : application/use_cases/ ; domain/* (à créer) Fichier cible
+principal :
+application/use_cases//feature_comparateur_domicile_exterieur_chelsea_78_.py
+Fonction à coder / vérifier :
+gerer_comparateur_domicile_exterieur_chelsea_78_() Contrats ou services
+liés : FeatureUseCase. Rôle : Collecter, normaliser, enrichir ou
+vérifier les données sportives utilisées par le bot. Avantage : Améliore
+la couverture et réduit les incohérences entre fournisseurs.
+Inconvénient / vigilance : Les fournisseurs peuvent être incomplets,
+indisponibles ou contradictoires ; conserver provenance, fraîcheur et
+identifiants stables. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+29. Prono Buteur + Passeur : “Saka buteur 55%, Palmer passeur 48%”, pour les paris buteurs.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/paris_builder.py Autres fichiers
+concernés : core/paris_builder.py ; core/top_matches.py ;
+domain/betting/* (à créer) Fichier cible principal :
+core/paris_builder.py Fonction à coder / vérifier :
+calculer_prono_buteur_passeur_saka_buteur_55_palmer() Contrats ou
+services liés : OddsService.* / MarketModel.* / RiskService.* Rôle :
+Analyser les cotes, marchés et expositions avant de présenter une
+recommandation. Avantage : Rend les recommandations plus mesurables et
+aide à contrôler le risque financier. Inconvénient / vigilance : Les
+cotes changent vite et les probabilités restent incertaines ; ne jamais
+présenter un pari comme garanti. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+30. Mini App Telegram Visuelle : Tableau de bord avec cartes jolies, pas de longs textes.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/broadcast_manager.py Autres fichiers
+concernés : core/broadcast_manager.py ; core/canal_manager.py ;
+telegram_bot/handlers/ Fichier cible principal :
+core/broadcast_manager.py Fonction à coder / vérifier :
+gerer_mini_app_telegram_visuelle_tableau_de_bord() Contrats ou services
+liés : NotificationService. / CampaignService.* Rôle : Préparer,
+planifier ou distribuer un contenu à la bonne audience et au bon moment.
+Avantage : Améliore la communication et automatise les tâches de
+diffusion. Inconvénient / vigilance : Peut générer du spam, des doublons
+ou dépasser les limites de l’API ; prévoir préférences, quotas et file
+persistante. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+31. Paiement Auto Airtel / M-Pesa / Orange : Vérifie le paiement seul, débloque Premium en 10 sec.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P0/P1 Emplacement principal : users/paiements.py Autres fichiers
+concernés : users/paiements.py ; core/payments.py ;
+telegram_bot/payment_handlers.py Fichier cible principal :
+users/paiements.py Fonction à coder / vérifier :
+gerer_paiement_auto_airtel_m_pesa_orange_verifie() Contrats ou services
+liés : PaymentService.* / PaymentHandler.* Rôle : Gérer les paiements,
+droits d’accès, abonnements ou commissions associés à la fonctionnalité.
+Avantage : Automatise les opérations commerciales et réduit les
+traitements manuels. Inconvénient / vigilance : Les erreurs et doublons
+ont des conséquences financières ; transactions atomiques, idempotence
+et audit obligatoires. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+32. Essai Premium 24h Automatique : 1 fois par utilisateur, test gratuit sans code.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : users/paiements.py Autres fichiers
+concernés : users/paiements.py ; core/payments.py ;
+telegram_bot/payment_handlers.py Fichier cible principal :
+users/paiements.py Fonction à coder / vérifier :
+gerer_essai_premium_24h_automatique_1_fois_par_u() Contrats ou services
+liés : PaymentService.* / PaymentHandler.* Rôle : Gérer les paiements,
+droits d’accès, abonnements ou commissions associés à la fonctionnalité.
+Avantage : Automatise les opérations commerciales et réduit les
+traitements manuels. Inconvénient / vigilance : Les erreurs et doublons
+ont des conséquences financières ; transactions atomiques, idempotence
+et audit obligatoires. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+33. Programme Revendeur : Des gens vendent tes codes et touchent 20% en automatique.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : users/paiements.py Autres fichiers
+concernés : users/paiements.py ; core/payments.py ;
+telegram_bot/payment_handlers.py Fichier cible principal :
+users/paiements.py Fonction à coder / vérifier :
+gerer_programme_revendeur_des_gens_vendent_tes_c() Contrats ou services
+liés : PaymentService.* / PaymentHandler.* Rôle : Gérer les paiements,
+droits d’accès, abonnements ou commissions associés à la fonctionnalité.
+Avantage : Automatise les opérations commerciales et réduit les
+traitements manuels. Inconvénient / vigilance : Les erreurs et doublons
+ont des conséquences financières ; transactions atomiques, idempotence
+et audit obligatoires. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+34. Classement par Quartier / Ville : Top Gombe, Bandal, Lubumbashi, fierté locale.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/translations.py Autres fichiers
+concernés : core/translations.py ; telegram_bot/handlers/* ;
+users/account_base.py Fichier cible principal : core/translations.py
+Fonction à coder / vérifier :
+gerer_classement_par_quartier_ville_top_gombe_ba() Contrats ou services
+liés : UserExperienceService.* / PreferenceService.* Rôle : Collecter,
+normaliser, enrichir ou vérifier les données sportives utilisées par le
+bot. Avantage : Améliore la couverture et réduit les incohérences entre
+fournisseurs. Inconvénient / vigilance : Les fournisseurs peuvent être
+incomplets, indisponibles ou contradictoires ; conserver provenance,
+fraîcheur et identifiants stables. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+35. Alerte Météo Pelouse : “Pluie + pelouse synthétique = favorise Under et fautes”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/nouveau_prediction.py Autres fichiers
+concernés : core/nouveau_prediction.py ; core/ml_model.py ; ml/* (à
+créer) Fichier cible principal : core/nouveau_prediction.py Fonction à
+coder / vérifier : envoyer_alerte_meteo_pelouse_pluie_pelouse_synthet()
+Contrats ou services liés : PredictionService.* / CalibrationService.* /
+ModelRegistry.* Rôle : Calculer, calibrer, expliquer ou contrôler les
+prédictions à partir de données historiques et récentes. Avantage :
+Améliore la cohérence, la mesure et la traçabilité de la qualité
+prédictive. Inconvénient / vigilance : Un modèle peut se tromper ou
+dériver ; exige des données fiables, des tests temporels et une
+surveillance continue. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+36. Mode Duo / Pari à 2 : 2 amis combinent leurs pronos, bonus si les 2 ont raison.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/paris_builder.py Autres fichiers
+concernés : core/paris_builder.py ; core/top_matches.py ;
+domain/betting/* (à créer) Fichier cible principal :
+core/paris_builder.py Fonction à coder / vérifier :
+calculer_mode_duo_pari_a_2_2_amis_combinent_leurs_p() Contrats ou
+services liés : OddsService.* / MarketModel.* / RiskService.* Rôle :
+Analyser les cotes, marchés et expositions avant de présenter une
+recommandation. Avantage : Rend les recommandations plus mesurables et
+aide à contrôler le risque financier. Inconvénient / vigilance : Les
+cotes changent vite et les probabilités restent incertaines ; ne jamais
+présenter un pari comme garanti. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+37. Résumé Vocal / Audio : Vocal 30 sec “Voici les 3 matchs à jouer ce soir”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative : P3
+Emplacement principal : core/api/ Autres fichiers concernés : core/api/
+; core/api/orchestrator.py ; scripts/* ; users/matchs.py Fichier cible
+principal :
+core/api//feature_resume_vocal_audio_vocal_30_sec_voici_les_.py Fonction
+à coder / vérifier : gerer_resume_vocal_audio_vocal_30_sec_voici_les_()
+Contrats ou services liés : ProviderRegistry. / MatchRepository.* /
+DataQualityService.* Rôle : Préparer, planifier ou distribuer un contenu
+à la bonne audience et au bon moment. Avantage : Améliore la
+communication et automatise les tâches de diffusion. Inconvénient /
+vigilance : Peut générer du spam, des doublons ou dépasser les limites
+de l’API ; prévoir préférences, quotas et file persistante. État : À
+auditer/tester — Tests unitaires + intégration + métrique métier
+
+38. Historique Face-à-Face Visuel : “Sur 5 derniers Real-Barça: 4x BTTS Oui”, en tableau.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P1/P2 Emplacement principal : core/api/ Autres fichiers concernés :
+core/api/ ; core/api/orchestrator.py ; scripts/* ; users/matchs.py
+Fichier cible principal :
+core/api//feature_historique_face_a_face_visuel_sur_5_dernie.py Fonction
+à coder / vérifier : gerer_historique_face_a_face_visuel_sur_5_dernie()
+Contrats ou services liés : ProviderRegistry. / MatchRepository.* /
+DataQualityService.* Rôle : Collecter, normaliser, enrichir ou vérifier
+les données sportives utilisées par le bot. Avantage : Améliore la
+couverture et réduit les incohérences entre fournisseurs. Inconvénient /
+vigilance : Les fournisseurs peuvent être incomplets, indisponibles ou
+contradictoires ; conserver provenance, fraîcheur et identifiants
+stables. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+39. Alerte Underdog : “Petite équipe 35% de chance mais cote 5.00”, petit billet fun.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P1/P2 Emplacement principal : core/paris_builder.py Autres fichiers
+concernés : core/paris_builder.py ; core/top_matches.py ;
+domain/betting/* (à créer) Fichier cible principal :
+core/paris_builder.py Fonction à coder / vérifier :
+envoyer_alerte_underdog_petite_equipe_35_de_chance() Contrats ou
+services liés : OddsService.* / MarketModel.* / RiskService.* Rôle :
+Analyser les cotes, marchés et expositions avant de présenter une
+recommandation. Avantage : Rend les recommandations plus mesurables et
+aide à contrôler le risque financier. Inconvénient / vigilance : Les
+cotes changent vite et les probabilités restent incertaines ; ne jamais
+présenter un pari comme garanti. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+40. Export TikTok / Statut en 1 Clic : Image carrée prête avec logo + ticket du jour.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative : P3
+Emplacement principal : telegram_bot/admin/ Autres fichiers concernés :
+telegram_bot/admin/ ; users/admin.py ; core/audit.py Fichier cible
+principal :
+telegram_bot/admin//feature_export_tiktok_statut_en_1_clic_image_carre.py
+Fonction à coder / vérifier :
+gerer_export_tiktok_statut_en_1_clic_image_carre() Contrats ou services
+liés : AdminUseCases. / AuditService.* Rôle : Analyser les cotes,
+marchés et expositions avant de présenter une recommandation. Avantage :
+Rend les recommandations plus mesurables et aide à contrôler le risque
+financier. Inconvénient / vigilance : Les cotes changent vite et les
+probabilités restent incertaines ; ne jamais présenter un pari comme
+garanti. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+41. Gestion Kelly Automatique : Calcule la mise idéale selon ta bankroll, ex: 2% = 2.000 FC.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/paris_builder.py Autres fichiers
+concernés : core/paris_builder.py ; core/top_matches.py ;
+domain/betting/* (à créer) Fichier cible principal :
+core/paris_builder.py Fonction à coder / vérifier :
+evaluer_gestion_kelly_automatique_calcule_la_mise_() Contrats ou
+services liés : OddsService.* / MarketModel.* / RiskService.* Rôle :
+Analyser les cotes, marchés et expositions avant de présenter une
+recommandation. Avantage : Rend les recommandations plus mesurables et
+aide à contrôler le risque financier. Inconvénient / vigilance : Les
+cotes changent vite et les probabilités restent incertaines ; ne jamais
+présenter un pari comme garanti. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+42. Plan de Mise Fixe / Progressif : Tu choisis mise fixe, Martingale douce ou Fibonacci, le bot suit.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : application/use_cases/ Autres fichiers
+concernés : application/use_cases/ ; domain/* (à créer) Fichier cible
+principal :
+application/use_cases//feature_plan_de_mise_fixe_progressif_tu_choisis_mi.py
+Fonction à coder / vérifier :
+evaluer_plan_de_mise_fixe_progressif_tu_choisis_mi() Contrats ou
+services liés : FeatureUseCase. Rôle : Analyser les cotes, marchés et
+expositions avant de présenter une recommandation. Avantage : Rend les
+recommandations plus mesurables et aide à contrôler le risque financier.
+Inconvénient / vigilance : Les cotes changent vite et les probabilités
+restent incertaines ; ne jamais présenter un pari comme garanti. État :
+À auditer/tester — Tests unitaires + intégration + métrique métier
+
+43. Constructeur de Combiné par Risque : Tu dis “Je veux cote 3.00”, il construit le combiné seul.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P1/P2 Emplacement principal : core/paris_builder.py Autres fichiers
+concernés : core/paris_builder.py ; core/top_matches.py ;
+domain/betting/* (à créer) Fichier cible principal :
+core/paris_builder.py Fonction à coder / vérifier :
+evaluer_constructeur_de_combine_par_risque_tu_dis_() Contrats ou
+services liés : OddsService.* / MarketModel.* / RiskService.* Rôle :
+Analyser les cotes, marchés et expositions avant de présenter une
+recommandation. Avantage : Rend les recommandations plus mesurables et
+aide à contrôler le risque financier. Inconvénient / vigilance : Les
+cotes changent vite et les probabilités restent incertaines ; ne jamais
+présenter un pari comme garanti. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+44. Double Sûr du Jour : 2 matchs ultra-sûrs combinés, cote 1.80-2.20.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P1/P2 Emplacement principal : core/paris_builder.py Autres fichiers
+concernés : core/paris_builder.py ; core/top_matches.py ;
+domain/betting/* (à créer) Fichier cible principal :
+core/paris_builder.py Fonction à coder / vérifier :
+evaluer_double_sur_du_jour_2_matchs_ultra_surs_com() Contrats ou
+services liés : OddsService.* / MarketModel.* / RiskService.* Rôle :
+Analyser les cotes, marchés et expositions avant de présenter une
+recommandation. Avantage : Rend les recommandations plus mesurables et
+aide à contrôler le risque financier. Inconvénient / vigilance : Les
+cotes changent vite et les probabilités restent incertaines ; ne jamais
+présenter un pari comme garanti. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+45. Assurance Combiné : “Si 4/5 passent, tu récupères ton bonus”, calcul auto.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/paris_builder.py Autres fichiers
+concernés : core/paris_builder.py ; core/top_matches.py ;
+domain/betting/* (à créer) Fichier cible principal :
+core/paris_builder.py Fonction à coder / vérifier :
+evaluer_assurance_combine_si_4_5_passent_tu_recupe() Contrats ou
+services liés : OddsService.* / MarketModel.* / RiskService.* Rôle :
+Analyser les cotes, marchés et expositions avant de présenter une
+recommandation. Avantage : Rend les recommandations plus mesurables et
+aide à contrôler le risque financier. Inconvénient / vigilance : Les
+cotes changent vite et les probabilités restent incertaines ; ne jamais
+présenter un pari comme garanti. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+46. Cash-Out Partiel Simulé : “Encaisse 50% maintenant, laisse 50% tourner”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : application/use_cases/ Autres fichiers
+concernés : application/use_cases/ ; domain/* (à créer) Fichier cible
+principal :
+application/use_cases//feature_cash_out_partiel_simule_encaisse_50_mainte.py
+Fonction à coder / vérifier :
+gerer_cash_out_partiel_simule_encaisse_50_mainte() Contrats ou services
+liés : FeatureUseCase. Rôle : Analyser les cotes, marchés et expositions
+avant de présenter une recommandation. Avantage : Rend les
+recommandations plus mesurables et aide à contrôler le risque financier.
+Inconvénient / vigilance : Les cotes changent vite et les probabilités
+restent incertaines ; ne jamais présenter un pari comme garanti. État :
+À auditer/tester — Tests unitaires + intégration + métrique métier
+
+47. Plan Anti-Perte : Après 3 pertes, il bloque les gros combinés et ne propose que des sûrs.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/paris_builder.py Autres fichiers
+concernés : core/paris_builder.py ; core/top_matches.py ;
+domain/betting/* (à créer) Fichier cible principal :
+core/paris_builder.py Fonction à coder / vérifier :
+evaluer_plan_anti_perte_apres_3_pertes_il_bloque_l() Contrats ou
+services liés : OddsService.* / MarketModel.* / RiskService.* Rôle :
+Analyser les cotes, marchés et expositions avant de présenter une
+recommandation. Avantage : Rend les recommandations plus mesurables et
+aide à contrôler le risque financier. Inconvénient / vigilance : Les
+cotes changent vite et les probabilités restent incertaines ; ne jamais
+présenter un pari comme garanti. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+48. Filtre Réussite par Ligue : “Ligue 1 71%, Premier League 54%”, tu choisis la meilleure ligue.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : application/use_cases/ Autres fichiers
+concernés : application/use_cases/ ; domain/* (à créer) Fichier cible
+principal :
+application/use_cases//feature_filtre_reussite_par_ligue_ligue_1_71_premi.py
+Fonction à coder / vérifier :
+gerer_filtre_reussite_par_ligue_ligue_1_71_premi() Contrats ou services
+liés : FeatureUseCase. Rôle : Collecter, normaliser, enrichir ou
+vérifier les données sportives utilisées par le bot. Avantage : Améliore
+la couverture et réduit les incohérences entre fournisseurs.
+Inconvénient / vigilance : Les fournisseurs peuvent être incomplets,
+indisponibles ou contradictoires ; conserver provenance, fraîcheur et
+identifiants stables. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+49. Dashboard ROI Personnel : Graphique “Tu as +28% ce mois”, tu vois si tu gagnes vraiment.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative : P3
+Emplacement principal : telegram_bot/admin/ Autres fichiers concernés :
+telegram_bot/admin/ ; users/admin.py ; core/audit.py Fichier cible
+principal :
+telegram_bot/admin//feature_dashboard_roi_personnel_graphique_tu_as_28.py
+Fonction à coder / vérifier :
+gerer_dashboard_roi_personnel_graphique_tu_as_28() Contrats ou services
+liés : AdminUseCases. / AuditService.* Rôle : Collecter, normaliser,
+enrichir ou vérifier les données sportives utilisées par le bot.
+Avantage : Améliore la couverture et réduit les incohérences entre
+fournisseurs. Inconvénient / vigilance : Les fournisseurs peuvent être
+incomplets, indisponibles ou contradictoires ; conserver provenance,
+fraîcheur et identifiants stables. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+50. Notifications Heure Kinshasa : Pronos envoyés à 09h00 heure Kinshasa, pas heure Europe.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/broadcast_manager.py Autres fichiers
+concernés : core/broadcast_manager.py ; core/canal_manager.py ;
+telegram_bot/handlers/ Fichier cible principal :
+core/broadcast_manager.py Fonction à coder / vérifier :
+envoyer_notifications_heure_kinshasa_pronos_envoye() Contrats ou
+services liés : NotificationService. / CampaignService.* Rôle :
+Préparer, planifier ou distribuer un contenu à la bonne audience et au
+bon moment. Avantage : Améliore la communication et automatise les
+tâches de diffusion. Inconvénient / vigilance : Peut générer du spam,
+des doublons ou dépasser les limites de l’API ; prévoir préférences,
+quotas et file persistante. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+51. Résumé Vocal IA 30s : Audio “Voici les 3 matchs à jouer ce soir”, pour ceux qui travaillent.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative : P3
+Emplacement principal : core/nouveau_prediction.py Autres fichiers
+concernés : core/nouveau_prediction.py ; core/ml_model.py ; ml/* (à
+créer) Fichier cible principal : core/nouveau_prediction.py Fonction à
+coder / vérifier : calculer_resume_vocal_ia_30s_audio_voici_les_3_matc()
+Contrats ou services liés : PredictionService.* / CalibrationService.* /
+ModelRegistry.* Rôle : Calculer, calibrer, expliquer ou contrôler les
+prédictions à partir de données historiques et récentes. Avantage :
+Améliore la cohérence, la mesure et la traçabilité de la qualité
+prédictive. Inconvénient / vigilance : Un modèle peut se tromper ou
+dériver ; exige des données fiables, des tests temporels et une
+surveillance continue. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+52. Commentaire Live IA : Pendant le match “Arsenal pousse, 8 tirs en 15 min, but imminent”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P1/P2 Emplacement principal : core/api/ Autres fichiers concernés :
+core/api/ ; core/results_checker.py ; workers/live_worker.py (à créer)
+Fichier cible principal :
+core/api//feature_commentaire_live_ia_pendant_le_match_arsen.py Fonction
+à coder / vérifier :
+traiter_commentaire_live_ia_pendant_le_match_arsen() Contrats ou
+services liés : LiveFeedService. / LivePredictionService.* Rôle :
+Collecter et traiter les événements du match, actualiser l’état et
+informer l’utilisateur. Avantage : Donne des informations rapides et
+contextualisées pendant le match. Inconvénient / vigilance : Dépend
+fortement de la latence et de la fiabilité du fournisseur ; risque de
+fausses alertes si les événements sont dupliqués. État : À
+auditer/tester — Tests unitaires + intégration + métrique métier
+
+53. Débrief Auto Après-Match : “Prono passé parce que…” ou “Raté à cause du rouge 23e”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/api/ Autres fichiers concernés :
+core/api/ ; core/api/orchestrator.py ; scripts/* ; users/matchs.py
+Fichier cible principal :
+core/api//feature_debrief_auto_apres_match_prono_passe_parce.py Fonction
+à coder / vérifier :
+calculer_debrief_auto_apres_match_prono_passe_parce() Contrats ou
+services liés : ProviderRegistry. / MatchRepository.* /
+DataQualityService.* Rôle : Collecter, normaliser, enrichir ou vérifier
+les données sportives utilisées par le bot. Avantage : Améliore la
+couverture et réduit les incohérences entre fournisseurs. Inconvénient /
+vigilance : Les fournisseurs peuvent être incomplets, indisponibles ou
+contradictoires ; conserver provenance, fraîcheur et identifiants
+stables. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+54. Checklist Avant de Parier : “As-tu vérifié compo ? Météo ? Mise ?” avant de valider.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/paris_builder.py Autres fichiers
+concernés : core/paris_builder.py ; core/top_matches.py ;
+domain/betting/* (à créer) Fichier cible principal :
+core/paris_builder.py Fonction à coder / vérifier :
+evaluer_checklist_avant_de_parier_as_tu_verifie_co() Contrats ou
+services liés : OddsService.* / MarketModel.* / RiskService.* Rôle :
+Analyser les cotes, marchés et expositions avant de présenter une
+recommandation. Avantage : Rend les recommandations plus mesurables et
+aide à contrôler le risque financier. Inconvénient / vigilance : Les
+cotes changent vite et les probabilités restent incertaines ; ne jamais
+présenter un pari comme garanti. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+55. Base Blessés / Suspendus : Liste chaque matin: qui est absent et pour combien de temps.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : application/use_cases/ Autres fichiers
+concernés : application/use_cases/ ; domain/* (à créer) Fichier cible
+principal :
+application/use_cases//feature_base_blesses_suspendus_liste_chaque_matin_.py
+Fonction à coder / vérifier :
+gerer_base_blesses_suspendus_liste_chaque_matin_() Contrats ou services
+liés : FeatureUseCase. Rôle : Collecter, normaliser, enrichir ou
+vérifier les données sportives utilisées par le bot. Avantage : Améliore
+la couverture et réduit les incohérences entre fournisseurs.
+Inconvénient / vigilance : Les fournisseurs peuvent être incomplets,
+indisponibles ou contradictoires ; conserver provenance, fraîcheur et
+identifiants stables. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+56. Compo Prédite vs Officielle : Compare sa compo prédite à l’officielle et ajuste le prono.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : application/use_cases/ Autres fichiers
+concernés : application/use_cases/ ; domain/* (à créer) Fichier cible
+principal :
+application/use_cases//feature_compo_predite_vs_officielle_compare_sa_com.py
+Fonction à coder / vérifier :
+calculer_compo_predite_vs_officielle_compare_sa_com() Contrats ou
+services liés : FeatureUseCase. Rôle : Collecter, normaliser, enrichir
+ou vérifier les données sportives utilisées par le bot. Avantage :
+Améliore la couverture et réduit les incohérences entre fournisseurs.
+Inconvénient / vigilance : Les fournisseurs peuvent être incomplets,
+indisponibles ou contradictoires ; conserver provenance, fraîcheur et
+identifiants stables. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+57. Effet Altitude / Voyage : “Lubumbashi 1.200m + 3h de vol pour l’adversaire”, fatigue.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : application/use_cases/ Autres fichiers
+concernés : application/use_cases/ ; domain/* (à créer) Fichier cible
+principal :
+application/use_cases//feature_effet_altitude_voyage_lubumbashi_1_200m_3h.py
+Fonction à coder / vérifier :
+gerer_effet_altitude_voyage_lubumbashi_1_200m_3h() Contrats ou services
+liés : FeatureUseCase. Rôle : Collecter, normaliser, enrichir ou
+vérifier les données sportives utilisées par le bot. Avantage : Améliore
+la couverture et réduit les incohérences entre fournisseurs.
+Inconvénient / vigilance : Les fournisseurs peuvent être incomplets,
+indisponibles ou contradictoires ; conserver provenance, fraîcheur et
+identifiants stables. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+58. Fatigue Calendrier : “3e match en 7 jours, rotation probable”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/api/ Autres fichiers concernés :
+core/api/ ; core/api/orchestrator.py ; scripts/* ; users/matchs.py
+Fichier cible principal :
+core/api//feature_fatigue_calendrier_3e_match_en_7_jours_rot.py Fonction
+à coder / vérifier : gerer_fatigue_calendrier_3e_match_en_7_jours_rot()
+Contrats ou services liés : ProviderRegistry. / MatchRepository.* /
+DataQualityService.* Rôle : Collecter, normaliser, enrichir ou vérifier
+les données sportives utilisées par le bot. Avantage : Améliore la
+couverture et réduit les incohérences entre fournisseurs. Inconvénient /
+vigilance : Les fournisseurs peuvent être incomplets, indisponibles ou
+contradictoires ; conserver provenance, fraîcheur et identifiants
+stables. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+59. Détecteur de Derby / Rivalité : Badge rouge DERBY, les derbys cassent les stats.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : application/use_cases/ Autres fichiers
+concernés : application/use_cases/ ; domain/* (à créer) Fichier cible
+principal :
+application/use_cases//feature_detecteur_de_derby_rivalite_badge_rouge_de.py
+Fonction à coder / vérifier :
+gerer_detecteur_de_derby_rivalite_badge_rouge_de() Contrats ou services
+liés : FeatureUseCase. Rôle : Collecter, normaliser, enrichir ou
+vérifier les données sportives utilisées par le bot. Avantage : Améliore
+la couverture et réduit les incohérences entre fournisseurs.
+Inconvénient / vigilance : Les fournisseurs peuvent être incomplets,
+indisponibles ou contradictoires ; conserver provenance, fraîcheur et
+identifiants stables. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+60. Indice de Motivation : “Équipe A joue le titre 9/10, Équipe B plus rien à jouer 3/10”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/api/ Autres fichiers concernés :
+core/api/ ; core/api/orchestrator.py ; scripts/* ; users/matchs.py
+Fichier cible principal :
+core/api//feature_indice_de_motivation_equipe_a_joue_le_titr.py Fonction
+à coder / vérifier : gerer_indice_de_motivation_equipe_a_joue_le_titr()
+Contrats ou services liés : ProviderRegistry. / MatchRepository.* /
+DataQualityService.* Rôle : Collecter, normaliser, enrichir ou vérifier
+les données sportives utilisées par le bot. Avantage : Améliore la
+couverture et réduit les incohérences entre fournisseurs. Inconvénient /
+vigilance : Les fournisseurs peuvent être incomplets, indisponibles ou
+contradictoires ; conserver provenance, fraîcheur et identifiants
+stables. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+61. Tactique Entraîneur : “Entraîneur défensif: 70% de Under 2.5”, le style influence le score.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : application/use_cases/ Autres fichiers
+concernés : application/use_cases/ ; domain/* (à créer) Fichier cible
+principal :
+application/use_cases//feature_tactique_entraineur_entraineur_defensif_70.py
+Fonction à coder / vérifier :
+gerer_tactique_entraineur_entraineur_defensif_70() Contrats ou services
+liés : FeatureUseCase. Rôle : Collecter, normaliser, enrichir ou
+vérifier les données sportives utilisées par le bot. Avantage : Améliore
+la couverture et réduit les incohérences entre fournisseurs.
+Inconvénient / vigilance : Les fournisseurs peuvent être incomplets,
+indisponibles ou contradictoires ; conserver provenance, fraîcheur et
+identifiants stables. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+62. xG + xA + xPoints : Buts attendus + passes attendues + points attendus, niveau analyste TV.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/nouveau_prediction.py Autres fichiers
+concernés : core/nouveau_prediction.py ; core/ml_model.py ; ml/* (à
+créer) Fichier cible principal : core/nouveau_prediction.py Fonction à
+coder / vérifier : gerer_xg_xa_xpoints_buts_attendus_passes_attendu()
+Contrats ou services liés : PredictionService.* / CalibrationService.* /
+ModelRegistry.* Rôle : Calculer, calibrer, expliquer ou contrôler les
+prédictions à partir de données historiques et récentes. Avantage :
+Améliore la cohérence, la mesure et la traçabilité de la qualité
+prédictive. Inconvénient / vigilance : Un modèle peut se tromper ou
+dériver ; exige des données fiables, des tests temporels et une
+surveillance continue. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+63. Elo Live qui Bouge : Classement Elo qui change après chaque but en live.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P1/P2 Emplacement principal : core/api/ Autres fichiers concernés :
+core/api/ ; core/results_checker.py ; workers/live_worker.py (à créer)
+Fichier cible principal :
+core/api//feature_elo_live_qui_bouge_classement_elo_qui_chan.py Fonction
+à coder / vérifier :
+traiter_elo_live_qui_bouge_classement_elo_qui_chan() Contrats ou
+services liés : LiveFeedService. / LivePredictionService.* Rôle :
+Collecter et traiter les événements du match, actualiser l’état et
+informer l’utilisateur. Avantage : Donne des informations rapides et
+contextualisées pendant le match. Inconvénient / vigilance : Dépend
+fortement de la latence et de la fiabilité du fournisseur ; risque de
+fausses alertes si les événements sont dupliqués. État : À
+auditer/tester — Tests unitaires + intégration + métrique métier
+
+64. Simulation Monte Carlo 10.000x : Simule le match 10.000 fois, ex: “Arsenal gagne 6.200 fois”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/nouveau_prediction.py Autres fichiers
+concernés : core/nouveau_prediction.py ; core/ml_model.py ; ml/* (à
+créer) Fichier cible principal : core/nouveau_prediction.py Fonction à
+coder / vérifier : gerer_simulation_monte_carlo_10_000x_simule_le_m()
+Contrats ou services liés : PredictionService.* / CalibrationService.* /
+ModelRegistry.* Rôle : Collecter, normaliser, enrichir ou vérifier les
+données sportives utilisées par le bot. Avantage : Améliore la
+couverture et réduit les incohérences entre fournisseurs. Inconvénient /
+vigilance : Les fournisseurs peuvent être incomplets, indisponibles ou
+contradictoires ; conserver provenance, fraîcheur et identifiants
+stables. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+65. Explication du Prono : “Pourquoi ce choix ? 1) Forme, 2) xG, 3) Absents”, en 3 puces.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/nouveau_prediction.py Autres fichiers
+concernés : core/nouveau_prediction.py ; core/ml_model.py ; ml/* (à
+créer) Fichier cible principal : core/nouveau_prediction.py Fonction à
+coder / vérifier : calculer_explication_du_prono_pourquoi_ce_choix_1_f()
+Contrats ou services liés : PredictionService.* / CalibrationService.* /
+ModelRegistry.* Rôle : Calculer, calibrer, expliquer ou contrôler les
+prédictions à partir de données historiques et récentes. Avantage :
+Améliore la cohérence, la mesure et la traçabilité de la qualité
+prédictive. Inconvénient / vigilance : Un modèle peut se tromper ou
+dériver ; exige des données fiables, des tests temporels et une
+surveillance continue. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+66. Backtest de Ta Stratégie : “Si tu avais suivi Over 2.5 depuis 3 mois, tu serais à +34%”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P1/P2 Emplacement principal : core/nouveau_prediction.py Autres fichiers
+concernés : core/nouveau_prediction.py ; core/ml_model.py ; ml/* (à
+créer) Fichier cible principal : core/nouveau_prediction.py Fonction à
+coder / vérifier : gerer_backtest_de_ta_strategie_si_tu_avais_suivi()
+Contrats ou services liés : PredictionService.* / CalibrationService.* /
+ModelRegistry.* Rôle : Collecter, normaliser, enrichir ou vérifier les
+données sportives utilisées par le bot. Avantage : Améliore la
+couverture et réduit les incohérences entre fournisseurs. Inconvénient /
+vigilance : Les fournisseurs peuvent être incomplets, indisponibles ou
+contradictoires ; conserver provenance, fraîcheur et identifiants
+stables. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+67. Paris Virtuels Argent Fictif : Tu testes avec 100.000 FC fictifs, sans argent réel.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/paris_builder.py Autres fichiers
+concernés : core/paris_builder.py ; core/top_matches.py ;
+domain/betting/* (à créer) Fichier cible principal :
+core/paris_builder.py Fonction à coder / vérifier :
+evaluer_paris_virtuels_argent_fictif_tu_testes_ave() Contrats ou
+services liés : OddsService.* / MarketModel.* / RiskService.* Rôle :
+Analyser les cotes, marchés et expositions avant de présenter une
+recommandation. Avantage : Rend les recommandations plus mesurables et
+aide à contrôler le risque financier. Inconvénient / vigilance : Les
+cotes changent vite et les probabilités restent incertaines ; ne jamais
+présenter un pari comme garanti. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+68. Ligue Privée Entre Amis : Crée “Les gars de Bandal” et affrontez-vous.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : application/use_cases/ Autres fichiers
+concernés : application/use_cases/ ; domain/* (à créer) Fichier cible
+principal :
+application/use_cases//feature_ligue_privee_entre_amis_cree_les_gars_de_b.py
+Fonction à coder / vérifier :
+gerer_ligue_privee_entre_amis_cree_les_gars_de_b() Contrats ou services
+liés : FeatureUseCase. Rôle : Collecter, normaliser, enrichir ou
+vérifier les données sportives utilisées par le bot. Avantage : Améliore
+la couverture et réduit les incohérences entre fournisseurs.
+Inconvénient / vigilance : Les fournisseurs peuvent être incomplets,
+indisponibles ou contradictoires ; conserver provenance, fraîcheur et
+identifiants stables. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+69. Bataille IA vs Humains : Chaque jour: qui a le meilleur prono, toi ou l’IA ?
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/nouveau_prediction.py Autres fichiers
+concernés : core/nouveau_prediction.py ; core/ml_model.py ; ml/* (à
+créer) Fichier cible principal : core/nouveau_prediction.py Fonction à
+coder / vérifier : calculer_bataille_ia_vs_humains_chaque_jour_qui_a_l()
+Contrats ou services liés : PredictionService.* / CalibrationService.* /
+ModelRegistry.* Rôle : Calculer, calibrer, expliquer ou contrôler les
+prédictions à partir de données historiques et récentes. Avantage :
+Améliore la cohérence, la mesure et la traçabilité de la qualité
+prédictive. Inconvénient / vigilance : Un modèle peut se tromper ou
+dériver ; exige des données fiables, des tests temporels et une
+surveillance continue. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+70. Boutique XP : Avec tes points, achète 1 jour Premium, 1 analyse VIP.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : users/paiements.py Autres fichiers
+concernés : users/paiements.py ; core/payments.py ;
+telegram_bot/payment_handlers.py Fichier cible principal :
+users/paiements.py Fonction à coder / vérifier :
+gerer_boutique_xp_avec_tes_points_achete_1_jour_() Contrats ou services
+liés : PaymentService.* / PaymentHandler.* Rôle : Gérer les paiements,
+droits d’accès, abonnements ou commissions associés à la fonctionnalité.
+Avantage : Automatise les opérations commerciales et réduit les
+traitements manuels. Inconvénient / vigilance : Les erreurs et doublons
+ont des conséquences financières ; transactions atomiques, idempotence
+et audit obligatoires. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+71. Bonus Connexion Quotidienne : Jour 1: 10 XP, Jour 7 d’affilée: 1 jour Premium.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : users/paiements.py Autres fichiers
+concernés : users/paiements.py ; core/payments.py ;
+telegram_bot/payment_handlers.py Fichier cible principal :
+users/paiements.py Fonction à coder / vérifier :
+gerer_bonus_connexion_quotidienne_jour_1_10_xp_j() Contrats ou services
+liés : PaymentService.* / PaymentHandler.* Rôle : Gérer les paiements,
+droits d’accès, abonnements ou commissions associés à la fonctionnalité.
+Avantage : Automatise les opérations commerciales et réduit les
+traitements manuels. Inconvénient / vigilance : Les erreurs et doublons
+ont des conséquences financières ; transactions atomiques, idempotence
+et audit obligatoires. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+72. Roue Quotidienne Gratuite : 1 spin par jour: XP, analyse gratuite ou -10%.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/translations.py Autres fichiers
+concernés : core/translations.py ; telegram_bot/handlers/* ;
+users/account_base.py Fichier cible principal : core/translations.py
+Fonction à coder / vérifier :
+gerer_roue_quotidienne_gratuite_1_spin_par_jour_() Contrats ou services
+liés : UserExperienceService.* / PreferenceService.* Rôle : Collecter,
+normaliser, enrichir ou vérifier les données sportives utilisées par le
+bot. Avantage : Améliore la couverture et réduit les incohérences entre
+fournisseurs. Inconvénient / vigilance : Les fournisseurs peuvent être
+incomplets, indisponibles ou contradictoires ; conserver provenance,
+fraîcheur et identifiants stables. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+73. Classement Parrains : Top 5 parrains du mois avec récompense.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/translations.py Autres fichiers
+concernés : core/translations.py ; telegram_bot/handlers/* ;
+users/account_base.py Fichier cible principal : core/translations.py
+Fonction à coder / vérifier :
+gerer_classement_parrains_top_5_parrains_du_mois() Contrats ou services
+liés : UserExperienceService.* / PreferenceService.* Rôle : Collecter,
+normaliser, enrichir ou vérifier les données sportives utilisées par le
+bot. Avantage : Améliore la couverture et réduit les incohérences entre
+fournisseurs. Inconvénient / vigilance : Les fournisseurs peuvent être
+incomplets, indisponibles ou contradictoires ; conserver provenance,
+fraîcheur et identifiants stables. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+74. Lien d’Affiliation Suivi : Chaque utilisateur a son lien et voit combien il a gagné.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/nouveau_prediction.py Autres fichiers
+concernés : core/nouveau_prediction.py ; core/ml_model.py ; ml/* (à
+créer) Fichier cible principal : core/nouveau_prediction.py Fonction à
+coder / vérifier : calculer_lien_d_affiliation_suivi_chaque_utilisateu()
+Contrats ou services liés : PredictionService.* / CalibrationService.* /
+ModelRegistry.* Rôle : Calculer, calibrer, expliquer ou contrôler les
+prédictions à partir de données historiques et récentes. Avantage :
+Améliore la cohérence, la mesure et la traçabilité de la qualité
+prédictive. Inconvénient / vigilance : Un modèle peut se tromper ou
+dériver ; exige des données fiables, des tests temporels et une
+surveillance continue. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+75. Sync Auto Canal WhatsApp : Prono posté sur Telegram = posté aussi sur WhatsApp.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative : P3
+Emplacement principal : core/broadcast_manager.py Autres fichiers
+concernés : core/broadcast_manager.py ; core/canal_manager.py ;
+telegram_bot/handlers/ Fichier cible principal :
+core/broadcast_manager.py Fonction à coder / vérifier :
+calculer_sync_auto_canal_whatsapp_prono_poste_sur_t() Contrats ou
+services liés : NotificationService. / CampaignService.* Rôle :
+Préparer, planifier ou distribuer un contenu à la bonne audience et au
+bon moment. Avantage : Améliore la communication et automatise les
+tâches de diffusion. Inconvénient / vigilance : Peut générer du spam,
+des doublons ou dépasser les limites de l’API ; prévoir préférences,
+quotas et file persistante. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+76. Post Auto Facebook : Ticket du jour posté seul sur ta page Facebook.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/broadcast_manager.py Autres fichiers
+concernés : core/broadcast_manager.py ; core/canal_manager.py ;
+telegram_bot/handlers/ Fichier cible principal :
+core/broadcast_manager.py Fonction à coder / vérifier :
+gerer_post_auto_facebook_ticket_du_jour_poste_se() Contrats ou services
+liés : NotificationService. / CampaignService.* Rôle : Analyser les
+cotes, marchés et expositions avant de présenter une recommandation.
+Avantage : Rend les recommandations plus mesurables et aide à contrôler
+le risque financier. Inconvénient / vigilance : Les cotes changent vite
+et les probabilités restent incertaines ; ne jamais présenter un pari
+comme garanti. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+77. Générateur Légende TikTok : Écrit “3 raisons de jouer ce ticket… #kinshasa”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative : P3
+Emplacement principal : core/broadcast_manager.py Autres fichiers
+concernés : core/broadcast_manager.py ; core/canal_manager.py ;
+telegram_bot/handlers/ Fichier cible principal :
+core/broadcast_manager.py Fonction à coder / vérifier :
+gerer_generateur_legende_tiktok_ecrit_3_raisons_() Contrats ou services
+liés : NotificationService. / CampaignService.* Rôle : Analyser les
+cotes, marchés et expositions avant de présenter une recommandation.
+Avantage : Rend les recommandations plus mesurables et aide à contrôler
+le risque financier. Inconvénient / vigilance : Les cotes changent vite
+et les probabilités restent incertaines ; ne jamais présenter un pari
+comme garanti. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+78. Template Story Instagram : Image 9:16 prête avec logo + ticket du jour.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : application/use_cases/ Autres fichiers
+concernés : application/use_cases/ ; domain/* (à créer) Fichier cible
+principal :
+application/use_cases//feature_template_story_instagram_image_9_16_prete_.py
+Fonction à coder / vérifier :
+gerer_template_story_instagram_image_9_16_prete_() Contrats ou services
+liés : FeatureUseCase. Rôle : Analyser les cotes, marchés et expositions
+avant de présenter une recommandation. Avantage : Rend les
+recommandations plus mesurables et aide à contrôler le risque financier.
+Inconvénient / vigilance : Les cotes changent vite et les probabilités
+restent incertaines ; ne jamais présenter un pari comme garanti. État :
+À auditer/tester — Tests unitaires + intégration + métrique métier
+
+79. Rapport Mensuel PDF : “Ton mois: 68% réussite, +45.000 FC”, en PDF.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : application/use_cases/ Autres fichiers
+concernés : application/use_cases/ ; domain/* (à créer) Fichier cible
+principal :
+application/use_cases//feature_rapport_mensuel_pdf_ton_mois_68_reussite_4.py
+Fonction à coder / vérifier :
+gerer_rapport_mensuel_pdf_ton_mois_68_reussite_4() Contrats ou services
+liés : FeatureUseCase. Rôle : Collecter, normaliser, enrichir ou
+vérifier les données sportives utilisées par le bot. Avantage : Améliore
+la couverture et réduit les incohérences entre fournisseurs.
+Inconvénient / vigilance : Les fournisseurs peuvent être incomplets,
+indisponibles ou contradictoires ; conserver provenance, fraîcheur et
+identifiants stables. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+80. Résumé Email Hebdo : Dimanche, tes stats de la semaine par email.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/broadcast_manager.py Autres fichiers
+concernés : core/broadcast_manager.py ; core/canal_manager.py ;
+telegram_bot/handlers/ Fichier cible principal :
+core/broadcast_manager.py Fonction à coder / vérifier :
+gerer_resume_email_hebdo_dimanche_tes_stats_de_l() Contrats ou services
+liés : NotificationService. / CampaignService.* Rôle : Collecter,
+normaliser, enrichir ou vérifier les données sportives utilisées par le
+bot. Avantage : Améliore la couverture et réduit les incohérences entre
+fournisseurs. Inconvénient / vigilance : Les fournisseurs peuvent être
+incomplets, indisponibles ou contradictoires ; conserver provenance,
+fraîcheur et identifiants stables. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+81. Notifications Silencieuses : Option “Ne me réveille pas, envoie à 7h00”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/broadcast_manager.py Autres fichiers
+concernés : core/broadcast_manager.py ; core/canal_manager.py ;
+telegram_bot/handlers/ Fichier cible principal :
+core/broadcast_manager.py Fonction à coder / vérifier :
+envoyer_notifications_silencieuses_option_ne_me_re() Contrats ou
+services liés : NotificationService. / CampaignService.* Rôle :
+Préparer, planifier ou distribuer un contenu à la bonne audience et au
+bon moment. Avantage : Améliore la communication et automatise les
+tâches de diffusion. Inconvénient / vigilance : Peut générer du spam,
+des doublons ou dépasser les limites de l’API ; prévoir préférences,
+quotas et file persistante. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+82. Mode Swahili : En plus de Français + Lingala, Swahili pour l’Est du Congo.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/translations.py Autres fichiers
+concernés : core/translations.py ; telegram_bot/handlers/* ;
+users/account_base.py Fichier cible principal : core/translations.py
+Fonction à coder / vérifier :
+gerer_mode_swahili_en_plus_de_francais_lingala_s() Contrats ou services
+liés : UserExperienceService.* / PreferenceService.* Rôle : Collecter,
+normaliser, enrichir ou vérifier les données sportives utilisées par le
+bot. Avantage : Améliore la couverture et réduit les incohérences entre
+fournisseurs. Inconvénient / vigilance : Les fournisseurs peuvent être
+incomplets, indisponibles ou contradictoires ; conserver provenance,
+fraîcheur et identifiants stables. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+83. Commande Vocale : Envoie un vocal “Donne-moi le prono de Mazembe”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative : P3
+Emplacement principal : core/broadcast_manager.py Autres fichiers
+concernés : core/broadcast_manager.py ; core/canal_manager.py ;
+telegram_bot/handlers/ Fichier cible principal :
+core/broadcast_manager.py Fonction à coder / vérifier :
+calculer_commande_vocale_envoie_un_vocal_donne_moi_() Contrats ou
+services liés : NotificationService. / CampaignService.* Rôle :
+Préparer, planifier ou distribuer un contenu à la bonne audience et au
+bon moment. Avantage : Améliore la communication et automatise les
+tâches de diffusion. Inconvénient / vigilance : Peut générer du spam,
+des doublons ou dépasser les limites de l’API ; prévoir préférences,
+quotas et file persistante. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+84. Recherche par Emoji : Tape ballon + nom d’équipe, le bot comprend.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/api/ Autres fichiers concernés :
+core/api/ ; core/api/orchestrator.py ; scripts/* ; users/matchs.py
+Fichier cible principal :
+core/api//feature_recherche_par_emoji_tape_ballon_nom_d_equi.py Fonction
+à coder / vérifier : gerer_recherche_par_emoji_tape_ballon_nom_d_equi()
+Contrats ou services liés : ProviderRegistry. / MatchRepository.* /
+DataQualityService.* Rôle : Collecter, normaliser, enrichir ou vérifier
+les données sportives utilisées par le bot. Avantage : Améliore la
+couverture et réduit les incohérences entre fournisseurs. Inconvénient /
+vigilance : Les fournisseurs peuvent être incomplets, indisponibles ou
+contradictoires ; conserver provenance, fraîcheur et identifiants
+stables. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+85. Alertes Équipe Favorite Ultra-Ciblée : “Mazembe joue dans 1h, voici ton prono”, zéro spam.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/api/ Autres fichiers concernés :
+core/api/ ; core/api/orchestrator.py ; scripts/* ; users/matchs.py
+Fichier cible principal :
+core/api//feature_alertes_equipe_favorite_ultra_ciblee_mazem.py Fonction
+à coder / vérifier :
+envoyer_alertes_equipe_favorite_ultra_ciblee_mazem() Contrats ou
+services liés : ProviderRegistry. / MatchRepository.* /
+DataQualityService.* Rôle : Préparer, planifier ou distribuer un contenu
+à la bonne audience et au bon moment. Avantage : Améliore la
+communication et automatise les tâches de diffusion. Inconvénient /
+vigilance : Peut générer du spam, des doublons ou dépasser les limites
+de l’API ; prévoir préférences, quotas et file persistante. État : À
+auditer/tester — Tests unitaires + intégration + métrique métier
+
+86. Sync Calendrier Google : “Ajouter ce match à mon agenda” en 1 clic.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/api/ Autres fichiers concernés :
+core/api/ ; core/api/orchestrator.py ; scripts/* ; users/matchs.py
+Fichier cible principal :
+core/api//feature_sync_calendrier_google_ajouter_ce_match_a_.py Fonction
+à coder / vérifier : gerer_sync_calendrier_google_ajouter_ce_match_a_()
+Contrats ou services liés : ProviderRegistry. / MatchRepository.* /
+DataQualityService.* Rôle : Collecter, normaliser, enrichir ou vérifier
+les données sportives utilisées par le bot. Avantage : Améliore la
+couverture et réduit les incohérences entre fournisseurs. Inconvénient /
+vigilance : Les fournisseurs peuvent être incomplets, indisponibles ou
+contradictoires ; conserver provenance, fraîcheur et identifiants
+stables. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+87. Graphique Évolution des Cotes : Courbe “Cote passée de 2.50 à 1.90 en 24h”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P1/P2 Emplacement principal : core/paris_builder.py Autres fichiers
+concernés : core/paris_builder.py ; core/top_matches.py ;
+domain/betting/* (à créer) Fichier cible principal :
+core/paris_builder.py Fonction à coder / vérifier :
+evaluer_graphique_evolution_des_cotes_courbe_cote_() Contrats ou
+services liés : OddsService.* / MarketModel.* / RiskService.* Rôle :
+Analyser les cotes, marchés et expositions avant de présenter une
+recommandation. Avantage : Rend les recommandations plus mesurables et
+aide à contrôler le risque financier. Inconvénient / vigilance : Les
+cotes changent vite et les probabilités restent incertaines ; ne jamais
+présenter un pari comme garanti. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+88. Mode Nuit / Économie Data : Version texte ultra-légère, 2 Ko par message.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/broadcast_manager.py Autres fichiers
+concernés : core/broadcast_manager.py ; core/canal_manager.py ;
+telegram_bot/handlers/ Fichier cible principal :
+core/broadcast_manager.py Fonction à coder / vérifier :
+envoyer_mode_nuit_economie_data_version_texte_ultr() Contrats ou
+services liés : NotificationService. / CampaignService.* Rôle :
+Préparer, planifier ou distribuer un contenu à la bonne audience et au
+bon moment. Avantage : Améliore la communication et automatise les
+tâches de diffusion. Inconvénient / vigilance : Peut générer du spam,
+des doublons ou dépasser les limites de l’API ; prévoir préférences,
+quotas et file persistante. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+89. Détecteur de Match Truqué Suspect : “Cotes bizarres + gros argent sur petit match = DANGER”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P1/P2 Emplacement principal : core/paris_builder.py Autres fichiers
+concernés : core/paris_builder.py ; core/top_matches.py ;
+domain/betting/* (à créer) Fichier cible principal :
+core/paris_builder.py Fonction à coder / vérifier :
+evaluer_detecteur_de_match_truque_suspect_cotes_bi() Contrats ou
+services liés : OddsService.* / MarketModel.* / RiskService.* Rôle :
+Analyser les cotes, marchés et expositions avant de présenter une
+recommandation. Avantage : Rend les recommandations plus mesurables et
+aide à contrôler le risque financier. Inconvénient / vigilance : Les
+cotes changent vite et les probabilités restent incertaines ; ne jamais
+présenter un pari comme garanti. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+90. Mode Expert Débloquable : Après 30 jours d’abonnement, débloque xG, Elo, Monte Carlo.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : users/paiements.py Autres fichiers
+concernés : users/paiements.py ; core/payments.py ;
+telegram_bot/payment_handlers.py Fichier cible principal :
+users/paiements.py Fonction à coder / vérifier :
+gerer_mode_expert_debloquable_apres_30_jours_d_a() Contrats ou services
+liés : PaymentService.* / PaymentHandler.* Rôle : Calculer, calibrer,
+expliquer ou contrôler les prédictions à partir de données historiques
+et récentes. Avantage : Améliore la cohérence, la mesure et la
+traçabilité de la qualité prédictive. Inconvénient / vigilance : Un
+modèle peut se tromper ou dériver ; exige des données fiables, des tests
+temporels et une surveillance continue. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+91. Dashboard Admin Temps Réel : 1 écran: utilisateurs en ligne, pronos envoyés, paiements du jour.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P0/P1 Emplacement principal : users/paiements.py Autres fichiers
+concernés : users/paiements.py ; core/payments.py ;
+telegram_bot/payment_handlers.py Fichier cible principal :
+users/paiements.py Fonction à coder / vérifier :
+gerer_dashboard_admin_temps_reel_1_ecran_utilisa() Contrats ou services
+liés : PaymentService.* / PaymentHandler.* Rôle : Collecter et traiter
+les événements du match, actualiser l’état et informer l’utilisateur.
+Avantage : Donne des informations rapides et contextualisées pendant le
+match. Inconvénient / vigilance : Dépend fortement de la latence et de
+la fiabilité du fournisseur ; risque de fausses alertes si les
+événements sont dupliqués. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+92. Gestion Utilisateurs par Statut : Filtre Gratuit / Premium / Expiré / Bloqué / VIP / Revendeur.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : users/paiements.py Autres fichiers
+concernés : users/paiements.py ; core/payments.py ;
+telegram_bot/payment_handlers.py Fichier cible principal :
+users/paiements.py Fonction à coder / vérifier :
+gerer_gestion_utilisateurs_par_statut_filtre_gra() Contrats ou services
+liés : PaymentService.* / PaymentHandler.* Rôle : Gérer les paiements,
+droits d’accès, abonnements ou commissions associés à la fonctionnalité.
+Avantage : Automatise les opérations commerciales et réduit les
+traitements manuels. Inconvénient / vigilance : Les erreurs et doublons
+ont des conséquences financières ; transactions atomiques, idempotence
+et audit obligatoires. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+93. Recherche Utilisateur : Par ID / nom / numéro, tu vois tout son historique.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P1/P2 Emplacement principal : core/api/ Autres fichiers concernés :
+core/api/ ; core/api/orchestrator.py ; scripts/* ; users/matchs.py
+Fichier cible principal :
+core/api//feature_recherche_utilisateur_par_id_nom_numero_tu.py Fonction
+à coder / vérifier : gerer_recherche_utilisateur_par_id_nom_numero_tu()
+Contrats ou services liés : ProviderRegistry. / MatchRepository.* /
+DataQualityService.* Rôle : Collecter, normaliser, enrichir ou vérifier
+les données sportives utilisées par le bot. Avantage : Améliore la
+couverture et réduit les incohérences entre fournisseurs. Inconvénient /
+vigilance : Les fournisseurs peuvent être incomplets, indisponibles ou
+contradictoires ; conserver provenance, fraîcheur et identifiants
+stables. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+94. Bannir / Débannir en 1 Clic : Bouton rouge avec raison et durée 1j / 7j / définitif.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : telegram_bot/admin/ Autres fichiers
+concernés : telegram_bot/admin/ ; users/admin.py ; core/audit.py Fichier
+cible principal :
+telegram_bot/admin//feature_bannir_debannir_en_1_clic_bouton_rouge_ave.py
+Fonction à coder / vérifier :
+gerer_bannir_debannir_en_1_clic_bouton_rouge_ave() Contrats ou services
+liés : AdminUseCases. / AuditService.* Rôle : Collecter, normaliser,
+enrichir ou vérifier les données sportives utilisées par le bot.
+Avantage : Améliore la couverture et réduit les incohérences entre
+fournisseurs. Inconvénient / vigilance : Les fournisseurs peuvent être
+incomplets, indisponibles ou contradictoires ; conserver provenance,
+fraîcheur et identifiants stables. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+95. Offrir Premium Manuellement : “Offrir 7 jours à @user” sans code, pour concours.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : users/paiements.py Autres fichiers
+concernés : users/paiements.py ; core/payments.py ;
+telegram_bot/payment_handlers.py Fichier cible principal :
+users/paiements.py Fonction à coder / vérifier :
+gerer_offrir_premium_manuellement_offrir_7_jours() Contrats ou services
+liés : PaymentService.* / PaymentHandler.* Rôle : Gérer les paiements,
+droits d’accès, abonnements ou commissions associés à la fonctionnalité.
+Avantage : Automatise les opérations commerciales et réduit les
+traitements manuels. Inconvénient / vigilance : Les erreurs et doublons
+ont des conséquences financières ; transactions atomiques, idempotence
+et audit obligatoires. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+96. Prolonger / Raccourcir Abonnement : Change la date d’expiration manuellement.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : users/paiements.py Autres fichiers
+concernés : users/paiements.py ; core/payments.py ;
+telegram_bot/payment_handlers.py Fichier cible principal :
+users/paiements.py Fonction à coder / vérifier :
+gerer_prolonger_raccourcir_abonnement_change_la_() Contrats ou services
+liés : PaymentService.* / PaymentHandler.* Rôle : Gérer les paiements,
+droits d’accès, abonnements ou commissions associés à la fonctionnalité.
+Avantage : Automatise les opérations commerciales et réduit les
+traitements manuels. Inconvénient / vigilance : Les erreurs et doublons
+ont des conséquences financières ; transactions atomiques, idempotence
+et audit obligatoires. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+97. Historique Paiements par Utilisateur : Date, montant, opérateur, code, preuve en cas de litige.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P0/P1 Emplacement principal : users/paiements.py Autres fichiers
+concernés : users/paiements.py ; core/payments.py ;
+telegram_bot/payment_handlers.py Fichier cible principal :
+users/paiements.py Fonction à coder / vérifier :
+gerer_historique_paiements_par_utilisateur_date_() Contrats ou services
+liés : PaymentService.* / PaymentHandler.* Rôle : Gérer les paiements,
+droits d’accès, abonnements ou commissions associés à la fonctionnalité.
+Avantage : Automatise les opérations commerciales et réduit les
+traitements manuels. Inconvénient / vigilance : Les erreurs et doublons
+ont des conséquences financières ; transactions atomiques, idempotence
+et audit obligatoires. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+98. Vérification Paiement Mobile Money Auto : Vérifie Airtel / M-Pesa / Orange seul.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P0/P1 Emplacement principal : users/paiements.py Autres fichiers
+concernés : users/paiements.py ; core/payments.py ;
+telegram_bot/payment_handlers.py Fichier cible principal :
+users/paiements.py Fonction à coder / vérifier :
+gerer_verification_paiement_mobile_money_auto_ve() Contrats ou services
+liés : PaymentService.* / PaymentHandler.* Rôle : Gérer les paiements,
+droits d’accès, abonnements ou commissions associés à la fonctionnalité.
+Avantage : Automatise les opérations commerciales et réduit les
+traitements manuels. Inconvénient / vigilance : Les erreurs et doublons
+ont des conséquences financières ; transactions atomiques, idempotence
+et audit obligatoires. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+99. Générateur de Codes en Masse : Génère 100 / 500 / 1000 codes d’un coup.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : application/use_cases/ Autres fichiers
+concernés : application/use_cases/ ; domain/* (à créer) Fichier cible
+principal :
+application/use_cases//feature_generateur_de_codes_en_masse_genere_100_50.py
+Fonction à coder / vérifier :
+gerer_generateur_de_codes_en_masse_genere_100_50() Contrats ou services
+liés : FeatureUseCase. Rôle : Collecter, normaliser, enrichir ou
+vérifier les données sportives utilisées par le bot. Avantage : Améliore
+la couverture et réduit les incohérences entre fournisseurs.
+Inconvénient / vigilance : Les fournisseurs peuvent être incomplets,
+indisponibles ou contradictoires ; conserver provenance, fraîcheur et
+identifiants stables. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+100. Codes par Lot / Campagne : Lot “PROMO CAN” / “BANDAL”, tu sais quel lot vend le mieux.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : application/use_cases/ Autres fichiers
+concernés : application/use_cases/ ; domain/* (à créer) Fichier cible
+principal :
+application/use_cases//feature_codes_par_lot_campagne_lot_promo_can_banda.py
+Fonction à coder / vérifier :
+gerer_codes_par_lot_campagne_lot_promo_can_banda() Contrats ou services
+liés : FeatureUseCase. Rôle : Collecter, normaliser, enrichir ou
+vérifier les données sportives utilisées par le bot. Avantage : Améliore
+la couverture et réduit les incohérences entre fournisseurs.
+Inconvénient / vigilance : Les fournisseurs peuvent être incomplets,
+indisponibles ou contradictoires ; conserver provenance, fraîcheur et
+identifiants stables. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+101. Codes Usage Unique / Multi-Usage : Code pour 1 personne ou pour 50 personnes.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : application/use_cases/ Autres fichiers
+concernés : application/use_cases/ ; domain/* (à créer) Fichier cible
+principal :
+application/use_cases//feature_codes_usage_unique_multi_usage_code_pour_1.py
+Fonction à coder / vérifier :
+gerer_codes_usage_unique_multi_usage_code_pour_1() Contrats ou services
+liés : FeatureUseCase. Rôle : Collecter, normaliser, enrichir ou
+vérifier les données sportives utilisées par le bot. Avantage : Améliore
+la couverture et réduit les incohérences entre fournisseurs.
+Inconvénient / vigilance : Les fournisseurs peuvent être incomplets,
+indisponibles ou contradictoires ; conserver provenance, fraîcheur et
+identifiants stables. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+102. Codes avec Date d’Expiration : Code auto-détruit après 7 jours si non utilisé.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/translations.py Autres fichiers
+concernés : core/translations.py ; telegram_bot/handlers/* ;
+users/account_base.py Fichier cible principal : core/translations.py
+Fonction à coder / vérifier :
+gerer_codes_avec_date_d_expiration_code_auto_det() Contrats ou services
+liés : UserExperienceService.* / PreferenceService.* Rôle : Collecter,
+normaliser, enrichir ou vérifier les données sportives utilisées par le
+bot. Avantage : Améliore la couverture et réduit les incohérences entre
+fournisseurs. Inconvénient / vigilance : Les fournisseurs peuvent être
+incomplets, indisponibles ou contradictoires ; conserver provenance,
+fraîcheur et identifiants stables. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+103. Tableau de Bord Revenus : Revenu jour / semaine / mois, par opérateur, par abonnement.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : users/paiements.py Autres fichiers
+concernés : users/paiements.py ; core/payments.py ;
+telegram_bot/payment_handlers.py Fichier cible principal :
+users/paiements.py Fonction à coder / vérifier :
+gerer_tableau_de_bord_revenus_revenu_jour_semain() Contrats ou services
+liés : PaymentService.* / PaymentHandler.* Rôle : Gérer les paiements,
+droits d’accès, abonnements ou commissions associés à la fonctionnalité.
+Avantage : Automatise les opérations commerciales et réduit les
+traitements manuels. Inconvénient / vigilance : Les erreurs et doublons
+ont des conséquences financières ; transactions atomiques, idempotence
+et audit obligatoires. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+104. Graphique Croissance Abonnés : Courbe nouveaux, churn, actifs, Premium.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : users/paiements.py Autres fichiers
+concernés : users/paiements.py ; core/payments.py ;
+telegram_bot/payment_handlers.py Fichier cible principal :
+users/paiements.py Fonction à coder / vérifier :
+gerer_graphique_croissance_abonnes_courbe_nouvea() Contrats ou services
+liés : PaymentService.* / PaymentHandler.* Rôle : Gérer les paiements,
+droits d’accès, abonnements ou commissions associés à la fonctionnalité.
+Avantage : Automatise les opérations commerciales et réduit les
+traitements manuels. Inconvénient / vigilance : Les erreurs et doublons
+ont des conséquences financières ; transactions atomiques, idempotence
+et audit obligatoires. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+105. Taux de Conversion Gratuit -> Premium : % qui passent Premium après l’essai.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : users/paiements.py Autres fichiers
+concernés : users/paiements.py ; core/payments.py ;
+telegram_bot/payment_handlers.py Fichier cible principal :
+users/paiements.py Fonction à coder / vérifier :
+gerer_taux_de_conversion_gratuit_premium_qui_pas() Contrats ou services
+liés : PaymentService.* / PaymentHandler.* Rôle : Gérer les paiements,
+droits d’accès, abonnements ou commissions associés à la fonctionnalité.
+Avantage : Automatise les opérations commerciales et réduit les
+traitements manuels. Inconvénient / vigilance : Les erreurs et doublons
+ont des conséquences financières ; transactions atomiques, idempotence
+et audit obligatoires. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+106. Alerte Churn : “15 utilisateurs expirent demain, envoie-leur une offre”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/broadcast_manager.py Autres fichiers
+concernés : core/broadcast_manager.py ; core/canal_manager.py ;
+telegram_bot/handlers/ Fichier cible principal :
+core/broadcast_manager.py Fonction à coder / vérifier :
+envoyer_alerte_churn_15_utilisateurs_expirent_dema() Contrats ou
+services liés : NotificationService. / CampaignService.* Rôle :
+Préparer, planifier ou distribuer un contenu à la bonne audience et au
+bon moment. Avantage : Améliore la communication et automatise les
+tâches de diffusion. Inconvénient / vigilance : Peut générer du spam,
+des doublons ou dépasser les limites de l’API ; prévoir préférences,
+quotas et file persistante. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+107. Offre de Relance Auto : À J-1: “Renouvelle avec -20% aujourd’hui”, vente auto.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : application/use_cases/ Autres fichiers
+concernés : application/use_cases/ ; domain/* (à créer) Fichier cible
+principal :
+application/use_cases//feature_offre_de_relance_auto_a_j_1_renouvelle_ave.py
+Fonction à coder / vérifier :
+gerer_offre_de_relance_auto_a_j_1_renouvelle_ave() Contrats ou services
+liés : FeatureUseCase. Rôle : Collecter, normaliser, enrichir ou
+vérifier les données sportives utilisées par le bot. Avantage : Améliore
+la couverture et réduit les incohérences entre fournisseurs.
+Inconvénient / vigilance : Les fournisseurs peuvent être incomplets,
+indisponibles ou contradictoires ; conserver provenance, fraîcheur et
+identifiants stables. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+108. Broadcast Ciblé : Envoie seulement aux Expirés / Gratuit depuis 7j / Fan de Mazembe.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/broadcast_manager.py Autres fichiers
+concernés : core/broadcast_manager.py ; core/canal_manager.py ;
+telegram_bot/handlers/ Fichier cible principal :
+core/broadcast_manager.py Fonction à coder / vérifier :
+gerer_broadcast_cible_envoie_seulement_aux_expir() Contrats ou services
+liés : NotificationService. / CampaignService.* Rôle : Préparer,
+planifier ou distribuer un contenu à la bonne audience et au bon moment.
+Avantage : Améliore la communication et automatise les tâches de
+diffusion. Inconvénient / vigilance : Peut générer du spam, des doublons
+ou dépasser les limites de l’API ; prévoir préférences, quotas et file
+persistante. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+109. Broadcast Programmé : “Envoie demain à 08h00 heure Kinshasa”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/broadcast_manager.py Autres fichiers
+concernés : core/broadcast_manager.py ; core/canal_manager.py ;
+telegram_bot/handlers/ Fichier cible principal :
+core/broadcast_manager.py Fonction à coder / vérifier :
+gerer_broadcast_programme_envoie_demain_a_08h00_() Contrats ou services
+liés : NotificationService. / CampaignService.* Rôle : Préparer,
+planifier ou distribuer un contenu à la bonne audience et au bon moment.
+Avantage : Améliore la communication et automatise les tâches de
+diffusion. Inconvénient / vigilance : Peut générer du spam, des doublons
+ou dépasser les limites de l’API ; prévoir préférences, quotas et file
+persistante. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+110. Broadcast avec Boutons : Boutons “Je m’abonne / Voir le ticket”, 3x plus de clics.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/broadcast_manager.py Autres fichiers
+concernés : core/broadcast_manager.py ; core/canal_manager.py ;
+telegram_bot/handlers/ Fichier cible principal :
+core/broadcast_manager.py Fonction à coder / vérifier :
+gerer_broadcast_avec_boutons_boutons_je_m_abonne() Contrats ou services
+liés : NotificationService. / CampaignService.* Rôle : Analyser les
+cotes, marchés et expositions avant de présenter une recommandation.
+Avantage : Rend les recommandations plus mesurables et aide à contrôler
+le risque financier. Inconvénient / vigilance : Les cotes changent vite
+et les probabilités restent incertaines ; ne jamais présenter un pari
+comme garanti. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+111. Statistiques de Broadcast : Vu / Cliqué / Abonné après ce message.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/broadcast_manager.py Autres fichiers
+concernés : core/broadcast_manager.py ; core/canal_manager.py ;
+telegram_bot/handlers/ Fichier cible principal :
+core/broadcast_manager.py Fonction à coder / vérifier :
+envoyer_statistiques_de_broadcast_vu_clique_abonne() Contrats ou
+services liés : NotificationService. / CampaignService.* Rôle :
+Préparer, planifier ou distribuer un contenu à la bonne audience et au
+bon moment. Avantage : Améliore la communication et automatise les
+tâches de diffusion. Inconvénient / vigilance : Peut générer du spam,
+des doublons ou dépasser les limites de l’API ; prévoir préférences,
+quotas et file persistante. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+112. Modération Mots Interdits : Supprime auto liens, insultes, numéros dans le groupe VIP.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : telegram_bot/admin/ Autres fichiers
+concernés : telegram_bot/admin/ ; users/admin.py ; core/audit.py Fichier
+cible principal :
+telegram_bot/admin//feature_moderation_mots_interdits_supprime_auto_li.py
+Fonction à coder / vérifier :
+gerer_moderation_mots_interdits_supprime_auto_li() Contrats ou services
+liés : AdminUseCases. / AuditService.* Rôle : Collecter, normaliser,
+enrichir ou vérifier les données sportives utilisées par le bot.
+Avantage : Améliore la couverture et réduit les incohérences entre
+fournisseurs. Inconvénient / vigilance : Les fournisseurs peuvent être
+incomplets, indisponibles ou contradictoires ; conserver provenance,
+fraîcheur et identifiants stables. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+113. Anti-Spam Auto : 5 messages en 10 sec = mute 1h automatique.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/broadcast_manager.py Autres fichiers
+concernés : core/broadcast_manager.py ; core/canal_manager.py ;
+telegram_bot/handlers/ Fichier cible principal :
+core/broadcast_manager.py Fonction à coder / vérifier :
+envoyer_anti_spam_auto_5_messages_en_10_sec_mute_1() Contrats ou
+services liés : NotificationService. / CampaignService.* Rôle :
+Préparer, planifier ou distribuer un contenu à la bonne audience et au
+bon moment. Avantage : Améliore la communication et automatise les
+tâches de diffusion. Inconvénient / vigilance : Peut générer du spam,
+des doublons ou dépasser les limites de l’API ; prévoir préférences,
+quotas et file persistante. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+114. Journal d’Activité Admin : Qui a fait quoi et quand.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : telegram_bot/admin/ Autres fichiers
+concernés : telegram_bot/admin/ ; users/admin.py ; core/audit.py Fichier
+cible principal :
+telegram_bot/admin//feature_journal_d_activite_admin_qui_a_fait_quoi_e.py
+Fonction à coder / vérifier :
+gerer_journal_d_activite_admin_qui_a_fait_quoi_e() Contrats ou services
+liés : AdminUseCases. / AuditService.* Rôle : Appliquer une règle
+d’administration, de sécurité, de conservation ou de contrôle. Avantage
+: Renforce la maîtrise opérationnelle et la traçabilité du système.
+Inconvénient / vigilance : Une mauvaise configuration peut bloquer des
+utilisateurs ou exposer des données ; contrôler les rôles et journaliser
+les actions. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+115. Rôles Admin : Super-Admin / Modérateur / Support / Revendeur, chacun voit son périmètre.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : users/paiements.py Autres fichiers
+concernés : users/paiements.py ; core/payments.py ;
+telegram_bot/payment_handlers.py Fichier cible principal :
+users/paiements.py Fonction à coder / vérifier :
+gerer_roles_admin_super_admin_moderateur_support() Contrats ou services
+liés : PaymentService.* / PaymentHandler.* Rôle : Gérer les paiements,
+droits d’accès, abonnements ou commissions associés à la fonctionnalité.
+Avantage : Automatise les opérations commerciales et réduit les
+traitements manuels. Inconvénient / vigilance : Les erreurs et doublons
+ont des conséquences financières ; transactions atomiques, idempotence
+et audit obligatoires. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+116. Panneau Pronos Manuel : Ajoute un prono à la main si l’IA est en panne.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/nouveau_prediction.py Autres fichiers
+concernés : core/nouveau_prediction.py ; core/ml_model.py ; ml/* (à
+créer) Fichier cible principal : core/nouveau_prediction.py Fonction à
+coder / vérifier : calculer_panneau_pronos_manuel_ajoute_un_prono_a_la()
+Contrats ou services liés : PredictionService.* / CalibrationService.* /
+ModelRegistry.* Rôle : Calculer, calibrer, expliquer ou contrôler les
+prédictions à partir de données historiques et récentes. Avantage :
+Améliore la cohérence, la mesure et la traçabilité de la qualité
+prédictive. Inconvénient / vigilance : Un modèle peut se tromper ou
+dériver ; exige des données fiables, des tests temporels et une
+surveillance continue. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+117. Validation Pronos Avant Envoi : Tu vois les pronos du jour, tu cliques Valider avant envoi.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : application/use_cases/ Autres fichiers
+concernés : application/use_cases/ ; domain/* (à créer) Fichier cible
+principal :
+application/use_cases//feature_validation_pronos_avant_envoi_tu_vois_les_.py
+Fonction à coder / vérifier :
+calculer_validation_pronos_avant_envoi_tu_vois_les_() Contrats ou
+services liés : FeatureUseCase. Rôle : Collecter, normaliser, enrichir
+ou vérifier les données sportives utilisées par le bot. Avantage :
+Améliore la couverture et réduit les incohérences entre fournisseurs.
+Inconvénient / vigilance : Les fournisseurs peuvent être incomplets,
+indisponibles ou contradictoires ; conserver provenance, fraîcheur et
+identifiants stables. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+118. Corriger un Résultat : Corrige le score et recalcule les bilans.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P1/P2 Emplacement principal : application/use_cases/ Autres fichiers
+concernés : application/use_cases/ ; domain/* (à créer) Fichier cible
+principal :
+application/use_cases//feature_corriger_un_resultat_corrige_le_score_et_r.py
+Fonction à coder / vérifier :
+gerer_corriger_un_resultat_corrige_le_score_et_r() Contrats ou services
+liés : FeatureUseCase. Rôle : Collecter, normaliser, enrichir ou
+vérifier les données sportives utilisées par le bot. Avantage : Améliore
+la couverture et réduit les incohérences entre fournisseurs.
+Inconvénient / vigilance : Les fournisseurs peuvent être incomplets,
+indisponibles ou contradictoires ; conserver provenance, fraîcheur et
+identifiants stables. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+119. Annuler / Reporter un Match : Bouton reporté = remboursement points + alerte utilisateurs.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : users/paiements.py Autres fichiers
+concernés : users/paiements.py ; core/payments.py ;
+telegram_bot/payment_handlers.py Fichier cible principal :
+users/paiements.py Fonction à coder / vérifier :
+envoyer_annuler_reporter_un_match_bouton_reporte_r() Contrats ou
+services liés : PaymentService.* / PaymentHandler.* Rôle : Préparer,
+planifier ou distribuer un contenu à la bonne audience et au bon moment.
+Avantage : Améliore la communication et automatise les tâches de
+diffusion. Inconvénient / vigilance : Peut générer du spam, des doublons
+ou dépasser les limites de l’API ; prévoir préférences, quotas et file
+persistante. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+120. Gestion des Ligues Actives : Coche / décoche les ligues actives cette semaine.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : application/use_cases/ Autres fichiers
+concernés : application/use_cases/ ; domain/* (à créer) Fichier cible
+principal :
+application/use_cases//feature_gestion_des_ligues_actives_coche_decoche_l.py
+Fonction à coder / vérifier :
+gerer_gestion_des_ligues_actives_coche_decoche_l() Contrats ou services
+liés : FeatureUseCase. Rôle : Collecter, normaliser, enrichir ou
+vérifier les données sportives utilisées par le bot. Avantage : Améliore
+la couverture et réduit les incohérences entre fournisseurs.
+Inconvénient / vigilance : Les fournisseurs peuvent être incomplets,
+indisponibles ou contradictoires ; conserver provenance, fraîcheur et
+identifiants stables. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+121. Gestion des Marchés Actifs : Active / désactive Corners, Cartons, BTTS par jour.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/paris_builder.py Autres fichiers
+concernés : core/paris_builder.py ; core/top_matches.py ;
+domain/betting/* (à créer) Fichier cible principal :
+core/paris_builder.py Fonction à coder / vérifier :
+evaluer_gestion_des_marches_actifs_active_desactiv() Contrats ou
+services liés : OddsService.* / MarketModel.* / RiskService.* Rôle :
+Analyser les cotes, marchés et expositions avant de présenter une
+recommandation. Avantage : Rend les recommandations plus mesurables et
+aide à contrôler le risque financier. Inconvénient / vigilance : Les
+cotes changent vite et les probabilités restent incertaines ; ne jamais
+présenter un pari comme garanti. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+122. Seuils de Confiance Réglables : Change le seuil Premium 75% -> 70% sans code.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : users/paiements.py Autres fichiers
+concernés : users/paiements.py ; core/payments.py ;
+telegram_bot/payment_handlers.py Fichier cible principal :
+users/paiements.py Fonction à coder / vérifier :
+gerer_seuils_de_confiance_reglables_change_le_se() Contrats ou services
+liés : PaymentService.* / PaymentHandler.* Rôle : Calculer, calibrer,
+expliquer ou contrôler les prédictions à partir de données historiques
+et récentes. Avantage : Améliore la cohérence, la mesure et la
+traçabilité de la qualité prédictive. Inconvénient / vigilance : Un
+modèle peut se tromper ou dériver ; exige des données fiables, des tests
+temporels et une surveillance continue. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+123. Mode Maintenance : “Bot en maintenance 30 min”, message auto pour tous.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/broadcast_manager.py Autres fichiers
+concernés : core/broadcast_manager.py ; core/canal_manager.py ;
+telegram_bot/handlers/ Fichier cible principal :
+core/broadcast_manager.py Fonction à coder / vérifier :
+envoyer_mode_maintenance_bot_en_maintenance_30_min() Contrats ou
+services liés : NotificationService. / CampaignService.* Rôle :
+Préparer, planifier ou distribuer un contenu à la bonne audience et au
+bon moment. Avantage : Améliore la communication et automatise les
+tâches de diffusion. Inconvénient / vigilance : Peut générer du spam,
+des doublons ou dépasser les limites de l’API ; prévoir préférences,
+quotas et file persistante. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+124. Message de Bienvenue Personnalisable : Change le texte d’accueil sans redéployer.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/broadcast_manager.py Autres fichiers
+concernés : core/broadcast_manager.py ; core/canal_manager.py ;
+telegram_bot/handlers/ Fichier cible principal :
+core/broadcast_manager.py Fonction à coder / vérifier :
+envoyer_message_de_bienvenue_personnalisable_chang() Contrats ou
+services liés : NotificationService. / CampaignService.* Rôle :
+Préparer, planifier ou distribuer un contenu à la bonne audience et au
+bon moment. Avantage : Améliore la communication et automatise les
+tâches de diffusion. Inconvénient / vigilance : Peut générer du spam,
+des doublons ou dépasser les limites de l’API ; prévoir préférences,
+quotas et file persistante. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+125. FAQ Dynamique Admin : Ajoute / modifie les questions fréquentes depuis le panneau.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : telegram_bot/admin/ Autres fichiers
+concernés : telegram_bot/admin/ ; users/admin.py ; core/audit.py Fichier
+cible principal :
+telegram_bot/admin//feature_faq_dynamique_admin_ajoute_modifie_les_que.py
+Fonction à coder / vérifier :
+gerer_faq_dynamique_admin_ajoute_modifie_les_que() Contrats ou services
+liés : AdminUseCases. / AuditService.* Rôle : Appliquer une règle
+d’administration, de sécurité, de conservation ou de contrôle. Avantage
+: Renforce la maîtrise opérationnelle et la traçabilité du système.
+Inconvénient / vigilance : Une mauvaise configuration peut bloquer des
+utilisateurs ou exposer des données ; contrôler les rôles et journaliser
+les actions. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+126. Tickets Support avec Statut : Nouveau / En cours / Résolu, avec assignation.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : telegram_bot/admin/ Autres fichiers
+concernés : telegram_bot/admin/ ; users/admin.py ; core/audit.py Fichier
+cible principal :
+telegram_bot/admin//feature_tickets_support_avec_statut_nouveau_en_cou.py
+Fonction à coder / vérifier :
+gerer_tickets_support_avec_statut_nouveau_en_cou() Contrats ou services
+liés : AdminUseCases. / AuditService.* Rôle : Analyser les cotes,
+marchés et expositions avant de présenter une recommandation. Avantage :
+Rend les recommandations plus mesurables et aide à contrôler le risque
+financier. Inconvénient / vigilance : Les cotes changent vite et les
+probabilités restent incertaines ; ne jamais présenter un pari comme
+garanti. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+127. Réponses Rapides Admin : Boutons “Ton paiement est en cours”, “Voici ton code”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P0/P1 Emplacement principal : users/paiements.py Autres fichiers
+concernés : users/paiements.py ; core/payments.py ;
+telegram_bot/payment_handlers.py Fichier cible principal :
+users/paiements.py Fonction à coder / vérifier :
+gerer_reponses_rapides_admin_boutons_ton_paiemen() Contrats ou services
+liés : PaymentService.* / PaymentHandler.* Rôle : Gérer les paiements,
+droits d’accès, abonnements ou commissions associés à la fonctionnalité.
+Avantage : Automatise les opérations commerciales et réduit les
+traitements manuels. Inconvénient / vigilance : Les erreurs et doublons
+ont des conséquences financières ; transactions atomiques, idempotence
+et audit obligatoires. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+128. Export Utilisateurs CSV / Excel : Télécharge toute ta base pour analyses / pubs.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative : P3
+Emplacement principal : telegram_bot/admin/ Autres fichiers concernés :
+telegram_bot/admin/ ; users/admin.py ; core/audit.py Fichier cible
+principal :
+telegram_bot/admin//feature_export_utilisateurs_csv_excel_telecharge_t.py
+Fonction à coder / vérifier :
+gerer_export_utilisateurs_csv_excel_telecharge_t() Contrats ou services
+liés : AdminUseCases. / AuditService.* Rôle : Collecter, normaliser,
+enrichir ou vérifier les données sportives utilisées par le bot.
+Avantage : Améliore la couverture et réduit les incohérences entre
+fournisseurs. Inconvénient / vigilance : Les fournisseurs peuvent être
+incomplets, indisponibles ou contradictoires ; conserver provenance,
+fraîcheur et identifiants stables. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+129. Export Revenus pour Compta : Fichier mensuel propre pour ton comptable.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative : P3
+Emplacement principal : telegram_bot/admin/ Autres fichiers concernés :
+telegram_bot/admin/ ; users/admin.py ; core/audit.py Fichier cible
+principal :
+telegram_bot/admin//feature_export_revenus_pour_compta_fichier_mensuel.py
+Fonction à coder / vérifier :
+gerer_export_revenus_pour_compta_fichier_mensuel() Contrats ou services
+liés : AdminUseCases. / AuditService.* Rôle : Collecter, normaliser,
+enrichir ou vérifier les données sportives utilisées par le bot.
+Avantage : Améliore la couverture et réduit les incohérences entre
+fournisseurs. Inconvénient / vigilance : Les fournisseurs peuvent être
+incomplets, indisponibles ou contradictoires ; conserver provenance,
+fraîcheur et identifiants stables. État : À auditer/tester — Tests
+unitaires + intégration + métrique métier
+
+130. Sauvegarde Manuelle en 1 Clic : Bouton Backup = envoie la DB sur ton Telegram.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P0/P1 Emplacement principal : telegram_bot/admin/ Autres fichiers
+concernés : telegram_bot/admin/ ; users/admin.py ; core/audit.py Fichier
+cible principal :
+telegram_bot/admin//feature_sauvegarde_manuelle_en_1_clic_bouton_backu.py
+Fonction à coder / vérifier :
+gerer_sauvegarde_manuelle_en_1_clic_bouton_backu() Contrats ou services
+liés : AdminUseCases. / AuditService.* Rôle : Appliquer une règle
+d’administration, de sécurité, de conservation ou de contrôle. Avantage
+: Renforce la maîtrise opérationnelle et la traçabilité du système.
+Inconvénient / vigilance : Une mauvaise configuration peut bloquer des
+utilisateurs ou exposer des données ; contrôler les rôles et journaliser
+les actions. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+131. Restauration Backup : Choisis une sauvegarde et restaure en 1 clic.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P0/P1 Emplacement principal : telegram_bot/admin/ Autres fichiers
+concernés : telegram_bot/admin/ ; users/admin.py ; core/audit.py Fichier
+cible principal :
+telegram_bot/admin//feature_restauration_backup_choisis_une_sauvegarde.py
+Fonction à coder / vérifier :
+gerer_restauration_backup_choisis_une_sauvegarde() Contrats ou services
+liés : AdminUseCases. / AuditService.* Rôle : Appliquer une règle
+d’administration, de sécurité, de conservation ou de contrôle. Avantage
+: Renforce la maîtrise opérationnelle et la traçabilité du système.
+Inconvénient / vigilance : Une mauvaise configuration peut bloquer des
+utilisateurs ou exposer des données ; contrôler les rôles et journaliser
+les actions. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+132. Logs d’Erreurs Lisibles : “API en panne à 10h12”, pas du code incompréhensible.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/api/ Autres fichiers concernés :
+core/api/ ; core/api/orchestrator.py ; scripts/* ; users/matchs.py
+Fichier cible principal :
+core/api//feature_logs_d_erreurs_lisibles_api_en_panne_a_10h.py Fonction
+à coder / vérifier : gerer_logs_d_erreurs_lisibles_api_en_panne_a_10h()
+Contrats ou services liés : ProviderRegistry. / MatchRepository.* /
+DataQualityService.* Rôle : Collecter, normaliser, enrichir ou vérifier
+les données sportives utilisées par le bot. Avantage : Améliore la
+couverture et réduit les incohérences entre fournisseurs. Inconvénient /
+vigilance : Les fournisseurs peuvent être incomplets, indisponibles ou
+contradictoires ; conserver provenance, fraîcheur et identifiants
+stables. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+133. Alerte Admin si API Morte : “API X morte depuis 2h, bascule sur API Y”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : telegram_bot/admin/ Autres fichiers
+concernés : telegram_bot/admin/ ; users/admin.py ; core/audit.py Fichier
+cible principal :
+telegram_bot/admin//feature_alerte_admin_si_api_morte_api_x_morte_depu.py
+Fonction à coder / vérifier :
+envoyer_alerte_admin_si_api_morte_api_x_morte_depu() Contrats ou
+services liés : AdminUseCases. / AuditService.* Rôle : Appliquer une
+règle d’administration, de sécurité, de conservation ou de contrôle.
+Avantage : Renforce la maîtrise opérationnelle et la traçabilité du
+système. Inconvénient / vigilance : Une mauvaise configuration peut
+bloquer des utilisateurs ou exposer des données ; contrôler les rôles et
+journaliser les actions. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+134. Alerte si Pic d’Erreurs : “50 erreurs en 10 min, regarde ça”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/broadcast_manager.py Autres fichiers
+concernés : core/broadcast_manager.py ; core/canal_manager.py ;
+telegram_bot/handlers/ Fichier cible principal :
+core/broadcast_manager.py Fonction à coder / vérifier :
+envoyer_alerte_si_pic_d_erreurs_50_erreurs_en_10_m() Contrats ou
+services liés : NotificationService. / CampaignService.* Rôle :
+Préparer, planifier ou distribuer un contenu à la bonne audience et au
+bon moment. Avantage : Améliore la communication et automatise les
+tâches de diffusion. Inconvénient / vigilance : Peut générer du spam,
+des doublons ou dépasser les limites de l’API ; prévoir préférences,
+quotas et file persistante. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier
+
+135. Contrôle Consommation API : “Tu as utilisé 850 / 1000 appels aujourd’hui”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/api/ Autres fichiers concernés :
+core/api/ ; core/api/orchestrator.py ; scripts/* ; users/matchs.py
+Fichier cible principal :
+core/api//feature_controle_consommation_api_tu_as_utilise_85.py Fonction
+à coder / vérifier : gerer_controle_consommation_api_tu_as_utilise_85()
+Contrats ou services liés : ProviderRegistry. / MatchRepository.* /
+DataQualityService.* Rôle : Collecter, normaliser, enrichir ou vérifier
+les données sportives utilisées par le bot. Avantage : Améliore la
+couverture et réduit les incohérences entre fournisseurs. Inconvénient /
+vigilance : Les fournisseurs peuvent être incomplets, indisponibles ou
+contradictoires ; conserver provenance, fraîcheur et identifiants
+stables. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+136. Gestion des Sources Prioritaires : Glisse-dépose pour ordonner les API.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P3/P4 Emplacement principal : core/api/ Autres fichiers concernés :
+core/api/ ; core/api/orchestrator.py ; scripts/* ; users/matchs.py
+Fichier cible principal :
+core/api//feature_gestion_des_sources_prioritaires_glisse_de.py Fonction
+à coder / vérifier : gerer_gestion_des_sources_prioritaires_glisse_de()
+Contrats ou services liés : ProviderRegistry. / MatchRepository.* /
+DataQualityService.* Rôle : Collecter, normaliser, enrichir ou vérifier
+les données sportives utilisées par le bot. Avantage : Améliore la
+couverture et réduit les incohérences entre fournisseurs. Inconvénient /
+vigilance : Les fournisseurs peuvent être incomplets, indisponibles ou
+contradictoires ; conserver provenance, fraîcheur et identifiants
+stables. État : À auditer/tester — Tests unitaires + intégration +
+métrique métier
+
+137. Planificateur de Tâches : “Réentraîner le modèle chaque 1er du mois à 03h00”.
+
+Origine : Base | Groupe : Catalogue initial | Priorité indicative :
+P1/P2 Emplacement principal : core/nouveau_prediction.py Autres fichiers
+concernés : core/nouveau_prediction.py ; core/ml_model.py ; ml/* (à
+créer) Fichier cible principal : core/nouveau_prediction.py Fonction à
+coder / vérifier : calculer_planificateur_de_taches_reentrainer_le_mod()
+Contrats ou services liés : PredictionService.* / CalibrationService.* /
+ModelRegistry.* Rôle : Calculer, calibrer, expliquer ou contrôler les
+prédictions à partir de données historiques et récentes. Avantage :
+Améliore la cohérence, la mesure et la traçabilité de la qualité
+prédictive. Inconvénient / vigilance : Un modèle peut se tromper ou
+dériver ; exige des données fiables, des tests temporels et une
+surveillance continue. État : À auditer/tester — Tests unitaires +
+intégration + métrique métier

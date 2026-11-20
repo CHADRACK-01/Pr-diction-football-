@@ -1,0 +1,1145 @@
+Catalogue des fonctionnalités du bot
+
+PARTIE B — Fonctionnalités 625 à 700
+
+Ce document poursuit la numérotation du catalogue et ne réutilise aucune entrée des fichiers 02 à 06.
+
+625 — Jeu de tests de non-régression des prédictions
+Origine : Ajout
+Groupe : QA et non-régression
+Priorité indicative : Haute
+Description : Constituer un corpus figé de matchs et rejouer les prédictions pour comparer les sorties attendues.
+Emplacement principal : tests/
+Autres fichiers concernés : core/predictions.py, scripts/evaluation
+Fichier cible principal : tests/test_predictions_regression.py
+Fonction à coder / vérifier : test_predictions_stables
+Contrats ou services liés : pipeline de prédiction, base de référence
+Rôle : Détecter toute régression silencieuse des prédictions.
+Avantage : Comparaison objective avant et après chaque changement.
+Inconvénient / vigilance : Corpus de référence à maintenir à jour.
+État : Fait
+
+626 — Tests de bout en bout du parcours utilisateur
+Origine : Ajout
+Groupe : QA et non-régression
+Priorité indicative : Haute
+Description : Simuler le parcours complet d'un utilisateur, de la commande Discord à la réponse finale.
+Emplacement principal : tests/
+Autres fichiers concernés : bot, handlers de commandes
+Fichier cible principal : tests/test_parcours_bout_en_bout.py
+Fonction à coder / vérifier : test_parcours_utilisateur
+Contrats ou services liés : interface Discord, service de prédiction
+Rôle : Vérifier l'intégration des composants sur un scénario réel.
+Avantage : Détecte les ruptures d'intégration entre modules.
+Inconvénient / vigilance : Tests plus lents et plus fragiles.
+État : À faire
+
+627 — Couverture des cas limites de saisie
+Origine : Ajout
+Groupe : QA et non-régression
+Priorité indicative : Moyenne
+Description : Tester les entrées vides, malformées ou hors bornes des commandes.
+Emplacement principal : tests/
+Autres fichiers concernés : core/validation
+Fichier cible principal : tests/test_saisies_limites.py
+Fonction à coder / vérifier : test_entrees_invalides
+Contrats ou services liés : couche de validation
+Rôle : Éviter les erreurs non gérées sur des entrées inattendues.
+Avantage : Réponses robustes et messages d'erreur clairs.
+Inconvénient / vigilance : Liste des cas à maintenir.
+État : À faire
+
+628 — Vérification des contrats d'API internes
+Origine : Ajout
+Groupe : QA et non-régression
+Priorité indicative : Moyenne
+Description : Contrôler que les modules respectent les formats d'échange attendus entre eux.
+Emplacement principal : tests/
+Autres fichiers concernés : core/, services/
+Fichier cible principal : tests/test_contrats_internes.py
+Fonction à coder / vérifier : test_formats_echanges
+Contrats ou services liés : interfaces internes
+Rôle : Prévenir les incompatibilités lors des refactorings.
+Avantage : Contrats explicites et stables.
+Inconvénient / vigilance : Nécessite de documenter les formats.
+État : À faire
+
+629 — Tests de charge légère du service de prédiction
+Origine : Ajout
+Groupe : QA et non-régression
+Priorité indicative : Basse
+Description : Mesurer le temps de réponse sous un volume modéré de requêtes simultanées.
+Emplacement principal : tests/
+Autres fichiers concernés : service de prédiction
+Fichier cible principal : tests/test_charge_legere.py
+Fonction à coder / vérifier : test_temps_reponse_charge
+Contrats ou services liés : service de prédiction
+Rôle : Repérer les goulots d'étranglement avant la production.
+Avantage : Anticipation des limites de capacité.
+Inconvénient / vigilance : Résultats dépendants de la machine.
+État : À faire
+
+630 — Contrôle de stabilité des réponses aux commandes Discord
+Origine : Ajout
+Groupe : QA et non-régression
+Priorité indicative : Moyenne
+Description : Vérifier que chaque commande renvoie une réponse formatée et stable.
+Emplacement principal : tests/
+Autres fichiers concernés : bot/commands
+Fichier cible principal : tests/test_reponses_commandes.py
+Fonction à coder / vérifier : test_format_reponses
+Contrats ou services liés : interface Discord
+Rôle : Garantir une expérience utilisateur cohérente.
+Avantage : Réponses prévisibles et lisibles.
+Inconvénient / vigilance : Formatage susceptible d'évoluer.
+État : À faire
+
+631 — Détection des sorties non déterministes
+Origine : Ajout
+Groupe : QA et non-régression
+Priorité indicative : Moyenne
+Description : Identifier les fonctions qui produisent des résultats variables sans graine fixée.
+Emplacement principal : tests/
+Autres fichiers concernés : core/
+Fichier cible principal : tests/test_determinisme.py
+Fonction à coder / vérifier : test_sorties_reproductibles
+Contrats ou services liés : générateur aléatoire, modèles
+Rôle : Rendre les tests fiables et reproductibles.
+Avantage : Comparaisons de résultats fiables.
+Inconvénient / vigilance : Certaines variabilités sont légitimes.
+État : Fait
+
+632 — Rapport de couverture par module
+Origine : Ajout
+Groupe : QA et non-régression
+Priorité indicative : Basse
+Description : Produire un rapport de couverture de tests par module et par thème.
+Emplacement principal : scripts/
+Autres fichiers concernés : tests/
+Fichier cible principal : scripts/rapport_couverture.py
+Fonction à coder / vérifier : generer_rapport_couverture
+Contrats ou services liés : outil de couverture
+Rôle : Visualiser les zones peu testées.
+Avantage : Priorisation des efforts de test.
+Inconvénient / vigilance : La couverture ne mesure pas la pertinence.
+État : À faire
+
+633 — Rejeu des incidents passés comme tests
+Origine : Ajout
+Groupe : QA et non-régression
+Priorité indicative : Moyenne
+Description : Transformer les incidents corrigés en tests de non-régression dédiés.
+Emplacement principal : tests/
+Autres fichiers concernés : historique d'incidents
+Fichier cible principal : tests/test_incidents_passes.py
+Fonction à coder / vérifier : test_non_recurrence
+Contrats ou services liés : suivi des incidents
+Rôle : Empêcher la réapparition de bugs déjà corrigés.
+Avantage : Mémoire technique du projet.
+Inconvénient / vigilance : Nécessite de documenter chaque incident.
+État : À faire
+
+634 — Tests de compatibilité des migrations de base
+Origine : Ajout
+Groupe : QA et non-régression
+Priorité indicative : Haute
+Description : Vérifier que les migrations s'appliquent sur une base existante sans perte de données.
+Emplacement principal : tests/
+Autres fichiers concernés : migrations, core/db
+Fichier cible principal : tests/test_migrations.py
+Fonction à coder / vérifier : test_migration_reversible
+Contrats ou services liés : base de données
+Rôle : Sécuriser les évolutions de schéma.
+Avantage : Déploiements sans surprise.
+Inconvénient / vigilance : Base de test à maintenir.
+État : Fait
+
+635 — Vérification des valeurs par défaut des configurations
+Origine : Ajout
+Groupe : QA et non-régression
+Priorité indicative : Basse
+Description : Contrôler que chaque paramètre dispose d'une valeur par défaut sûre.
+Emplacement principal : tests/
+Autres fichiers concernés : config
+Fichier cible principal : tests/test_config_defauts.py
+Fonction à coder / vérifier : test_valeurs_defaut
+Contrats ou services liés : système de configuration
+Rôle : Éviter les démarrages en configuration incomplète.
+Avantage : Comportement sûr sans réglage explicite.
+Inconvénient / vigilance : Défauts à revoir à chaque évolution.
+État : Fait
+
+636 — Journal de santé des tests en intégration continue
+Origine : Ajout
+Groupe : QA et non-régression
+Priorité indicative : Basse
+Description : Suivre l'évolution du taux de réussite et de la durée des tests dans le temps.
+Emplacement principal : scripts/
+Autres fichiers concernés : intégration continue
+Fichier cible principal : scripts/sante_tests.py
+Fonction à coder / vérifier : suivre_sante_tests
+Contrats ou services liés : intégration continue
+Rôle : Alerter sur une dégradation progressive de la suite de tests.
+Avantage : Détection des tests devenus instables.
+Inconvénient / vigilance : Nécessite un historique conservé.
+État : À faire
+
+637 — Registre des versions de modèle
+Origine : Ajout
+Groupe : Versionnage et évaluation de variantes de modèle
+Priorité indicative : Haute
+Description : Tenir un registre des versions de modèle avec identifiant, date et description.
+Emplacement principal : core/
+Autres fichiers concernés : base de données, scripts d'entraînement
+Fichier cible principal : core/model_registry.py
+Fonction à coder / vérifier : enregistrer_version_modele
+Contrats ou services liés : stockage des modèles
+Rôle : Savoir quelle version produit quelle prédiction.
+Avantage : Traçabilité des modèles utilisés.
+Inconvénient / vigilance : Registre à synchroniser avec le stockage réel.
+État : À faire
+
+638 — Comparaison A/B de deux variantes
+Origine : Ajout
+Groupe : Versionnage et évaluation de variantes de modèle
+Priorité indicative : Haute
+Description : Comparer deux variantes sur un même échantillon et mesurer l'écart de performance.
+Emplacement principal : core/
+Autres fichiers concernés : scripts d'évaluation
+Fichier cible principal : core/variantes.py
+Fonction à coder / vérifier : comparer_variantes
+Contrats ou services liés : jeu de données d'évaluation
+Rôle : Choisir une variante sur des faits mesurés.
+Avantage : Décisions de mise en production objectivées.
+Inconvénient / vigilance : Échantillon représentatif nécessaire.
+État : À faire
+
+639 — Évaluation hors échantillon d'une variante
+Origine : Ajout
+Groupe : Versionnage et évaluation de variantes de modèle
+Priorité indicative : Haute
+Description : Mesurer la performance d'une variante sur des données non vues à l'entraînement.
+Emplacement principal : core/
+Autres fichiers concernés : scripts d'entraînement
+Fichier cible principal : core/evaluation.py
+Fonction à coder / vérifier : evaluer_hors_echantillon
+Contrats ou services liés : jeu de données
+Rôle : Estimer la généralisation réelle du modèle.
+Avantage : Évite de surestimer la performance.
+Inconvénient / vigilance : Séparation stricte des jeux de données.
+État : À faire
+
+640 — Métadonnées de modèle
+Origine : Ajout
+Groupe : Versionnage et évaluation de variantes de modèle
+Priorité indicative : Moyenne
+Description : Associer à chaque modèle sa date d'entraînement, son jeu de données et son auteur.
+Emplacement principal : core/
+Autres fichiers concernés : base de données
+Fichier cible principal : core/model_registry.py
+Fonction à coder / vérifier : lire_metadonnees_modele
+Contrats ou services liés : stockage des modèles
+Rôle : Comprendre l'origine de chaque modèle.
+Avantage : Audits et reproductions facilités.
+Inconvénient / vigilance : Champs à renseigner systématiquement.
+État : À faire
+
+641 — Promotion d'une variante en production
+Origine : Ajout
+Groupe : Versionnage et évaluation de variantes de modèle
+Priorité indicative : Haute
+Description : Promouvoir une variante validée comme version active de production.
+Emplacement principal : core/
+Autres fichiers concernés : config, base de données
+Fichier cible principal : core/model_registry.py
+Fonction à coder / vérifier : promouvoir_variante
+Contrats ou services liés : service de prédiction
+Rôle : Rendre explicite le passage en production.
+Avantage : Déploiement contrôlé et tracé.
+Inconvénient / vigilance : Prévoir un retour arrière.
+État : À faire
+
+642 — Retour arrière vers une version antérieure
+Origine : Ajout
+Groupe : Versionnage et évaluation de variantes de modèle
+Priorité indicative : Haute
+Description : Revenir rapidement à une version de modèle précédente en cas de problème.
+Emplacement principal : core/
+Autres fichiers concernés : config
+Fichier cible principal : core/model_registry.py
+Fonction à coder / vérifier : revenir_version_precedente
+Contrats ou services liés : service de prédiction
+Rôle : Limiter l'impact d'une régression en production.
+Avantage : Rétablissement rapide du service.
+Inconvénient / vigilance : Versions antérieures à conserver.
+État : À faire
+
+643 — Mesure de l'écart entre variantes
+Origine : Ajout
+Groupe : Versionnage et évaluation de variantes de modèle
+Priorité indicative : Moyenne
+Description : Quantifier la différence de prédictions entre deux variantes sur un même lot.
+Emplacement principal : core/
+Autres fichiers concernés : scripts d'évaluation
+Fichier cible principal : core/variantes.py
+Fonction à coder / vérifier : ecart_variantes
+Contrats ou services liés : jeu de données
+Rôle : Estimer l'ampleur du changement introduit.
+Avantage : Décider si l'écart est acceptable.
+Inconvénient / vigilance : Un faible écart peut cacher des cas critiques.
+État : À faire
+
+644 — Évaluation de la robustesse aux données manquantes
+Origine : Ajout
+Groupe : Versionnage et évaluation de variantes de modèle
+Priorité indicative : Moyenne
+Description : Tester le comportement d'une variante lorsque des champs attendus sont absents.
+Emplacement principal : core/
+Autres fichiers concernés : scripts d'évaluation
+Fichier cible principal : core/evaluation.py
+Fonction à coder / vérifier : evaluer_robustesse
+Contrats ou services liés : jeu de données
+Rôle : Vérifier que le modèle reste utilisable en données incomplètes.
+Avantage : Meilleure résistance aux cas réels.
+Inconvénient / vigilance : Distinguer absence légitime et erreur de données.
+État : À faire
+
+645 — Historique des métriques par version
+Origine : Ajout
+Groupe : Versionnage et évaluation de variantes de modèle
+Priorité indicative : Moyenne
+Description : Conserver l'évolution des métriques clés pour chaque version de modèle.
+Emplacement principal : core/
+Autres fichiers concernés : base de données
+Fichier cible principal : core/model_registry.py
+Fonction à coder / vérifier : historique_metriques
+Contrats ou services liés : stockage des métriques
+Rôle : Suivre la progression ou la dégradation dans le temps.
+Avantage : Analyse des tendances de performance.
+Inconvénient / vigilance : Volume de données à gérer.
+État : À faire
+
+646 — Critères d'acceptation d'une nouvelle variante
+Origine : Ajout
+Groupe : Versionnage et évaluation de variantes de modèle
+Priorité indicative : Haute
+Description : Définir les seuils de performance à atteindre avant toute mise en production.
+Emplacement principal : docs/
+Autres fichiers concernés : core/
+Fichier cible principal : docs/criteres_variantes.md
+Fonction à coder / vérifier : verifier_criteres_acceptation
+Contrats ou services liés : processus de validation
+Rôle : Éviter les promotions sur simple intuition.
+Avantage : Décisions homogènes et défendables.
+Inconvénient / vigilance : Seuils à réviser périodiquement.
+État : À faire
+
+647 — Source de vérité du catalogue de fonctionnalités
+Origine : Ajout
+Groupe : Gouvernance du catalogue et des interrupteurs
+Priorité indicative : Haute
+Description : Définir une source unique décrivant chaque fonctionnalité et son état.
+Emplacement principal : core/
+Autres fichiers concernés : core/feature_flags.py
+Fichier cible principal : core/feature_flags.py
+Fonction à coder / vérifier : lister_features
+Contrats ou services liés : table fonctionnalites_actives
+Rôle : Éviter les listes divergentes de fonctionnalités.
+Avantage : Référentiel unique et fiable.
+Inconvénient / vigilance : La table ne stocke aujourd'hui que feature_id et actif.
+État : Fait
+
+648 — Métadonnées d'interrupteur (propriétaire, date)
+Origine : Ajout
+Groupe : Gouvernance du catalogue et des interrupteurs
+Priorité indicative : Haute
+Description : Enrichir chaque interrupteur avec un propriétaire, une date de création et un motif.
+Emplacement principal : core/
+Autres fichiers concernés : core/feature_flags.py
+Fichier cible principal : core/feature_flags.py
+Fonction à coder / vérifier : lire_metadonnees_feature
+Contrats ou services liés : table fonctionnalites_actives
+Rôle : Savoir qui décide et pourquoi un interrupteur existe.
+Avantage : Responsabilisation et audit facilités.
+Inconvénient / vigilance : Nécessite d'étendre le schéma actuel limité à feature_id et actif.
+État : Fait
+
+649 — Historique des bascules d'interrupteurs
+Origine : Ajout
+Groupe : Gouvernance du catalogue et des interrupteurs
+Priorité indicative : Moyenne
+Description : Journaliser chaque activation ou désactivation d'un interrupteur avec horodatage.
+Emplacement principal : core/
+Autres fichiers concernés : core/feature_flags.py
+Fichier cible principal : core/feature_flags.py
+Fonction à coder / vérifier : journaliser_bascule
+Contrats ou services liés : table fonctionnalites_actives
+Rôle : Comprendre l'évolution de l'état des fonctionnalités.
+Avantage : Diagnostic rapide des changements.
+Inconvénient / vigilance : La table actuelle n'enregistre que l'état courant.
+État : Fait
+
+650 — Interrupteurs par environnement
+Origine : Ajout
+Groupe : Gouvernance du catalogue et des interrupteurs
+Priorité indicative : Moyenne
+Description : Permettre un état d'activation distinct selon l'environnement (dev, recette, prod).
+Emplacement principal : core/
+Autres fichiers concernés : core/feature_flags.py
+Fichier cible principal : core/feature_flags.py
+Fonction à coder / vérifier : est_active_par_environnement
+Contrats ou services liés : table fonctionnalites_actives
+Rôle : Tester une fonctionnalité sans l'activer partout.
+Avantage : Déploiements progressifs plus sûrs.
+Inconvénient / vigilance : Le schéma actuel ne gère pas la notion d'environnement.
+État : À faire
+
+651 — Interrupteurs avec date d'expiration
+Origine : Ajout
+Groupe : Gouvernance du catalogue et des interrupteurs
+Priorité indicative : Moyenne
+Description : Prévoir une date d'expiration pour éviter les interrupteurs oubliés.
+Emplacement principal : core/
+Autres fichiers concernés : core/feature_flags.py
+Fichier cible principal : core/feature_flags.py
+Fonction à coder / vérifier : verifier_expiration_feature
+Contrats ou services liés : table fonctionnalites_actives
+Rôle : Éviter l'accumulation d'interrupteurs obsolètes.
+Avantage : Nettoyage automatique du catalogue.
+Inconvénient / vigilance : À combiner avec des métadonnées non présentes aujourd'hui.
+État : À faire
+
+652 — Validation des identifiants de fonctionnalité
+Origine : Ajout
+Groupe : Gouvernance du catalogue et des interrupteurs
+Priorité indicative : Moyenne
+Description : Vérifier le format et l'unicité des feature_id avant enregistrement.
+Emplacement principal : core/
+Autres fichiers concernés : core/feature_flags.py
+Fichier cible principal : core/feature_flags.py
+Fonction à coder / vérifier : valider_feature_id
+Contrats ou services liés : table fonctionnalites_actives
+Rôle : Éviter les doublons et les identifiants ambigus.
+Avantage : Catalogue cohérent.
+Inconvénient / vigilance : Convention de nommage à définir.
+État : À faire
+
+653 — Interrupteurs dépendants
+Origine : Ajout
+Groupe : Gouvernance du catalogue et des interrupteurs
+Priorité indicative : Basse
+Description : Gérer les dépendances entre fonctionnalités pour éviter des états incohérents.
+Emplacement principal : core/
+Autres fichiers concernés : core/feature_flags.py
+Fichier cible principal : core/feature_flags.py
+Fonction à coder / vérifier : verifier_dependances_features
+Contrats ou services liés : table fonctionnalites_actives
+Rôle : Empêcher l'activation d'une fonctionnalité sans son prérequis.
+Avantage : Cohérence du catalogue.
+Inconvénient / vigilance : Graphe de dépendances à maintenir.
+État : À faire
+
+654 — Audit des interrupteurs orphelins
+Origine : Ajout
+Groupe : Gouvernance du catalogue et des interrupteurs
+Priorité indicative : Moyenne
+Description : Repérer les feature_id présents en base mais plus utilisés dans le code.
+Emplacement principal : scripts/
+Autres fichiers concernés : core/feature_flags.py
+Fichier cible principal : scripts/audit_interrupteurs.py
+Fonction à coder / vérifier : auditer_interrupteurs_orphelins
+Contrats ou services liés : table fonctionnalites_actives
+Rôle : Nettoyer les interrupteurs inutiles.
+Avantage : Catalogue plus lisible.
+Inconvénient / vigilance : Détection imparfaite des usages dynamiques.
+État : À faire
+
+655 — Rôle et propriétaire d'un interrupteur
+Origine : Ajout
+Groupe : Gouvernance du catalogue et des interrupteurs
+Priorité indicative : Moyenne
+Description : Associer chaque interrupteur à un responsable pouvant décider de sa bascule.
+Emplacement principal : core/
+Autres fichiers concernés : core/feature_flags.py
+Fichier cible principal : core/feature_flags.py
+Fonction à coder / vérifier : definir_proprietaire_feature
+Contrats ou services liés : table fonctionnalites_actives
+Rôle : Clarifier la gouvernance.
+Avantage : Décisions plus rapides.
+Inconvénient / vigilance : Champ à ajouter au schéma actuel.
+État : À faire
+
+656 — Documentation générée depuis le catalogue
+Origine : Ajout
+Groupe : Gouvernance du catalogue et des interrupteurs
+Priorité indicative : Basse
+Description : Générer automatiquement une documentation listant les fonctionnalités et leur état.
+Emplacement principal : scripts/
+Autres fichiers concernés : core/feature_flags.py
+Fichier cible principal : scripts/generer_doc_features.py
+Fonction à coder / vérifier : generer_documentation_features
+Contrats ou services liés : table fonctionnalites_actives
+Rôle : Garder la documentation synchronisée avec le code.
+Avantage : Moins de dérive documentaire.
+Inconvénient / vigilance : La table actuelle fournit peu de contexte.
+État : À faire
+
+657 — Interrupteurs par segment d'utilisateurs
+Origine : Ajout
+Groupe : Gouvernance du catalogue et des interrupteurs
+Priorité indicative : Basse
+Description : Activer une fonctionnalité pour un sous-ensemble d'utilisateurs seulement.
+Emplacement principal : core/
+Autres fichiers concernés : core/feature_flags.py
+Fichier cible principal : core/feature_flags.py
+Fonction à coder / vérifier : est_active_pour_utilisateur
+Contrats ou services liés : table fonctionnalites_actives
+Rôle : Tester une fonctionnalité sur un groupe restreint.
+Avantage : Exposition maîtrisée.
+Inconvénient / vigilance : Complexité accrue du modèle d'activation.
+État : À faire
+
+658 — Alerte sur interrupteur inactif depuis longtemps
+Origine : Ajout
+Groupe : Gouvernance du catalogue et des interrupteurs
+Priorité indicative : Basse
+Description : Signaler les interrupteurs désactivés depuis longtemps et probablement supprimables.
+Emplacement principal : scripts/
+Autres fichiers concernés : core/feature_flags.py
+Fichier cible principal : scripts/audit_interrupteurs.py
+Fonction à coder / vérifier : alerter_interrupteurs_dormants
+Contrats ou services liés : table fonctionnalites_actives
+Rôle : Réduire la dette du catalogue.
+Avantage : Catalogue plus propre.
+Inconvénient / vigilance : Certains interrupteurs restent utiles ponctuellement.
+État : À faire
+
+659 — Suivi du coût par appel fournisseur
+Origine : Ajout
+Groupe : Coûts, quotas et exploitation des fournisseurs
+Priorité indicative : Haute
+Description : Enregistrer le coût estimé de chaque appel à un fournisseur externe.
+Emplacement principal : core/
+Autres fichiers concernés : services/fournisseurs
+Fichier cible principal : core/couts_fournisseurs.py
+Fonction à coder / vérifier : enregistrer_cout_appel
+Contrats ou services liés : API fournisseurs
+Rôle : Connaître le coût réel d'exploitation.
+Avantage : Maîtrise budgétaire.
+Inconvénient / vigilance : Grilles tarifaires à tenir à jour.
+État : À faire
+
+660 — Quota journalier par fournisseur
+Origine : Ajout
+Groupe : Coûts, quotas et exploitation des fournisseurs
+Priorité indicative : Haute
+Description : Fixer et contrôler un plafond d'appels par jour et par fournisseur.
+Emplacement principal : core/
+Autres fichiers concernés : services/fournisseurs
+Fichier cible principal : core/quotas.py
+Fonction à coder / vérifier : verifier_quota_fournisseur
+Contrats ou services liés : API fournisseurs
+Rôle : Éviter les dépassements involontaires.
+Avantage : Prévisibilité des dépenses.
+Inconvénient / vigilance : Quotas à ajuster selon l'usage.
+État : À faire
+
+661 — Alerte de dépassement de budget
+Origine : Ajout
+Groupe : Coûts, quotas et exploitation des fournisseurs
+Priorité indicative : Haute
+Description : Notifier lorsqu'un seuil de dépense mensuel est atteint.
+Emplacement principal : core/
+Autres fichiers concernés : services/fournisseurs
+Fichier cible principal : core/couts_fournisseurs.py
+Fonction à coder / vérifier : alerter_depassement_budget
+Contrats ou services liés : API fournisseurs, notifications
+Rôle : Réagir avant un dépassement important.
+Avantage : Protection budgétaire.
+Inconvénient / vigilance : Éviter le bruit d'alertes.
+État : À faire
+
+662 — Répartition des coûts par fonctionnalité
+Origine : Ajout
+Groupe : Coûts, quotas et exploitation des fournisseurs
+Priorité indicative : Moyenne
+Description : Attribuer les coûts aux fonctionnalités qui les génèrent.
+Emplacement principal : core/
+Autres fichiers concernés : core/couts_fournisseurs.py
+Fichier cible principal : core/couts_fournisseurs.py
+Fonction à coder / vérifier : repartir_couts_par_feature
+Contrats ou services liés : API fournisseurs
+Rôle : Identifier les fonctionnalités coûteuses.
+Avantage : Arbitrages éclairés.
+Inconvénient / vigilance : Attribution parfois approximative.
+État : À faire
+
+663 — Mesure de la latence par fournisseur
+Origine : Ajout
+Groupe : Coûts, quotas et exploitation des fournisseurs
+Priorité indicative : Moyenne
+Description : Mesurer le temps de réponse de chaque fournisseur.
+Emplacement principal : core/
+Autres fichiers concernés : services/fournisseurs
+Fichier cible principal : core/supervision_fournisseurs.py
+Fonction à coder / vérifier : mesurer_latence_fournisseur
+Contrats ou services liés : API fournisseurs
+Rôle : Suivre la qualité de service.
+Avantage : Détection des ralentissements.
+Inconvénient / vigilance : Mesures dépendantes du réseau.
+État : À faire
+
+664 — Repli automatique entre fournisseurs
+Origine : Ajout
+Groupe : Coûts, quotas et exploitation des fournisseurs
+Priorité indicative : Haute
+Description : Basculer vers un fournisseur de secours lorsqu'un autre est indisponible.
+Emplacement principal : core/
+Autres fichiers concernés : services/fournisseurs
+Fichier cible principal : core/supervision_fournisseurs.py
+Fonction à coder / vérifier : basculer_fournisseur_secours
+Contrats ou services liés : API fournisseurs
+Rôle : Maintenir le service en cas de panne.
+Avantage : Meilleure disponibilité.
+Inconvénient / vigilance : Différences de qualité entre fournisseurs.
+État : À faire
+
+665 — Fenêtre de disponibilité des fournisseurs
+Origine : Ajout
+Groupe : Coûts, quotas et exploitation des fournisseurs
+Priorité indicative : Basse
+Description : Déclarer les plages horaires de maintenance ou d'indisponibilité connues.
+Emplacement principal : config/
+Autres fichiers concernés : services/fournisseurs
+Fichier cible principal : config/fournisseurs.py
+Fonction à coder / vérifier : verifier_disponibilite_fournisseur
+Contrats ou services liés : API fournisseurs
+Rôle : Éviter d'appeler un fournisseur en maintenance.
+Avantage : Moins d'erreurs inutiles.
+Inconvénient / vigilance : Plages à maintenir.
+État : À faire
+
+666 — Journal des erreurs fournisseur
+Origine : Ajout
+Groupe : Coûts, quotas et exploitation des fournisseurs
+Priorité indicative : Moyenne
+Description : Consigner les erreurs renvoyées par les fournisseurs pour analyse.
+Emplacement principal : core/
+Autres fichiers concernés : services/fournisseurs
+Fichier cible principal : core/supervision_fournisseurs.py
+Fonction à coder / vérifier : journaliser_erreur_fournisseur
+Contrats ou services liés : API fournisseurs
+Rôle : Diagnostiquer les incidents récurrents.
+Avantage : Suivi de la fiabilité.
+Inconvénient / vigilance : Éviter de stocker des données sensibles.
+État : À faire
+
+667 — Limitation de débit par utilisateur
+Origine : Ajout
+Groupe : Coûts, quotas et exploitation des fournisseurs
+Priorité indicative : Moyenne
+Description : Limiter le nombre de requêtes qu'un utilisateur peut déclencher.
+Emplacement principal : core/
+Autres fichiers concernés : bot
+Fichier cible principal : core/quotas.py
+Fonction à coder / vérifier : limiter_requetes_utilisateur
+Contrats ou services liés : API fournisseurs
+Rôle : Protéger le service contre les abus.
+Avantage : Coûts et charge maîtrisés.
+Inconvénient / vigilance : Ne pas pénaliser les usages légitimes.
+État : À faire
+
+668 — Estimation préalable du coût d'une requête
+Origine : Ajout
+Groupe : Coûts, quotas et exploitation des fournisseurs
+Priorité indicative : Basse
+Description : Estimer le coût d'une requête avant de l'envoyer au fournisseur.
+Emplacement principal : core/
+Autres fichiers concernés : services/fournisseurs
+Fichier cible principal : core/couts_fournisseurs.py
+Fonction à coder / vérifier : estimer_cout_requete
+Contrats ou services liés : API fournisseurs
+Rôle : Décider d'envoyer ou non une requête coûteuse.
+Avantage : Économies possibles.
+Inconvénient / vigilance : Estimation approximative.
+État : À faire
+
+669 — Rapport mensuel de consommation
+Origine : Ajout
+Groupe : Coûts, quotas et exploitation des fournisseurs
+Priorité indicative : Basse
+Description : Produire un récapitulatif mensuel des appels et coûts par fournisseur.
+Emplacement principal : scripts/
+Autres fichiers concernés : core/couts_fournisseurs.py
+Fichier cible principal : scripts/rapport_consommation.py
+Fonction à coder / vérifier : generer_rapport_mensuel
+Contrats ou services liés : API fournisseurs
+Rôle : Suivre l'évolution des dépenses.
+Avantage : Vision claire de l'exploitation.
+Inconvénient / vigilance : Génération à planifier.
+État : À faire
+
+670 — Priorisation des requêtes en cas de saturation
+Origine : Ajout
+Groupe : Coûts, quotas et exploitation des fournisseurs
+Priorité indicative : Basse
+Description : Définir un ordre de priorité lorsque les quotas sont proches d'être atteints.
+Emplacement principal : core/
+Autres fichiers concernés : core/quotas.py
+Fichier cible principal : core/quotas.py
+Fonction à coder / vérifier : prioriser_requetes
+Contrats ou services liés : API fournisseurs
+Rôle : Préserver les fonctionnalités essentielles.
+Avantage : Dégradation contrôlée.
+Inconvénient / vigilance : Choix de priorité à documenter.
+État : À faire
+
+671 — Fiches pédagogiques des fonctionnalités
+Origine : Ajout
+Groupe : Contenu éditorial et pédagogie
+Priorité indicative : Moyenne
+Description : Rédiger une fiche simple expliquant chaque fonctionnalité et son usage.
+Emplacement principal : docs/
+Autres fichiers concernés : catalogue
+Fichier cible principal : docs/fiches_fonctionnalites.md
+Fonction à coder / vérifier : rediger_fiche_fonctionnalite
+Contrats ou services liés : documentation
+Rôle : Rendre les fonctionnalités compréhensibles.
+Avantage : Meilleure adoption.
+Inconvénient / vigilance : Contenu à maintenir.
+État : À faire
+
+672 — Glossaire des termes métier
+Origine : Ajout
+Groupe : Contenu éditorial et pédagogie
+Priorité indicative : Moyenne
+Description : Définir les termes métier utilisés dans les messages et la documentation.
+Emplacement principal : docs/
+Autres fichiers concernés : catalogue
+Fichier cible principal : docs/glossaire.md
+Fonction à coder / vérifier : lister_termes_metier
+Contrats ou services liés : documentation
+Rôle : Éviter les ambiguïtés de vocabulaire.
+Avantage : Communication cohérente.
+Inconvénient / vigilance : Glossaire à tenir à jour.
+État : À faire
+
+673 — Exemples d'utilisation par commande
+Origine : Ajout
+Groupe : Contenu éditorial et pédagogie
+Priorité indicative : Moyenne
+Description : Fournir des exemples concrets pour chaque commande utilisateur.
+Emplacement principal : docs/
+Autres fichiers concernés : bot/commands
+Fichier cible principal : docs/exemples_commandes.md
+Fonction à coder / vérifier : documenter_exemples_commandes
+Contrats ou services liés : interface Discord
+Rôle : Aider l'utilisateur à démarrer.
+Avantage : Prise en main facilitée.
+Inconvénient / vigilance : Exemples à valider avec le code réel.
+État : À faire
+
+674 — Messages d'aide contextuels
+Origine : Ajout
+Groupe : Contenu éditorial et pédagogie
+Priorité indicative : Moyenne
+Description : Adapter le message d'aide au contexte de la commande invoquée.
+Emplacement principal : bot/
+Autres fichiers concernés : bot/commands
+Fichier cible principal : bot/aide_contextuelle.py
+Fonction à coder / vérifier : message_aide_contextuel
+Contrats ou services liés : interface Discord
+Rôle : Répondre au bon moment avec la bonne information.
+Avantage : Moins de frustration utilisateur.
+Inconvénient / vigilance : Textes à maintenir.
+État : À faire
+
+675 — Tutoriel de prise en main
+Origine : Ajout
+Groupe : Contenu éditorial et pédagogie
+Priorité indicative : Basse
+Description : Proposer un parcours guidé pas à pas pour les nouveaux utilisateurs.
+Emplacement principal : docs/
+Autres fichiers concernés : bot
+Fichier cible principal : docs/tutoriel.md
+Fonction à coder / vérifier : rediger_tutoriel
+Contrats ou services liés : documentation
+Rôle : Réduire la barrière d'entrée.
+Avantage : Autonomie des nouveaux venus.
+Inconvénient / vigilance : Mise à jour régulière nécessaire.
+État : À faire
+
+676 — FAQ intégrée
+Origine : Ajout
+Groupe : Contenu éditorial et pédagogie
+Priorité indicative : Basse
+Description : Regrouper les questions fréquentes et leurs réponses directement accessibles.
+Emplacement principal : docs/
+Autres fichiers concernés : bot
+Fichier cible principal : docs/faq.md
+Fonction à coder / vérifier : lister_faq
+Contrats ou services liés : documentation
+Rôle : Répondre aux questions récurrentes.
+Avantage : Moins de sollicitations répétées.
+Inconvénient / vigilance : Questions à actualiser.
+État : À faire
+
+677 — Révision éditoriale des libellés
+Origine : Ajout
+Groupe : Contenu éditorial et pédagogie
+Priorité indicative : Basse
+Description : Uniformiser le ton et l'orthographe des libellés visibles.
+Emplacement principal : docs/
+Autres fichiers concernés : bot/commands
+Fichier cible principal : docs/revue_editoriale.md
+Fonction à coder / vérifier : verifier_libelles
+Contrats ou services liés : interface Discord
+Rôle : Offrir une image professionnelle.
+Avantage : Cohérence éditoriale.
+Inconvénient / vigilance : Travail itératif.
+État : À faire
+
+678 — Localisation des messages utilisateur
+Origine : Ajout
+Groupe : Contenu éditorial et pédagogie
+Priorité indicative : Basse
+Description : Préparer les messages pour une traduction éventuelle en plusieurs langues.
+Emplacement principal : bot/
+Autres fichiers concernés : bot/commands
+Fichier cible principal : bot/i18n.py
+Fonction à coder / vérifier : traduire_message
+Contrats ou services liés : interface Discord
+Rôle : Anticiper l'internationalisation.
+Avantage : Ouverture à d'autres publics.
+Inconvénient / vigilance : Complexité de maintenance.
+État : À faire
+
+679 — Notes de version lisibles
+Origine : Ajout
+Groupe : Contenu éditorial et pédagogie
+Priorité indicative : Basse
+Description : Rédiger des notes de version compréhensibles par les utilisateurs.
+Emplacement principal : docs/
+Autres fichiers concernés : catalogue
+Fichier cible principal : docs/notes_de_version.md
+Fonction à coder / vérifier : rediger_notes_version
+Contrats ou services liés : documentation
+Rôle : Informer des changements.
+Avantage : Transparence vis-à-vis des utilisateurs.
+Inconvénient / vigilance : À produire à chaque version.
+État : À faire
+
+680 — Aide à la lecture des statistiques
+Origine : Ajout
+Groupe : Contenu éditorial et pédagogie
+Priorité indicative : Basse
+Description : Expliquer comment interpréter les statistiques affichées à l'utilisateur.
+Emplacement principal : docs/
+Autres fichiers concernés : bot
+Fichier cible principal : docs/lire_statistiques.md
+Fonction à coder / vérifier : expliquer_statistiques
+Contrats ou services liés : interface Discord
+Rôle : Éviter les mauvaises interprétations.
+Avantage : Utilisation éclairée des données.
+Inconvénient / vigilance : Nécessite des exemples concrets.
+État : À faire
+
+681 — Inventaire des données personnelles traitées
+Origine : Ajout
+Groupe : Confidentialité et données personnelles
+Priorité indicative : Haute
+Description : Recenser les données personnelles collectées, stockées et utilisées.
+Emplacement principal : docs/
+Autres fichiers concernés : core/db
+Fichier cible principal : docs/donnees_personnelles.md
+Fonction à coder / vérifier : inventorier_donnees_personnelles
+Contrats ou services liés : base de données
+Rôle : Connaître l'étendue des données traitées.
+Avantage : Base d'une gestion conforme.
+Inconvénient / vigilance : Inventaire à maintenir.
+État : À faire
+
+682 — Durée de conservation des données
+Origine : Ajout
+Groupe : Confidentialité et données personnelles
+Priorité indicative : Haute
+Description : Définir et appliquer une durée de conservation pour chaque type de donnée.
+Emplacement principal : core/
+Autres fichiers concernés : core/db
+Fichier cible principal : core/retention.py
+Fonction à coder / vérifier : appliquer_duree_conservation
+Contrats ou services liés : base de données
+Rôle : Limiter la conservation excessive.
+Avantage : Réduction du risque.
+Inconvénient / vigilance : Durées à valider juridiquement.
+État : À faire
+
+683 — Droit à l'effacement des données utilisateur
+Origine : Ajout
+Groupe : Confidentialité et données personnelles
+Priorité indicative : Haute
+Description : Permettre la suppression des données d'un utilisateur sur demande.
+Emplacement principal : core/
+Autres fichiers concernés : core/db
+Fichier cible principal : core/donnees_utilisateur.py
+Fonction à coder / vérifier : effacer_donnees_utilisateur
+Contrats ou services liés : base de données
+Rôle : Respecter le droit à l'effacement.
+Avantage : Conformité et confiance.
+Inconvénient / vigilance : Vérifier les sauvegardes et copies.
+État : À faire
+
+684 — Anonymisation des journaux
+Origine : Ajout
+Groupe : Confidentialité et données personnelles
+Priorité indicative : Haute
+Description : Retirer ou masquer les identifiants personnels des journaux techniques.
+Emplacement principal : core/
+Autres fichiers concernés : core/logging
+Fichier cible principal : core/anonymisation.py
+Fonction à coder / vérifier : anonymiser_journal
+Contrats ou services liés : journaux applicatifs
+Rôle : Protéger la vie privée dans les traces.
+Avantage : Journaux exploitables sans risque.
+Inconvénient / vigilance : Ne pas dégrader le diagnostic.
+État : À faire
+
+685 — Consentement explicite au stockage
+Origine : Ajout
+Groupe : Confidentialité et données personnelles
+Priorité indicative : Moyenne
+Description : Recueillir l'accord de l'utilisateur avant tout stockage durable.
+Emplacement principal : bot/
+Autres fichiers concernés : core/donnees_utilisateur.py
+Fichier cible principal : bot/consentement.py
+Fonction à coder / vérifier : recueillir_consentement
+Contrats ou services liés : interface Discord
+Rôle : Respecter la volonté de l'utilisateur.
+Avantage : Transparence et conformité.
+Inconvénient / vigilance : Parcours à ne pas alourdir.
+État : À faire
+
+686 — Journalisation minimale par défaut
+Origine : Ajout
+Groupe : Confidentialité et données personnelles
+Priorité indicative : Moyenne
+Description : Ne journaliser que le strict nécessaire par défaut.
+Emplacement principal : core/
+Autres fichiers concernés : core/logging
+Fichier cible principal : core/logging.py
+Fonction à coder / vérifier : journaliser_minimal
+Contrats ou services liés : journaux applicatifs
+Rôle : Réduire l'exposition des données.
+Avantage : Moins de données sensibles conservées.
+Inconvénient / vigilance : Peut gêner le diagnostic.
+État : À faire
+
+687 — Accès restreint aux données sensibles
+Origine : Ajout
+Groupe : Confidentialité et données personnelles
+Priorité indicative : Haute
+Description : Limiter l'accès aux données sensibles aux seuls composants autorisés.
+Emplacement principal : core/
+Autres fichiers concernés : core/db
+Fichier cible principal : core/acces_donnees.py
+Fonction à coder / vérifier : verifier_acces_donnees
+Contrats ou services liés : base de données
+Rôle : Réduire les risques de fuite.
+Avantage : Principe du moindre privilège.
+Inconvénient / vigilance : Gestion des droits à maintenir.
+État : À faire
+
+688 — Export des données d'un utilisateur
+Origine : Ajout
+Groupe : Confidentialité et données personnelles
+Priorité indicative : Moyenne
+Description : Fournir à un utilisateur l'ensemble des données le concernant sur demande.
+Emplacement principal : core/
+Autres fichiers concernés : core/donnees_utilisateur.py
+Fichier cible principal : core/donnees_utilisateur.py
+Fonction à coder / vérifier : exporter_donnees_utilisateur
+Contrats ou services liés : base de données
+Rôle : Respecter le droit d'accès.
+Avantage : Transparence.
+Inconvénient / vigilance : Format d'export à définir.
+État : À faire
+
+689 — Purge automatique des données expirées
+Origine : Ajout
+Groupe : Confidentialité et données personnelles
+Priorité indicative : Moyenne
+Description : Supprimer automatiquement les données ayant dépassé leur durée de conservation.
+Emplacement principal : scripts/
+Autres fichiers concernés : core/retention.py
+Fichier cible principal : scripts/purge_donnees.py
+Fonction à coder / vérifier : purger_donnees_expirees
+Contrats ou services liés : base de données
+Rôle : Garantir l'application des durées de conservation.
+Avantage : Base de données allégée.
+Inconvénient / vigilance : Suppression irréversible à sécuriser.
+État : À faire
+
+690 — Registre des traitements
+Origine : Ajout
+Groupe : Confidentialité et données personnelles
+Priorité indicative : Basse
+Description : Documenter la finalité de chaque traitement de données.
+Emplacement principal : docs/
+Autres fichiers concernés : core/
+Fichier cible principal : docs/registre_traitements.md
+Fonction à coder / vérifier : documenter_traitement
+Contrats ou services liés : documentation
+Rôle : Formaliser les finalités.
+Avantage : Base de conformité.
+Inconvénient / vigilance : À actualiser à chaque nouveau traitement.
+État : À faire
+
+691 — Suppression du paquet mort core/betting/
+Origine : Ajout
+Groupe : Hygiène du dépôt et dette technique
+Priorité indicative : Haute
+Description : Retirer le paquet core/betting/, plus référencé, et vérifier l'absence d'imports résiduels.
+Emplacement principal : core/betting/
+Autres fichiers concernés : core/
+Fichier cible principal : core/betting/ (suppression)
+Fonction à coder / vérifier : verifier_absence_imports_betting
+Contrats ou services liés : aucun
+Rôle : Éliminer du code mort.
+Avantage : Dépôt plus clair.
+Inconvénient / vigilance : Vérifier qu'aucun import dynamique ne subsiste.
+État : À faire
+
+692 — Inventaire des modules non importés
+Origine : Ajout
+Groupe : Hygiène du dépôt et dette technique
+Priorité indicative : Moyenne
+Description : Lister les modules Python jamais importés dans le dépôt.
+Emplacement principal : scripts/
+Autres fichiers concernés : core/
+Fichier cible principal : scripts/inventaire_modules.py
+Fonction à coder / vérifier : inventorier_modules_non_importes
+Contrats ou services liés : aucun
+Rôle : Repérer le code mort.
+Avantage : Nettoyage ciblé.
+Inconvénient / vigilance : Les imports dynamiques échappent à l'analyse.
+État : À faire
+
+693 — Nettoyage des scripts obsolètes
+Origine : Ajout
+Groupe : Hygiène du dépôt et dette technique
+Priorité indicative : Moyenne
+Description : Supprimer ou archiver les scripts qui ne sont plus utilisés.
+Emplacement principal : scripts/
+Autres fichiers concernés : aucun
+Fichier cible principal : scripts/
+Fonction à coder / vérifier : identifier_scripts_obsoletes
+Contrats ou services liés : aucun
+Rôle : Réduire l'encombrement du dépôt.
+Avantage : Navigation plus simple.
+Inconvénient / vigilance : Vérifier qu'aucun usage manuel ne subsiste.
+État : À faire
+
+694 — Détection du code dupliqué
+Origine : Ajout
+Groupe : Hygiène du dépôt et dette technique
+Priorité indicative : Basse
+Description : Repérer les blocs de code répétés pouvant être factorisés.
+Emplacement principal : scripts/
+Autres fichiers concernés : core/
+Fichier cible principal : scripts/detecter_duplication.py
+Fonction à coder / vérifier : detecter_duplication
+Contrats ou services liés : aucun
+Rôle : Améliorer la maintenabilité.
+Avantage : Moins de corrections en double.
+Inconvénient / vigilance : La factorisation a aussi un coût.
+État : À faire
+
+695 — Mise à jour des dépendances obsolètes
+Origine : Ajout
+Groupe : Hygiène du dépôt et dette technique
+Priorité indicative : Moyenne
+Description : Identifier et mettre à jour les dépendances dépassées.
+Emplacement principal : requirements
+Autres fichiers concernés : aucun
+Fichier cible principal : requirements.txt
+Fonction à coder / vérifier : verifier_dependances_obsoletes
+Contrats ou services liés : aucun
+Rôle : Réduire les risques de sécurité.
+Avantage : Environnement à jour.
+Inconvénient / vigilance : Risque de rupture de compatibilité.
+État : À faire
+
+696 — Normalisation de l'arborescence
+Origine : Ajout
+Groupe : Hygiène du dépôt et dette technique
+Priorité indicative : Basse
+Description : Définir une organisation cohérente des dossiers et fichiers.
+Emplacement principal : .
+Autres fichiers concernés : core/, scripts/, tests/
+Fichier cible principal : docs/arborescence.md
+Fonction à coder / vérifier : verifier_arborescence
+Contrats ou services liés : aucun
+Rôle : Faciliter la navigation dans le dépôt.
+Avantage : Structure prévisible.
+Inconvénient / vigilance : Déplacements à faire sans casser les imports.
+État : À faire
+
+697 — Vérification des fichiers volumineux versionnés
+Origine : Ajout
+Groupe : Hygiène du dépôt et dette technique
+Priorité indicative : Moyenne
+Description : Détecter les fichiers volumineux ou binaires versionnés par erreur.
+Emplacement principal : scripts/
+Autres fichiers concernés : aucun
+Fichier cible principal : scripts/verifier_fichiers_volumineux.py
+Fonction à coder / vérifier : verifier_fichiers_volumineux
+Contrats ou services liés : aucun
+Rôle : Garder un dépôt léger.
+Avantage : Clonage et opérations plus rapides.
+Inconvénient / vigilance : Ne pas supprimer de ressources utiles.
+État : À faire
+
+698 — Documentation des modules sans docstring
+Origine : Ajout
+Groupe : Hygiène du dépôt et dette technique
+Priorité indicative : Basse
+Description : Repérer les modules et fonctions dépourvus de docstring.
+Emplacement principal : scripts/
+Autres fichiers concernés : core/
+Fichier cible principal : scripts/verifier_docstrings.py
+Fonction à coder / vérifier : verifier_docstrings
+Contrats ou services liés : aucun
+Rôle : Améliorer la lisibilité du code.
+Avantage : Prise en main facilitée.
+Inconvénient / vigilance : Documentation à maintenir.
+État : À faire
+
+699 — Suppression des migrations inutiles
+Origine : Ajout
+Groupe : Hygiène du dépôt et dette technique
+Priorité indicative : Basse
+Description : Nettoyer les migrations obsolètes ou jamais appliquées.
+Emplacement principal : migrations/
+Autres fichiers concernés : core/db
+Fichier cible principal : migrations/
+Fonction à coder / vérifier : identifier_migrations_inutiles
+Contrats ou services liés : base de données
+Rôle : Simplifier l'historique de schéma.
+Avantage : Migrations plus lisibles.
+Inconvénient / vigilance : Ne pas casser la compatibilité de déploiement.
+État : À faire
+
+700 — Tableau de bord de la dette technique
+Origine : Ajout
+Groupe : Hygiène du dépôt et dette technique
+Priorité indicative : Basse
+Description : Regrouper les indicateurs de dette technique dans un tableau de bord unique.
+Emplacement principal : docs/
+Autres fichiers concernés : scripts/
+Fichier cible principal : docs/dette_technique.md
+Fonction à coder / vérifier : construire_tableau_dette
+Contrats ou services liés : aucun
+Rôle : Suivre la dette dans le temps.
+Avantage : Priorisation des nettoyages.
+Inconvénient / vigilance : Indicateurs à définir.
+État : À faire
