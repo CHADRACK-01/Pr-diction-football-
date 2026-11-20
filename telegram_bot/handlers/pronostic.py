@@ -74,6 +74,32 @@ def _get_contexte_user(message, langue):
 
 def enregistrer_pronostic_handlers(bot):
 
+    @bot.message_handler(commands=["bilan"])
+    def cmd_bilan(message):
+        """Bilan vérifiable : uniquement sur les estimations enregistrées avant match."""
+        try:
+            from core.bilans import resoudre_estimations, statistiques
+            resoudre_estimations()
+            s = statistiques()
+            if s["resolues"] == 0:
+                texte = (
+                    f"📈 <b>Bilan</b>\n\n{s['enregistrees']} estimation(s) enregistrée(s) "
+                    "avant match, aucune n'est encore résolue."
+                )
+            else:
+                texte = (
+                    "📈 <b>Bilan vérifiable</b>\n\n"
+                    f"Matchs résolus : {s['resolues']} sur {s['enregistrees']} enregistrés\n"
+                    f"🎯 Choix le plus probable correct : {s['precision'] * 100:.1f} %\n"
+                    f"📉 Log-loss : {s['log_loss']:.3f} (plus bas = mieux)\n\n"
+                    "<i>Calculé uniquement sur des estimations enregistrées avant le match.</i>"
+                )
+            bot.reply_to(message, texte, parse_mode="HTML")
+        except Exception as e:
+            log_error("Erreur bilan", "PRONOSTIC", exception=e)
+            bot.reply_to(message, "❌ Bilan indisponible pour le moment.")
+
+
     @bot.message_handler(func=lambda m: m.text == "⚽ Faire un Pronostic")
     def handle_pronostic(message):
         user_id = message.from_user.id
@@ -225,6 +251,17 @@ def enregistrer_pronostic_handlers(bot):
             )
         except Exception as e:
             log_error("Erreur sauvegarde historique", "PRONOSTIC", exception=e)
+
+        # --- ESTIMATION VÉRIFIABLE (avant match, pour le bilan) ---
+        try:
+            from core.bilans import enregistrer_estimation
+            enregistrer_estimation(
+                resultat["home_team"], resultat["away_team"],
+                resultat["p_h"], resultat["p_d"], resultat["p_a"],
+                competition_reelle,
+            )
+        except Exception as e:
+            log_error("Erreur enregistrement estimation", "PRONOSTIC", exception=e)
 
         # --- COMPTEUR ---
         try:
