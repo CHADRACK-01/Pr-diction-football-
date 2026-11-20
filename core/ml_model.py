@@ -65,16 +65,18 @@ def charger_et_entrainer():
         global_model_data["models"] = bundle["models"]
         global_model_data["features"] = list(FEATURE_NAMES)
         global_model_data["metrics"] = bundle["metrics"]
+        global_model_data["registre"] = bundle.get("registre", {})
         global_model_data["etat"] = EtatEquipes.depuis_dict(bundle["etat"])
         global_model_data["date_max_donnees"] = bundle["date_max_donnees"]
         global_model_data["date_chargement"] = datetime.now(TZ_KINSHASA).strftime("%Y-%m-%d %H:%M:%S")
 
+        emp = (bundle.get("registre") or {}).get("empreinte_donnees", "inconnue")
         metrics_1n2 = bundle["metrics"].get("1N2", {})
         global_model_data["precision_moyenne"] = metrics_1n2.get("accuracy")
         global_model_data["total_matchs"] = bundle.get("total_matchs")
 
         log_info(
-            f"✅ Modèle chargé (données jusqu'au {bundle['date_max_donnees']}) : "
+            f"✅ Modèle chargé (données jusqu'au {bundle['date_max_donnees']}, empreinte {emp}) : "
             f"{len(bundle['models'])} marché(s).",
             "ML_MODEL",
         )
@@ -89,4 +91,3 @@ def charger_et_entrainer():
 
 def get_modeles():
     return global_model_data.get("models")
-    
