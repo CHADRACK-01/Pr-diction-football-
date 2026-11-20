@@ -8,6 +8,7 @@ Le code accorde réellement les jours Premium stockés dans codes_promo.jours_pr
 
 import telebot
 from users import get_langue, ajouter_jours_premium
+from users.credits import crediter_premium, deja_credite
 from core.codes_promo import valider_code_promo
 from core.utils.logs import log_info, log_error, log_warning
 
@@ -28,6 +29,13 @@ def enregistrer_utilisation_code_handlers(bot):
             return
 
         code = args[1].upper()
+
+        # Un utilisateur ne peut utiliser un même code qu'une seule fois.
+        # Vérifié AVANT valider_code_promo, qui incrémente le compteur du code.
+        if deja_credite(f"codepromo:{code}:{user_id}"):
+            bot.reply_to(message, "❌ Tu as déjà utilisé ce code.")
+            return
+
         resultat = valider_code_promo(code, user_id)
 
         if not resultat.get("valide"):
@@ -43,7 +51,7 @@ def enregistrer_utilisation_code_handlers(bot):
 
         # Application réelle des jours Premium
         try:
-            if not ajouter_jours_premium(user_id, jours):
+            if crediter_premium(f"codepromo:{code}:{user_id}", user_id, jours, "codepromo") == "echec":
                 log_error(
                     message="Code validé mais ajout Premium échoué",
                     module="CODES_PROMO",
