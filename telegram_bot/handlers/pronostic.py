@@ -206,6 +206,8 @@ def enregistrer_pronostic_handlers(bot):
             is_prem = est_premium(user_id)
             bulletin = _formater_bulletin_premium(resultat) if is_prem else _formater_bulletin_free(resultat)
             # ⚠️ L'IMPORTANT EST ICI : parse_mode="HTML"
+            from core.jeu_responsable import ajouter_mention
+            bulletin = ajouter_mention(bulletin)
             bot.send_message(message.chat.id, bulletin, parse_mode="HTML")
         except Exception as e:
             log_error("Erreur affichage bulletin", "PRONOSTIC", user_context=ctx, exception=e)
