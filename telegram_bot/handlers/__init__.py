@@ -29,11 +29,13 @@ from telegram_bot.handlers.historique import enregistrer_historique_handlers
 from telegram_bot.handlers.statistiques import enregistrer_statistiques_handlers
 from telegram_bot.handlers.parrainage import enregistrer_parrainage_handlers
 from telegram_bot.devises_handlers import enregistrer_devises_handlers
-from telegram_bot.preuves_handlers import enregistrer_preuves_handlers
 
-# Codes Promo (manuels)
-from telegram_bot.codes_promo_handlers import enregistrer_codes_promo_handlers
-from telegram_bot.utilisation_code_handlers import enregistrer_utilisation_code_handlers
+# Preuves & Codes Promo (désormais regroupés dans consultation_handlers)
+from telegram_bot.consultation_handlers import (
+    enregistrer_preuves_handlers,
+    enregistrer_codes_promo_handlers,
+    enregistrer_utilisation_code_handlers,
+)
 
 # 4. Les paiements et prédictions
 from telegram_bot.payment_handlers import enregistrer_payment_handlers
