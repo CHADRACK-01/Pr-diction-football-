@@ -12,7 +12,6 @@ Handler /start + menu principal.
 import telebot
 import config
 
-from users.credits import crediter_premium
 from users import (
     enregistrer_utilisateur, get_langue, set_langue, est_banni,
     get_user_info, est_administrateur, set_parrain,
@@ -64,7 +63,7 @@ BOUTONS_UTILISATEUR = [
 
 # Boutons réservés à l'administrateur, ajoutés sous le menu utilisateur
 BOUTONS_ADMIN_SUPPLEMENTAIRES = [
-    "📊 Fiabilité", "🔍 Comparer", "⚽ Série", "💰 Cotes",
+    "👑 Panneau Admin", "📊 Fiabilité", "🔍 Comparer", "⚽ Série", "💰 Cotes",
     "📈 Bankroll", "💸 Cash-out", "⚠️ Piège", "🌦️ Météo",
     "🎯 Favoris", "🎟️ Code Promo", "📊 Stats Admin", "🚨 Panique",
     "📸 Preuves", "🎟️ Codes", "🔧 Features", "💱 Taux",
@@ -255,9 +254,8 @@ def enregistrer_start_handlers(bot):
                     if parrain_id != user_id and get_user_info(parrain_id):
                         if set_parrain(user_id, parrain_id):
                             if utilisateur_existe(user_id):
-                                # Crédits idempotents : un filleul ne peut déclencher qu'une fois le bonus
-                                crediter_premium(f"parrainage:{user_id}", user_id, 1, "parrainage")
-                                crediter_premium(f"parrainage_parrain:{user_id}", parrain_id, 1, "parrainage")
+                                ajouter_jours_premium(user_id, 1)
+                                ajouter_jours_premium(parrain_id, 1)
                                 log_info(
                                     f"Parrainage appliqué : {user_id} par {parrain_id}",
                                     module="START",
