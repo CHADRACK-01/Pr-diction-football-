@@ -8,7 +8,12 @@ def db_execute(q, params=None, db_context=None):
         cur = DB.execute(q, params or []); DB.commit(); return cur.rowcount
     except Exception:
         return None
-stub_db = types.ModuleType("users.db"); stub_db.db_execute = db_execute
+def db_fetchall(q, params=None, db_context=None):
+    try:
+        return DB.execute(q, params or []).fetchall()
+    except Exception:
+        return []
+stub_db = types.ModuleType("users.db"); stub_db.db_execute = db_execute; stub_db.db_fetchall = db_fetchall
 sys.modules["users"] = types.ModuleType("users")
 sys.modules["users"].__path__ = [os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "users")]
 sys.modules["users.db"] = stub_db
@@ -53,6 +58,31 @@ def test_observations_passees_jamais_modifiees():
     ch.enregistrer_snapshot("A", "B", [cotes(h=1.5)], t.replace(hour=11))
     rows = DB.execute("SELECT cote_h FROM cotes_snapshots ORDER BY date_capture").fetchall()
     assert rows == [(2.0,), (1.5,)], rows
+
+def test_lecture_renvoie_la_plus_recente_en_premier():
+    reset()
+    t = dt.datetime(2026, 11, 20, 10, 0, tzinfo=dt.timezone.utc)
+    ch.enregistrer_snapshot("A", "B", [cotes(h=2.0)], t)
+    ch.enregistrer_snapshot("A", "B", [cotes(h=1.8)], t.replace(hour=11))
+    obs = ch.lire_dernieres_cotes("A", "B", "Bk1", limite=2)
+    assert [o[1] for o in obs] == [1.8, 2.0], obs
+
+def test_detecter_chute_sur_baisse_de_5_pourcent():
+    reset()
+    t = dt.datetime(2026, 11, 20, 10, 0, tzinfo=dt.timezone.utc)
+    ch.enregistrer_snapshot("A", "B", [cotes(h=2.0, d=3.5, a=3.8)], t)
+    ch.enregistrer_snapshot("A", "B", [cotes(h=1.8, d=3.5, a=3.9)], t.replace(hour=11))
+    res = ch.detecter_chute("A", "B", "Bk1")
+    assert res["chutes"] == ["home"], res
+    assert abs(res["variations"]["home"] - 0.1) < 1e-9
+    assert res["variations"]["away"] < 0  # la cote away a monté : pas de chute
+
+def test_detecter_chute_sans_historique_suffisant():
+    reset()
+    t = dt.datetime(2026, 11, 20, 10, 0, tzinfo=dt.timezone.utc)
+    assert ch.detecter_chute("A", "B", "Bk1") is None
+    ch.enregistrer_snapshot("A", "B", [cotes()], t)
+    assert ch.detecter_chute("A", "B", "Bk1") is None  # une seule observation
 
 if __name__ == "__main__":
     n = 0
