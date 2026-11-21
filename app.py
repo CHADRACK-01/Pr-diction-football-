@@ -182,6 +182,12 @@ def _set_derniere_execution(cle, date_str):
     except Exception:
         pass
 
+
+# Import en tête de module (et non local au scheduler) pour que toute
+# ImportError sur expirer_premiums soit visible et ne soit plus masquée
+# par le try/except du bloc 03:15.
+from users import expirer_premiums
+
 # =========================================================
 # TÂCHES AUTOMATIQUES
 # =========================================================
@@ -271,21 +277,25 @@ def _envoyer_coupons_premium():
     try:
         from core.paris_builder import generer_coupons_du_jour, formater_coupon
         from users import get_langue
+        from users.account_base import _parser_date
         from users.db import db_fetchall
         data = generer_coupons_du_jour()
         coupons = data["coupons"]
         if not coupons:
             return
-        maintenant = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        maintenant = datetime.now()
         rows = db_fetchall(
-            "SELECT user_id FROM utilisateurs "
+            "SELECT user_id, date_expiration FROM utilisateurs "
             "WHERE status = 'premium' "
             "AND date_expiration IS NOT NULL "
-            "AND date_expiration > ? "
-            "AND user_id NOT IN (SELECT user_id FROM bannis)",
-            params=[maintenant],
+            "AND user_id NOT IN (SELECT user_id FROM bannis)"
         )
-        premiums = [r[0] for r in rows] if rows else []
+        premiums = []
+        if rows:
+            for r in rows:
+                expiration_dt = _parser_date(r[1] if len(r) > 1 else None)
+                if expiration_dt is not None and expiration_dt > maintenant:
+                    premiums.append(r[0])
         for uid in premiums:
             langue = get_langue(uid)
             for coupon in coupons:
@@ -339,13 +349,18 @@ def _scheduler_notifications():
             if now.hour == 3 and 15 <= now.minute < 20:
                 if _get_derniere_execution("expiration_premium") != date_du_jour:
                     try:
-                        from users import expirer_premiums
                         nb_bascules = expirer_premiums()
+                        _set_derniere_execution("expiration_premium", date_du_jour)
                         log_info(
                             f"Expiration premium : {nb_bascules} compte(s) basculé(s) en free",
                             "SCHEDULER",
                         )
-                        _set_derniere_execution("expiration_premium", date_du_jour)
+                    except ImportError as e:
+                        log_warning(
+                            message="Import de expirer_premiums impossible",
+                            module="SCHEDULER",
+                            exception=e,
+                        )
                     except Exception as e:
                         log_error(
                             message="Erreur expiration premium",
