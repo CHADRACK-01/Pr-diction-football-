@@ -261,13 +261,27 @@ def enregistrer_bookmakers_handlers(bot):
 
             resultats = get_cotes_match(home_team, away_team, sport)
             # Historique horodaté : aucun appel API en plus, on garde ce qui vient d'être lu
+            alertes_chute = []
             try:
-                from core.cotes_historiques import enregistrer_snapshot
+                from core.cotes_historiques import enregistrer_snapshot, detecter_chute
                 enregistrer_snapshot(home_team, away_team, resultats)
+                # Chute de cote depuis la dernière observation enregistrée, par bookmaker
+                for bk in sorted({str(r.get("bookmaker", "inconnu")) for r in resultats or []}):
+                    chute = detecter_chute(home_team, away_team, bk)
+                    if chute and chute["chutes"]:
+                        alertes_chute.append((bk, chute))
             except Exception as e_hist:
                 log_error("Historique des cotes non enregistré", "BOOKMAKERS", exception=e_hist)
             
             texte = formater_comparateur_bookmakers(home_team, away_team, resultats)
+            if alertes_chute:
+                lignes = ["\n📉 <b>Chute de cote détectée</b>"]
+                for bk, chute in alertes_chute:
+                    for issue in chute["chutes"]:
+                        var = chute["variations"][issue]
+                        nom = {"home": home_team, "draw": "Nul", "away": away_team}[issue]
+                        lignes.append(f"• {bk} : {nom} −{var * 100:.1f} % depuis la dernière observation")
+                texte += "\n".join(lignes)
             
             bot.reply_to(message, texte, parse_mode="HTML")
 
