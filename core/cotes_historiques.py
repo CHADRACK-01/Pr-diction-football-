@@ -68,3 +68,46 @@ def enregistrer_snapshot(home, away, resultats, maintenant=None):
     except Exception as e:
         log_error("Enregistrement des cotes historiques impossible", "COTES", exception=e)
         return 0
+
+
+def lire_dernieres_cotes(home, away, bookmaker, limite=2):
+    """
+    Retourne les dernières observations d'un match pour un bookmaker,
+    la plus récente en premier : [(date_capture, cote_h, cote_d, cote_a), ...].
+    Retourne une liste vide en cas d'erreur ou d'absence de données.
+    """
+    try:
+        from users.db import db_fetchall
+        cle_match = f"{cle_canonique(home)}|{cle_canonique(away)}"
+        lignes = db_fetchall(
+            "SELECT date_capture, cote_h, cote_d, cote_a FROM cotes_snapshots "
+            "WHERE cle_match = ? AND bookmaker = ? ORDER BY date_capture DESC LIMIT ?",
+            params=[cle_match, str(bookmaker), int(limite)],
+            db_context={"table": "cotes_snapshots", "operation": "select"},
+        )
+        return list(lignes or [])
+    except Exception as e:
+        log_error("Lecture des cotes historiques impossible", "COTES", exception=e)
+        return []
+
+
+def detecter_chute(home, away, bookmaker, seuil=0.05):
+    """
+    Compare la dernière observation à la précédente pour un même bookmaker.
+    Une cote « chute » si elle a baissé d'au moins `seuil` (5 % par défaut)
+    en valeur relative. Retourne None s'il n'y a pas deux observations.
+    Sinon retourne {"variations": {issue: var}, "chutes": [issue, ...]},
+    où var = (ancienne - nouvelle) / ancienne et issue ∈ {home, draw, away}.
+    """
+    obs = lire_dernieres_cotes(home, away, bookmaker, limite=2)
+    if len(obs) < 2:
+        return None
+    _, rec_h, rec_d, rec_a = obs[0]
+    _, anc_h, anc_d, anc_a = obs[1]
+    variations = {}
+    for issue, ancienne, recente in (("home", anc_h, rec_h), ("draw", anc_d, rec_d), ("away", anc_a, rec_a)):
+        if not all(_valide(c) for c in (ancienne, recente)):
+            return None
+        variations[issue] = (float(ancienne) - float(recente)) / float(ancienne)
+    chutes = [issue for issue, var in variations.items() if var >= seuil]
+    return {"variations": variations, "chutes": chutes}
