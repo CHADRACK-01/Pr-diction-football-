@@ -276,7 +276,15 @@ def _envoyer_coupons_premium():
         coupons = data["coupons"]
         if not coupons:
             return
-        rows = db_fetchall("SELECT user_id FROM utilisateurs WHERE status = 'premium'")
+        maintenant = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        rows = db_fetchall(
+            "SELECT user_id FROM utilisateurs "
+            "WHERE status = 'premium' "
+            "AND date_expiration IS NOT NULL "
+            "AND date_expiration > ? "
+            "AND user_id NOT IN (SELECT user_id FROM bannis)",
+            params=[maintenant],
+        )
         premiums = [r[0] for r in rows] if rows else []
         for uid in premiums:
             langue = get_langue(uid)
@@ -326,6 +334,24 @@ def _scheduler_notifications():
                 if _get_derniere_execution("nettoyage_donnees") != date_du_jour:
                     _nettoyer_vieilles_donnees()
                     _set_derniere_execution("nettoyage_donnees", date_du_jour)
+
+            # 03:15 — Expiration des abonnements premium
+            if now.hour == 3 and 15 <= now.minute < 20:
+                if _get_derniere_execution("expiration_premium") != date_du_jour:
+                    try:
+                        from users import expirer_premiums
+                        nb_bascules = expirer_premiums()
+                        log_info(
+                            f"Expiration premium : {nb_bascules} compte(s) basculé(s) en free",
+                            "SCHEDULER",
+                        )
+                        _set_derniere_execution("expiration_premium", date_du_jour)
+                    except Exception as e:
+                        log_error(
+                            message="Erreur expiration premium",
+                            module="SCHEDULER",
+                            exception=e,
+                        )
 
             # heure_notif — Envoi notifications + canal
             if now.hour == heure_notif and now.minute < 5:
