@@ -8,7 +8,7 @@ Gestion de base des comptes utilisateurs.
 
 from datetime import datetime, timedelta
 
-from users.db import db_execute, db_fetchone, db_fetchone_dict
+from users.db import db_execute, db_fetchall, db_fetchone, db_fetchone_dict
 from core.utils.logs import log_info, log_error, log_warning
 
 
@@ -287,6 +287,53 @@ def est_premium(user_id):
         return False
 
     return expiration_dt > datetime.now()
+
+
+def expirer_premiums():
+    """
+    Repasse en 'free' les comptes premium dont l'abonnement est terminé.
+
+    Le filtrage est fait en Python via _parser_date (et non en SQL) car les
+    dates sont stockées en texte multi-format : une comparaison lexicographique
+    ferait expirer à tort '2026-11-20' face à '2026-11-20 08:00:00'.
+
+    Une date_expiration NULL est traitée comme expirée, ce qui est cohérent
+    avec est_premium qui renvoie False sans date.
+
+    Retourne le nombre de comptes basculés en 'free'.
+    """
+    rows = db_fetchall(
+        "SELECT user_id, date_expiration FROM utilisateurs WHERE status = 'premium'"
+    )
+    if not rows:
+        return 0
+
+    maintenant = datetime.now()
+    expires = []
+    for row in rows:
+        user_id = row[0]
+        expiration = row[1] if len(row) > 1 else None
+        expiration_dt = _parser_date(expiration)
+        if expiration_dt is None or expiration_dt <= maintenant:
+            expires.append(user_id)
+
+    bascules = 0
+    for user_id in expires:
+        rowcount = db_execute(
+            "UPDATE utilisateurs SET status = 'free' WHERE user_id = ?",
+            params=[user_id],
+            db_context={"table": "utilisateurs", "operation": "expire_premium"},
+        )
+        if rowcount and rowcount > 0:
+            bascules += 1
+
+    if bascules > 0:
+        log_info(
+            f"{bascules} abonnement(s) premium expiré(s) repassé(s) en free",
+            "ACCOUNTS",
+            extra={"nb_bascules": bascules},
+        )
+    return bascules
 
 
 def get_statut_label(user_id):

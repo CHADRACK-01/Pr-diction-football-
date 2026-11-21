@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from users.db import get_connection
 from core.utils.logs import log_info
 
@@ -216,8 +218,15 @@ def get_stats_globales():
     try:
         conn = get_connection()
         try:
+            maintenant = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             stats['total'] = conn.execute("SELECT COUNT(*) FROM utilisateurs").fetchone()[0]
-            stats['premium'] = conn.execute("SELECT COUNT(*) FROM utilisateurs WHERE status = 'premium'").fetchone()[0]
+            stats['premium'] = conn.execute(
+                "SELECT COUNT(*) FROM utilisateurs "
+                "WHERE status = 'premium' "
+                "AND date_expiration IS NOT NULL "
+                "AND date_expiration > ?",
+                (maintenant,),
+            ).fetchone()[0]
             stats['free'] = stats['total'] - stats['premium']
             stats['nouveaux_7j'] = conn.execute("""
                 SELECT COUNT(*) FROM utilisateurs
@@ -247,13 +256,16 @@ def get_liste_utilisateurs(limite=30, seulement_premium=False):
         conn = get_connection()
         
         if seulement_premium:
+            maintenant = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             cur = conn.execute("""
                 SELECT user_id, first_name, username, status, date_inscription
                 FROM utilisateurs
                 WHERE status = 'premium'
+                  AND date_expiration IS NOT NULL
+                  AND date_expiration > ?
                 ORDER BY date_inscription DESC
                 LIMIT ?
-            """, (limite,))
+            """, (maintenant, limite))
         else:
             cur = conn.execute("""
                 SELECT user_id, first_name, username, status, date_inscription
