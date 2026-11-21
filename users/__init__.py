@@ -24,6 +24,7 @@ from users.account_base import (
     set_premium,
     ajouter_jours_premium,  # ⚠️ Déplacé ici depuis account_limits
     est_premium,
+    expirer_premiums,
     get_statut_label,
     get_langue,
     set_langue
