@@ -99,3 +99,35 @@ def test_ajouter_colonnes_manquantes_conserve_les_donnees(monkeypatch, tmp_path)
 
     assert lignes == [(1, "alice")]
     assert "nouvelle_colonne" in colonnes
+
+
+def test_fonctionnalites_actives_a_le_schema_riche(monkeypatch, tmp_path):
+    """Régression : le catalogue exige les colonnes du schéma riche.
+
+    Un schéma à deux colonnes rendait ``core/feature_flags.py`` inopérant.
+    """
+    chemin = str(tmp_path / "catalogue.db")
+    _neutraliser_journalisation(monkeypatch)
+    _brancher_base_temporaire(monkeypatch, chemin)
+
+    users_db.initialiser_tables()
+
+    conn = sqlite3.connect(chemin)
+    try:
+        colonnes = {
+            ligne[1]
+            for ligne in conn.execute(
+                "PRAGMA table_info(fonctionnalites_actives)"
+            ).fetchall()
+        }
+    finally:
+        conn.close()
+
+    assert {
+        "libelle",
+        "categorie",
+        "priorite",
+        "proprietaire",
+        "date_creation",
+        "date_expiration",
+    } <= colonnes
