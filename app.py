@@ -309,7 +309,7 @@ def _envoyer_coupons_premium():
 # SCHEDULER
 # =========================================================
 def _scheduler_notifications():
-    global _derniere_alerte_live
+    global _derniere_alerte_live, _derniere_verif_apis
     log_info("Scheduler démarré...", "SCHEDULER")
     while True:
         try:
@@ -389,6 +389,22 @@ def _scheduler_notifications():
                 except Exception as e:
                     log_error(message="Erreur alertes live", module="SCHEDULER", exception=e)
 
+            # Santé des APIs de données (fonctionnalité 133) : contrôle toutes les 15 min.
+            # Alerte admin après 2 échecs consécutifs, puis rétablissement signalé.
+            creneau_api = f"api-{date_du_jour}-{now.hour:02d}-{now.minute // 15}"
+            if creneau_api != _derniere_verif_apis:
+                _derniere_verif_apis = creneau_api
+                try:
+                    from core.alerte_apis import verifier_et_alerter
+
+                    def _alerter_admin(texte):
+                        if ADMIN_ID is not None:
+                            bot.send_message(ADMIN_ID, "⚠️ <b>Santé des APIs</b>\n" + texte, parse_mode="HTML")
+
+                    verifier_et_alerter(_alerter_admin)
+                except Exception as e:
+                    log_error(message="Erreur contrôle APIs", module="SCHEDULER", exception=e)
+
             time.sleep(60)
         except Exception as e:
             log_error(message="Erreur critique scheduler", module="SCHEDULER", exception=e)
@@ -398,6 +414,7 @@ def _scheduler_notifications():
 from core.alertes_live import verifier_buts_live
 
 _derniere_alerte_live = None
+_derniere_verif_apis = None
 
 
 def _lancer_scheduler_apres_delai():
