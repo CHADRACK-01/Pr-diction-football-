@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from users.db import get_connection
+from users.db import get_connection, db_fetchone_strict, DatabaseError
 from core.utils.logs import log_info
 
 
@@ -120,15 +120,23 @@ def get_tous_admins():
 # BANNISSEMENTS
 # =========================================================
 def est_banni(user_id):
-    """Vérifie si un utilisateur est banni (avec gestion d'erreur)."""
+    """Vérifie si un utilisateur est banni.
+
+    Fail-closed : si la base ne répond pas, on considère l'utilisateur comme
+    banni plutôt que de laisser passer un utilisateur banni.
+    Exception : si la table n'existe pas encore, personne n'est banni.
+    """
     try:
-        conn = get_connection()
-        result = conn.execute("SELECT 1 FROM bannis WHERE user_id = ?", (user_id,)).fetchone()
-        conn.close()
+        result = db_fetchone_strict(
+            "SELECT 1 FROM bannis WHERE user_id = ?",
+            params=[user_id],
+            db_context={"table": "bannis", "operation": "check"},
+        )
         return result is not None
-    except Exception:
-        # Si la table n'existe pas encore, on considère que l'utilisateur n'est pas banni
-        return False
+    except DatabaseError as e:
+        if "no such table" in str(e).lower():
+            return False
+        return True
 
 
 def bannir_user(user_id, raison=""):
