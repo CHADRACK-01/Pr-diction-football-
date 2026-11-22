@@ -309,7 +309,7 @@ def _envoyer_coupons_premium():
 # SCHEDULER
 # =========================================================
 def _scheduler_notifications():
-    global _derniere_alerte_live, _derniere_verif_apis, _derniere_verif_quota
+    global _derniere_alerte_live, _derniere_verif_apis, _derniere_verif_quota, _derniere_verif_pic
     log_info("Scheduler démarré...", "SCHEDULER")
     while True:
         try:
@@ -420,6 +420,21 @@ def _scheduler_notifications():
                 except Exception as e:
                     log_error(message="Erreur contrôle quota", module="SCHEDULER", exception=e)
 
+            # Pic d'erreurs (fonctionnalité 134) : contrôle toutes les 5 min.
+            creneau_pic = f"pic-{date_du_jour}-{now.hour:02d}-{now.minute // 5}"
+            if creneau_pic != _derniere_verif_pic:
+                _derniere_verif_pic = creneau_pic
+                try:
+                    from core.pic_erreurs import controler_et_alerter as _controler_pic
+
+                    def _alerter_pic(texte):
+                        if ADMIN_ID is not None:
+                            bot.send_message(ADMIN_ID, texte)
+
+                    _controler_pic(_alerter_pic)
+                except Exception as e:
+                    log_error(message="Erreur contrôle pic d'erreurs", module="SCHEDULER", exception=e)
+
             time.sleep(60)
         except Exception as e:
             log_error(message="Erreur critique scheduler", module="SCHEDULER", exception=e)
@@ -431,6 +446,7 @@ from core.alertes_live import verifier_buts_live
 _derniere_alerte_live = None
 _derniere_verif_apis = None
 _derniere_verif_quota = None
+_derniere_verif_pic = None
 
 
 def _lancer_scheduler_apres_delai():
