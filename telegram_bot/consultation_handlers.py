@@ -24,7 +24,7 @@ from core.utils.logs import log_info, log_error, log_warning
 from users.admin import est_administrateur
 from users.db import db_fetchall, db_execute, db_fetchone
 from users.credits import crediter_premium, deja_credite
-from core.codes_promo import creer_code_promo, valider_code_promo
+from core.codes_promo import creer_code_promo, valider_code_promo, annuler_utilisation_promo
 from core.devises import formater_prix, get_taux_change
 
 
@@ -765,9 +765,25 @@ def enregistrer_utilisation_code_handlers(bot):
         type_reduction = resultat.get("type_reduction")
         valeur = resultat.get("valeur")
 
-        # Application réelle des jours Premium
+        # Application réelle des jours Premium.
+        # Si les jours ne sont pas accordés, l'utilisation consommée par
+        # valider_code_promo est restituée (le code reste disponible).
         try:
-            if crediter_premium(f"codepromo:{code}:{user_id}", user_id, jours, "codepromo") == "echec":
+            resultat_credit = crediter_premium(f"codepromo:{code}:{user_id}", user_id, jours, "codepromo")
+        except Exception as e:
+            log_error(
+                message="Erreur application code promo",
+                module="CODES_PROMO",
+                user_context={"user_id": user_id},
+                exception=e,
+            )
+            resultat_credit = "echec"
+
+        if resultat_credit != "ok":
+            annuler_utilisation_promo(code)
+            if resultat_credit == "deja":
+                bot.reply_to(message, "❌ Tu as déjà utilisé ce code.")
+            else:
                 log_error(
                     message="Code validé mais ajout Premium échoué",
                     module="CODES_PROMO",
@@ -776,22 +792,9 @@ def enregistrer_utilisation_code_handlers(bot):
                 )
                 bot.reply_to(
                     message,
-                    "❌ Code validé mais l'ajout Premium a échoué. "
-                    "Contacte l'admin avec ce code : " + code
+                    "❌ Le code n'a pas pu être appliqué (erreur technique). "
+                    "Il n'a pas été consommé, réessaie plus tard."
                 )
-                return
-        except Exception as e:
-            log_error(
-                message="Erreur application code promo",
-                module="CODES_PROMO",
-                user_context={"user_id": user_id},
-                exception=e,
-            )
-            bot.reply_to(
-                message,
-                "❌ Code validé mais erreur lors de l'application. "
-                "Contacte l'admin avec ce code : " + code
-            )
             return
 
         bot.reply_to(
