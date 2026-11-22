@@ -9,7 +9,10 @@ Gestion des demandes de paiement et codes Premium.
 import random
 import string
 
-from users.db import db_execute, db_fetchone, db_fetchall, db_fetchone_dict
+from users.db import (
+    db_execute, db_fetchone, db_fetchall, db_fetchone_dict,
+    db_fetchone_strict, DatabaseError,
+)
 from core.utils.logs import log_info, log_error, log_warning
 
 
@@ -134,7 +137,15 @@ def valider_demande(demande_id, admin_id):
         db_context={"table": "paiements_attente", "operation": "valider"},
     )
 
-    if rowcount is None or rowcount == 0:
+    if rowcount is None:
+        log_error(
+            message="Erreur DB lors de la validation de la demande",
+            module="PAIEMENTS",
+            extra={"demande_id": demande_id, "admin_id": admin_id},
+        )
+        return False
+
+    if rowcount == 0:
         log_warning(
             message="Validation impossible (déjà traitée ou inexistante)",
             module="PAIEMENTS",
@@ -170,7 +181,15 @@ def refuser_demande(demande_id, admin_id):
         db_context={"table": "paiements_attente", "operation": "refuser"},
     )
 
-    if rowcount is None or rowcount == 0:
+    if rowcount is None:
+        log_error(
+            message="Erreur DB lors du refus de la demande",
+            module="PAIEMENTS",
+            extra={"demande_id": demande_id, "admin_id": admin_id},
+        )
+        return False
+
+    if rowcount == 0:
         log_warning(
             message="Refus impossible (déjà traité ou inexistant)",
             module="PAIEMENTS",
@@ -314,11 +333,15 @@ def utiliser_code(code, user_id):
     code = code.strip().upper()
 
     # 1. Vérification préliminaire (lecture seule)
-    row = db_fetchone(
-        "SELECT jours, utilise FROM codes_premium WHERE code = ?",
-        params=[code],
-        db_context={"table": "codes_premium", "operation": "check"},
-    )
+    try:
+        row = db_fetchone_strict(
+            "SELECT jours, utilise FROM codes_premium WHERE code = ?",
+            params=[code],
+            db_context={"table": "codes_premium", "operation": "check"},
+        )
+    except DatabaseError:
+        # Panne DB : ne pas dire « code introuvable » à tort
+        return {"erreur": "Erreur technique. Réessaie."}
 
     if not row:
         log_warning(
