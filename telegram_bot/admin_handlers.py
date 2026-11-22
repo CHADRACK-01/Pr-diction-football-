@@ -20,6 +20,7 @@ from telegram_bot.admin.menus import (
     menu_admin_bas, menu_premium_bas, menu_codes_bas,
     menu_parametres_bas, menu_bdd_bas
 )
+from telegram_bot.admin.revenus_admin import envoyer_revenus_mois
 from telegram_bot.admin.actions import (
     executer_action, executer_action_bas, ADMIN_SESSIONS,
     cmd_features, cmd_activer, cmd_desactiver,
@@ -172,7 +173,7 @@ def enregistrer_admin_handlers(bot):
         "Gen 10 jours", "Gen 30 jours", "Gen 90 jours", "Gen custom", "👁️ Voir codes dispo",
         "Heure notifs", "Limite Free", "Prix Stars", "Message accueil", "Mode maintenance", "👁️ Voir parametres",
         "Taille BDD", "Detail tables", "🧹 Nettoyer",
-        "⚙️ Gérer les Fonctionnalités"
+        "⚙️ Gérer les Fonctionnalités", "💰 Revenus"
     ])
     def handle_admin_buttons_text(message):
         text = message.text
@@ -255,6 +256,9 @@ def enregistrer_admin_handlers(bot):
                 return
             if text == "⚙️ Gérer les Fonctionnalités":
                 cmd_features(bot, message)
+                return
+            if text == "💰 Revenus":
+                envoyer_revenus_mois(bot, message.chat.id)
                 return
 
             # --- Exécution des actions ---
