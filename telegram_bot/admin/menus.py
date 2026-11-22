@@ -96,6 +96,7 @@ def menu_admin_bas():
         telebot.types.KeyboardButton("💎 Gérer Premium"),
         telebot.types.KeyboardButton("🔍 Lancer l'Audit"),
         telebot.types.KeyboardButton("⚙️ Gérer les Fonctionnalités"), # NOUVEAU
+        telebot.types.KeyboardButton("💰 Revenus"),
         # Boutons paramétrés (sous-claviers de sélection)
         telebot.types.KeyboardButton("🔍 Comparer"),
         telebot.types.KeyboardButton("⚽ Série"),
