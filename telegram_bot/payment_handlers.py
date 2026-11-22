@@ -11,6 +11,7 @@ import telebot
 from datetime import datetime, timedelta
 
 from users.credits import crediter_premium
+from users.paiements import reouvrir_demande, liberer_code
 from users import (
     get_langue, set_premium, ajouter_jours_premium,
     creer_demande_paiement, utiliser_code,
@@ -357,13 +358,19 @@ def enregistrer_payment_handlers(bot):
 
         jours = resultat["jours"]
         try:
-            if crediter_premium(f"code:{code}", user_id, jours, "code") == "echec":
-                raise RuntimeError("crédit refusé")
-            bot.reply_to(message, get_text("pay_code_ok", langue, jours=jours))
-            log_info(f"Code utilisé : +{jours}j", "PAIEMENT", user_context=ctx)
+            resultat_credit = crediter_premium(f"code:{code}", user_id, jours, "code")
         except Exception as e:
             log_error(f"Code validé mais ajout premium échoué", "PAIEMENT", user_context=ctx, extra={"jours": jours}, exception=e)
-            bot.reply_to(message, "❌ Le code a été validé mais l'ajout a échoué. Contacte l'admin.")
+            resultat_credit = "echec"
+
+        if resultat_credit == "echec":
+            # Crédit non appliqué : le code n'est pas consommé, l'utilisateur peut réessayer
+            liberer_code(code, user_id)
+            bot.reply_to(message, "❌ Le code n'a pas pu être appliqué (erreur technique). Il n'a pas été consommé, réessaie plus tard.")
+            return
+
+        bot.reply_to(message, get_text("pay_code_ok", langue, jours=jours))
+        log_info(f"Code utilisé : +{jours}j", "PAIEMENT", user_context=ctx)
 
     # =========================================================
     # VALIDATION / REFUS
@@ -397,7 +404,24 @@ def enregistrer_payment_handlers(bot):
             jours = _jours_pour_abo(demande["abonnement"])
             resultat_credit = crediter_premium(f"paiement:{demande_id}", demande["user_id"], jours, "paiement")
             if resultat_credit == "echec":
+                # Le crédit n'a pas été appliqué : on NE notifie PAS l'utilisateur
+                # et on remet la demande en attente pour pouvoir réessayer.
                 log_error("Paiement validé mais crédit Premium échoué", "PAIEMENT", extra={"demande_id": demande_id})
+                if reouvrir_demande(demande_id):
+                    bot.answer_callback_query(call.id, "⚠️ Crédit impossible")
+                    bot.send_message(
+                        call.message.chat.id,
+                        f"⚠️ Paiement #{demande_id} NON crédité (erreur technique). "
+                        "La demande est remise en attente : réessaie la validation."
+                    )
+                else:
+                    bot.answer_callback_query(call.id, "⚠️ Crédit impossible")
+                    bot.send_message(
+                        call.message.chat.id,
+                        f"⚠️ Paiement #{demande_id} NON crédité ET statut non remis à zéro. "
+                        "Correction manuelle nécessaire."
+                    )
+                return
 
             bot.answer_callback_query(call.id, "✅ Validé")
             bot.send_message(call.message.chat.id, f"✅ Paiement #{demande_id} validé. +{jours}j pour user {demande['user_id']}")
