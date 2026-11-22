@@ -270,3 +270,31 @@ def get_fixtures_by_league(league_id, season, date_from=None, date_to=None):
             exception=e,
         )
         return []
+
+
+def lire_consommation():
+    """Lit la consommation journalière de chaque clé via /status (fonctionnalité 135).
+
+    Retourne une liste de dicts {cle, used, limit}, où cle est le rang (1, 2, ...)
+    et jamais la clé elle-même. Une clé qui ne répond pas est ignorée.
+    """
+    resultats = []
+    for rang, key in enumerate(API_FOOTBALL_KEYS, start=1):
+        try:
+            res = requests.get(f"{BASE_URL}/status", headers=_get_headers(key), timeout=10)
+            if res.status_code != 200:
+                continue
+            req = res.json().get("response", {}).get("requests", {})
+            resultats.append({
+                "cle": rang,
+                "used": int(req.get("current", 0)),
+                "limit": int(req.get("limit_day", 0)),
+            })
+        except Exception as e:
+            log_error(
+                message=f"API-Football clé {rang} : lecture de consommation impossible",
+                module="API",
+                api_context={"source": "api_football"},
+                exception=e,
+            )
+    return resultats
