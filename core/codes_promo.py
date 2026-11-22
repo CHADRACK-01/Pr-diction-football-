@@ -238,3 +238,31 @@ def valider_code_promo(code, user_id):
         "jours_premium": infos["jours_premium"],
         "message": "Code valide.",
     }
+
+
+# =========================================================
+# RESTITUTION APRÈS ÉCHEC DE CRÉDIT
+# =========================================================
+def annuler_utilisation_promo(code):
+    """Rend une utilisation consommée par valider_code_promo.
+
+    À appeler seulement si les jours Premium n'ont pas été accordés
+    (échec technique ou crédit déjà appliqué pour cet utilisateur).
+    Ne descend jamais sous 0. Retourne True si la restitution a réussi.
+    """
+    code = (code or "").strip().upper()
+    rowcount = db_execute(
+        "UPDATE codes_promo SET deja_utilise = deja_utilise - 1 "
+        "WHERE code = ? AND deja_utilise > 0",
+        params=[code],
+        db_context={"table": "codes_promo", "operation": "annuler"},
+    )
+    if rowcount is None or rowcount == 0:
+        log_error(
+            message="Impossible de restituer une utilisation de code promo",
+            module="CODES_PROMO",
+            extra={"code": code},
+        )
+        return False
+    log_info(f"Utilisation du code {code} restituée", "CODES_PROMO", extra={"code": code})
+    return True
