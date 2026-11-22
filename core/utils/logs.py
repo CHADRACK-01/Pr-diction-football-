@@ -230,7 +230,8 @@ def _envoyer_telegram_sync(texte: str) -> bool:
             return False
         return True
     except Exception as e:
-        print(f"⚠️ Impossible d'envoyer l'alerte à l'admin : {e}")
+        # Ne pas afficher {e} : l'exception peut contenir l'URL avec le token du bot
+        print(f"⚠️ Impossible d'envoyer l'alerte à l'admin : {type(e).__name__}")
         return False
 
 
