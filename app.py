@@ -325,28 +325,28 @@ def _scheduler_notifications():
 
             _initialiser_bdd_si_necessaire()
 
-            # 02:00 — Mise à jour des résultats
-            if now.hour == 2 and now.minute < 5:
+            # 02:00 — Mise à jour des résultats (à partir de 02:00, une seule fois par jour)
+            if now.hour == 2:
                 if _get_derniere_execution("maj_resultats") != date_du_jour:
                     log_info("Mise à jour des résultats...", "SCHEDULER")
                     _mettre_a_jour_resultats()
                     _set_derniere_execution("maj_resultats", date_du_jour)
 
-            # 03:00 — Téléchargement matchs
-            if now.hour == 3 and now.minute < 5:
+            # 03:00 — Téléchargement matchs (à partir de 03:00, une seule fois par jour)
+            if now.hour == 3:
                 if _get_derniere_execution("telechargement") != date_du_jour:
                     log_info("Téléchargement des matchs...", "SCHEDULER")
                     _telecharger_nouveaux_matchs()
                     _set_derniere_execution("telechargement", date_du_jour)
 
             # 03:05 — Nettoyage vieilles données
-            if now.hour == 3 and 5 <= now.minute < 10:
+            if now.hour == 3 and now.minute >= 5:
                 if _get_derniere_execution("nettoyage_donnees") != date_du_jour:
                     _nettoyer_vieilles_donnees()
                     _set_derniere_execution("nettoyage_donnees", date_du_jour)
 
             # 03:15 — Expiration des abonnements premium
-            if now.hour == 3 and 15 <= now.minute < 20:
+            if now.hour == 3 and now.minute >= 15:
                 if _get_derniere_execution("expiration_premium") != date_du_jour:
                     try:
                         nb_bascules = expirer_premiums()
@@ -369,24 +369,25 @@ def _scheduler_notifications():
                         )
 
             # heure_notif — Envoi notifications + canal
-            if now.hour == heure_notif and now.minute < 5:
+            if now.hour == heure_notif:
                 if _get_derniere_execution("notifs_jour") != date_du_jour:
                     _envoyer_notifications()
                     _set_derniere_execution("notifs_jour", date_du_jour)
                     if est_weekend:
                         _envoyer_coupons_premium()
 
-            # Toutes les 5 min — Alertes live (buts en direct)
-            if now.minute % 5 == 0:
-                creneau = f"{date_du_jour}-{now.hour:02d}-{now.minute // 5}"
-                if creneau != _derniere_alerte_live:
-                    _derniere_alerte_live = creneau
-                    try:
-                        alertes = verifier_buts_live(bot)
-                        if alertes > 0:
-                            log_info(f"Alertes live : {alertes} alerte(s) envoyée(s)", "SCHEDULER")
-                    except Exception as e:
-                        log_error(message="Erreur alertes live", module="SCHEDULER", exception=e)
+            # Alertes live (buts en direct) : une vérification par tranche de 5 min.
+            # Le créneau est mémorisé, donc même si la boucle décale d'une minute,
+            # la tranche n'est jamais manquée ni traitée deux fois.
+            creneau = f"{date_du_jour}-{now.hour:02d}-{now.minute // 5}"
+            if creneau != _derniere_alerte_live:
+                _derniere_alerte_live = creneau
+                try:
+                    alertes = verifier_buts_live(bot)
+                    if alertes > 0:
+                        log_info(f"Alertes live : {alertes} alerte(s) envoyée(s)", "SCHEDULER")
+                except Exception as e:
+                    log_error(message="Erreur alertes live", module="SCHEDULER", exception=e)
 
             time.sleep(60)
         except Exception as e:
