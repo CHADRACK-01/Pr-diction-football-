@@ -622,3 +622,45 @@ def nettoyer_paiements_anciens(jours: int = 90) -> int:
         return 0
     log_info(f"{rowcount} paiements de plus de {jours}j supprimés.", "DATABASE")
     return rowcount
+
+
+# =========================================================
+# VERSIONS STRICTES (ajoutées pour les chemins critiques)
+# Contrairement aux helpers ci-dessus, ces fonctions ne renvoient JAMAIS une
+# valeur vide en cas d'erreur : elles lèvent DatabaseError. Ainsi, une panne
+# ne peut pas être prise pour « aucune donnée » (ex. compteur à 0).
+# =========================================================
+class DatabaseError(Exception):
+    """Erreur de base de données remontée explicitement."""
+
+
+def db_fetchone_strict(query, params=None, db_context=None):
+    """Comme db_fetchone, mais lève DatabaseError en cas d'erreur."""
+    ctx = dict(db_context or {})
+    ctx.setdefault("query", query)
+    ctx.setdefault("params", params)
+
+    conn = None
+    try:
+        conn = get_connection()
+        cur = conn.execute(query, params or [])
+        return cur.fetchone()
+    except Exception as e:
+        log_error(
+            message="Échec de lecture SQL (fetchone_strict)",
+            module="DATABASE",
+            db_context=ctx,
+            exception=e,
+        )
+        raise DatabaseError(str(e)) from e
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception as e:
+                log_warning(
+                    message="Impossible de fermer la connexion DB",
+                    module="DATABASE",
+                    db_context=ctx,
+                    exception=e,
+                )
