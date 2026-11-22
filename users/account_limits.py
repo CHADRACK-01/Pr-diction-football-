@@ -12,7 +12,7 @@ Gestion des compteurs et limites de pronostics.
 
 from datetime import datetime
 
-from users.db import db_execute, db_fetchone
+from users.db import db_execute, db_fetchone, db_fetchone_strict
 from users.account_base import est_premium
 from core.utils.logs import log_info, log_error, log_warning
 
@@ -115,6 +115,20 @@ def get_compteur_jour(user_id):
     return row[0] if row else 0
 
 
+def get_compteur_jour_strict(user_id):
+    """Comme get_compteur_jour, mais lève DatabaseError si la base est en erreur.
+
+    Utilisé par peut_faire_pronostic : une panne ne doit pas passer pour 0 pronostic.
+    """
+    today = _date_kinshasa_str()
+    row = db_fetchone_strict(
+        "SELECT compteur FROM compteurs_jour WHERE user_id = ? AND date = ?",
+        params=[user_id, today],
+        db_context={"table": "compteurs_jour", "operation": "read_strict"},
+    )
+    return row[0] if row else 0
+
+
 def get_limite_jour(user_id):
     """Retourne la limite quotidienne selon le statut."""
     from config import LIMITE_FREE_JOUR, LIMITE_PREMIUM_JOUR
@@ -150,7 +164,7 @@ def peut_faire_pronostic(user_id):
     La décision réelle est prise par reserver_pronostic() au moment du calcul.
     """
     try:
-        compteur = get_compteur_jour(user_id)
+        compteur = get_compteur_jour_strict(user_id)
         limite = get_limite_jour(user_id)
         return compteur < limite
     except Exception as e:
