@@ -335,6 +335,14 @@ def log_error(message: str, module: str = "BOT",
         prefixe += f"[{handler}]"
     print(f"{prefixe} ❌ {message}")
 
+    # Comptage pour la détection de pic (fonctionnalité 134) : avant l'anti-flood,
+    # pour compter toutes les erreurs. Ne doit jamais empêcher le log.
+    try:
+        from core.pic_erreurs import enregistrer_erreur
+        enregistrer_erreur(module)
+    except Exception:
+        pass
+
     trace = ""
     if exception:
         trace = traceback.format_exc()
