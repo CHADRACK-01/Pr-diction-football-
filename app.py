@@ -309,7 +309,7 @@ def _envoyer_coupons_premium():
 # SCHEDULER
 # =========================================================
 def _scheduler_notifications():
-    global _derniere_alerte_live, _derniere_verif_apis
+    global _derniere_alerte_live, _derniere_verif_apis, _derniere_verif_quota
     log_info("Scheduler démarré...", "SCHEDULER")
     while True:
         try:
@@ -405,6 +405,21 @@ def _scheduler_notifications():
                 except Exception as e:
                     log_error(message="Erreur contrôle APIs", module="SCHEDULER", exception=e)
 
+            # Consommation des API (fonctionnalité 135) : contrôle une fois par heure.
+            creneau_quota = f"quota-{date_du_jour}-{now.hour:02d}"
+            if creneau_quota != _derniere_verif_quota:
+                _derniere_verif_quota = creneau_quota
+                try:
+                    from core.controle_quota import controler_et_alerter
+
+                    def _alerter_quota(texte):
+                        if ADMIN_ID is not None:
+                            bot.send_message(ADMIN_ID, "📊 <b>Quota API</b>\n" + texte, parse_mode="HTML")
+
+                    controler_et_alerter(_alerter_quota)
+                except Exception as e:
+                    log_error(message="Erreur contrôle quota", module="SCHEDULER", exception=e)
+
             time.sleep(60)
         except Exception as e:
             log_error(message="Erreur critique scheduler", module="SCHEDULER", exception=e)
@@ -415,6 +430,7 @@ from core.alertes_live import verifier_buts_live
 
 _derniere_alerte_live = None
 _derniere_verif_apis = None
+_derniere_verif_quota = None
 
 
 def _lancer_scheduler_apres_delai():
