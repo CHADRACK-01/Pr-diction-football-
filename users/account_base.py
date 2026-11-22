@@ -8,7 +8,10 @@ Gestion de base des comptes utilisateurs.
 
 from datetime import datetime, timedelta
 
-from users.db import db_execute, db_fetchall, db_fetchone, db_fetchone_dict
+from users.db import (
+    db_execute, db_fetchall, db_fetchone, db_fetchone_dict,
+    db_fetchone_strict, DatabaseError,
+)
 from core.utils.logs import log_info, log_error, log_warning
 
 
@@ -94,6 +97,23 @@ def get_user_status(user_id):
     return info.get("status", "free"), info.get("date_expiration")
 
 
+def _lire_info_strict(user_id):
+    """Lit les champs utiles d'un utilisateur. Lève DatabaseError en cas de panne.
+
+    Contrairement à get_user_info (qui renvoie None en cas d'erreur), cette
+    fonction permet de distinguer « utilisateur introuvable » et « base en panne »
+    avant une écriture.
+    """
+    row = db_fetchone_strict(
+        "SELECT status, date_expiration, first_name FROM utilisateurs WHERE user_id = ?",
+        params=[user_id],
+        db_context={"table": "utilisateurs", "operation": "read_strict"},
+    )
+    if row is None:
+        return None
+    return {"status": row[0] or "free", "date_expiration": row[1], "first_name": row[2]}
+
+
 # =========================================================
 # ENREGISTREMENT
 # =========================================================
@@ -164,7 +184,11 @@ def ajouter_jours_premium(user_id, jours):
         )
         return False
 
-    info = get_user_info(user_id)
+    try:
+        info = _lire_info_strict(user_id)
+    except DatabaseError:
+        # Panne DB : on n'écrit rien, le crédit sera libéré et pourra être réessayé
+        return False
     if not info:
         log_error(
             message="Impossible d'ajouter du premium : utilisateur introuvable",
@@ -238,7 +262,10 @@ def set_premium(user_id, date_expiration):
             return False
         date_expiration = parsed.strftime("%Y-%m-%d %H:%M:%S")
 
-    info = get_user_info(user_id)
+    try:
+        info = _lire_info_strict(user_id)
+    except DatabaseError:
+        return False
     if not info:
         log_error(
             message="Impossible de définir premium : utilisateur introuvable",
