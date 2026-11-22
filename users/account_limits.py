@@ -2,6 +2,10 @@
 """
 Gestion des compteurs et limites de pronostics.
 - Compteur atomique (ON CONFLICT DO UPDATE)
+- Réservation atomique AVANT calcul (reserver_pronostic) : la limite est
+  vérifiée dans la même requête SQL que l'incrément, donc pas de dépassement
+  même avec des demandes simultanées.
+- Remboursement si le calcul échoue (annuler_pronostic)
 - Limites dynamiques (paramètres BDD)
 - Logs enrichis
 """
@@ -21,7 +25,11 @@ def _date_kinshasa_str():
 
 
 def incrementer_compteur(user_id):
-    """Incrémente le compteur de pronostics du jour (atomique)."""
+    """Incrémente le compteur de pronostics du jour (atomique).
+
+    Conservé pour compatibilité. Le flux de pronostic utilise désormais
+    reserver_pronostic(), qui applique la limite au moment de l'incrément.
+    """
     if not isinstance(user_id, int):
         log_warning(
             message="user_id invalide pour incrementer_compteur",
@@ -40,6 +48,58 @@ def incrementer_compteur(user_id):
         """,
         params=[user_id, today],
         db_context={"table": "compteurs_jour", "operation": "increment"},
+    )
+    return rowcount is not None
+
+
+def reserver_pronostic(user_id):
+    """Réserve atomiquement une place de pronostic pour aujourd'hui.
+
+    À appeler AVANT le calcul. La condition « compteur < limite » fait partie
+    de la même requête SQL que l'incrément : deux demandes simultanées ne
+    peuvent pas dépasser la limite.
+
+    Retourne True si la place est réservée. Retourne False si la limite est
+    atteinte, si les paramètres sont invalides, ou si la base est injoignable
+    (on refuse par sécurité : fail-closed).
+    """
+    if not isinstance(user_id, int):
+        return False
+
+    limite = get_limite_jour(user_id)
+    if not isinstance(limite, int) or limite <= 0:
+        return False
+
+    today = _date_kinshasa_str()
+    rowcount = db_execute(
+        """
+        INSERT INTO compteurs_jour (user_id, date, compteur)
+        VALUES (?, ?, 1)
+        ON CONFLICT (user_id, date)
+        DO UPDATE SET compteur = compteurs_jour.compteur + 1
+        WHERE compteurs_jour.compteur < ?
+        """,
+        params=[user_id, today, limite],
+        db_context={"table": "compteurs_jour", "operation": "reserve"},
+    )
+    # rowcount == 1 : place réservée ; 0 : limite atteinte ; None : erreur DB
+    return bool(rowcount)
+
+
+def annuler_pronostic(user_id):
+    """Rend une place réservée (ex. : le calcul a échoué).
+
+    Ne descend jamais sous 0. Retourne True si l'opération a réussi en base.
+    """
+    if not isinstance(user_id, int):
+        return False
+
+    today = _date_kinshasa_str()
+    rowcount = db_execute(
+        "UPDATE compteurs_jour SET compteur = compteur - 1 "
+        "WHERE user_id = ? AND date = ? AND compteur > 0",
+        params=[user_id, today],
+        db_context={"table": "compteurs_jour", "operation": "release"},
     )
     return rowcount is not None
 
@@ -85,7 +145,10 @@ def get_limite_jour(user_id):
 
 
 def peut_faire_pronostic(user_id):
-    """Vérifie si l'utilisateur peut encore faire un pronostic aujourd'hui."""
+    """Vérification indicative (affichage du menu).
+
+    La décision réelle est prise par reserver_pronostic() au moment du calcul.
+    """
     try:
         compteur = get_compteur_jour(user_id)
         limite = get_limite_jour(user_id)
