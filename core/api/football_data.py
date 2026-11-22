@@ -327,3 +327,40 @@ def recuperer_matchs_bruts():
         )
 
     return matchs_bruts
+
+
+def tester_api():
+    """Contrôle de santé : vrai si Football-Data répond avec la clé configurée.
+
+    Une seule requête, sans retry, pour ne pas consommer le quota inutilement.
+    """
+    if not FOOTBALL_DATA_KEY:
+        log_warning(
+            message="Football-Data : clé API manquante",
+            module="API",
+            api_context={"source": "football_data"},
+        )
+        return False
+    try:
+        res = requests.get(
+            "https://api.football-data.org/v4/competitions",
+            headers={"X-Auth-Token": FOOTBALL_DATA_KEY},
+            timeout=10,
+        )
+        if res.status_code == 200:
+            log_info("Football-Data : OK", "API")
+            return True
+        log_warning(
+            message=f"Football-Data : statut {res.status_code}",
+            module="API",
+            api_context={"source": "football_data", "http_status": res.status_code},
+        )
+        return False
+    except Exception as e:
+        log_error(
+            message="Football-Data : impossible de se connecter",
+            module="API",
+            api_context={"source": "football_data"},
+            exception=e,
+        )
+        return False
