@@ -28,17 +28,18 @@ from telegram_bot.handlers.notifications import enregistrer_notifications_handle
 from telegram_bot.handlers.historique import enregistrer_historique_handlers
 from telegram_bot.handlers.statistiques import enregistrer_statistiques_handlers
 from telegram_bot.handlers.parrainage import enregistrer_parrainage_handlers
+from telegram_bot.completions_handlers import enregistrer_completions_handlers
 
-# Preuves, Codes Promo & Devises (désormais regroupés dans consultation_handlers)
-from telegram_bot.consultation_handlers import (
-    enregistrer_preuves_handlers,
+# Preuves, Codes Promo (consultation_handlers historique)
+from telegram_bot.consultation.codes_promo import (
     enregistrer_codes_promo_handlers,
     enregistrer_utilisation_code_handlers,
-    enregistrer_devises_handlers,
 )
+from telegram_bot.consultation.devises import enregistrer_devises_handlers
+from telegram_bot.consultation.preuves import enregistrer_preuves_handlers
 
 # 4. Les paiements et prédictions
-from telegram_bot.payment_handlers import enregistrer_payment_handlers
+from telegram_bot.payments.handlers import enregistrer_payment_handlers
 from telegram_bot.prediction_handlers import enregistrer_prediction_handlers
 
 # Le Bot Auto-évolutif (IA)
@@ -96,18 +97,25 @@ def enregistrer_handlers(bot):
         ("AI_Dev", enregistrer_ai_dev_handlers),
         ("Bankroll", enregistrer_bankroll_handlers),
         ("Cashout", enregistrer_cashout_handlers),
+        ("Completions", enregistrer_completions_handlers),
         # --- Menu admin (doit passer AVANT Fallback) ---
         ("MenuCommandes", enregistrer_menu_commandes_handlers),
         # --- Fallback EN DERNIER ---
         ("Fallback", enregistrer_fallback_handlers),
     ]
 
+    modules_en_erreur = []
     for nom, enregistrer in handlers_modules:
         try:
             enregistrer(bot)
             print(f"✅ Module {nom} enregistré.")
         except Exception as e:
-            print(f"❌ Erreur d'enregistrement du module {nom} : {e}")
+            modules_en_erreur.append(nom)
+            from core.utils.logs import log_error
+            log_error(f"Erreur d'enregistrement du module {nom}", "HANDLERS", exception=e)
+
+    if modules_en_erreur:
+        raise RuntimeError("Modules Telegram non enregistrés : " + ", ".join(modules_en_erreur))
 
     noms = " -> ".join([nom for nom, _ in handlers_modules])
     print(f"✅ Handlers enregistrés dans l'ordre : {noms}")

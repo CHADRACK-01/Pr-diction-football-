@@ -27,7 +27,7 @@ def _formater_bulletin_premium(resultat, langue="fr"):
         txt += f"👋 Voici mon analyse pour ce match :\n"
         txt += f"J'ai regardé les statistiques et voici ce que je te conseille.\n\n"
         txt += f"👉 MON CONSEIL : {phrase_conseil}\n"
-        txt += f"(J'ai <b>{round(proba_dc*100, 1)}%</b> de certitude).\n\n"
+        txt += f"(Probabilité estimée : <b>{round(proba_dc*100, 1)}%</b> — pas une garantie).\n\n"
 
         txt += f"📊 <b>LES PROBABILITÉS :</b>\n"
         txt += f"• {h} gagne : {round(p_h*100, 1)}%\n"
@@ -94,7 +94,7 @@ def _formater_bulletin_free(resultat, langue="fr"):
         txt = f"⚽ <b>{h} vs {a}</b>\n\n"
         txt += f"👋 Voici mon analyse :\n\n"
         txt += f"👉 MON CONSEIL : {phrase_conseil}\n"
-        txt += f"(J'ai <b>{round(proba_dc*100, 1)}%</b> de certitude).\n\n"
+        txt += f"(Probabilité estimée : <b>{round(proba_dc*100, 1)}%</b> — pas une garantie).\n\n"
 
         txt += f"📊 <b>PROBABILITÉS :</b>\n"
         txt += f"• {h} gagne : {round(p_h*100, 1)}%\n"

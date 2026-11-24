@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from users.db import get_connection, db_fetchone_strict, DatabaseError
+from users.database import DatabaseError, db_fetchone_strict, get_connection
 from core.utils.logs import log_info
 
 

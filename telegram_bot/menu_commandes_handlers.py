@@ -62,14 +62,25 @@ def enregistrer_menu_commandes_handlers(bot):
         "⚽ Série", "💰 Cotes", "📈 Bankroll", "💸 Cash-out",
         "⚠️ Piège", "🌦️ Météo", "🎯 Favoris", "🎟️ Code Promo",
         "📊 Stats Admin", "🚨 Panique", "📸 Preuves",
-        "🎟️ Codes", "🔧 Features", "💱 Taux"
+        "🎟️ Codes", "🔧 Features", "💱 Taux",
+        "🎁 Bonus Quotidien", "🎡 Roue", "⭐ Mes XP",
+        "🎲 Monte Carlo", "🔴 Derby", "📈 Elo Live",
+        "📅 Fatigue", "🛡️ Anti-perte", "💸 Cash-out Partiel",
+        "🗂️ Toutes les Fonctionnalités",
     ])
     def handle_admin_buttons(message):
         """Traite les clics sur les boutons admin."""
         text = message.text
         user_id = message.from_user.id
 
-        if not est_administrateur(user_id):
+        boutons_utilisateur = {
+            "🎁 Bonus Quotidien", "🎡 Roue", "⭐ Mes XP",
+            "🎲 Monte Carlo", "🔴 Derby", "📈 Elo Live",
+            "📅 Fatigue", "🛡️ Anti-perte", "💸 Cash-out Partiel",
+            "🗂️ Toutes les Fonctionnalités",
+        }
+
+        if text not in boutons_utilisateur and not est_administrateur(user_id):
             bot.reply_to(message, "⛔ Commande réservée aux administrateurs.")
             return
 
@@ -93,6 +104,15 @@ def enregistrer_menu_commandes_handlers(bot):
             "🎟️ Codes": "/codepromo",
             "🔧 Features": "/features",
             "💱 Taux": "/taux",
+            "🎁 Bonus Quotidien": "/daily",
+            "🎡 Roue": "/roue",
+            "⭐ Mes XP": "/xp",
+            "🎲 Monte Carlo": "/montecarlo",
+            "🔴 Derby": "/derby",
+            "📈 Elo Live": "/elo",
+            "📅 Fatigue": "/fatigue",
+            "🛡️ Anti-perte": "/antiperte",
+            "💸 Cash-out Partiel": "/cashpartiel",
         }
 
         commande = mapping.get(text)
@@ -104,3 +124,11 @@ def enregistrer_menu_commandes_handlers(bot):
             except Exception as e:
                 log_error(f"Erreur redirection bouton {text}", "MENU", exception=e)
                 bot.reply_to(message, f"❌ Erreur lors de l'exécution de {commande}.")
+        elif text == "🗂️ Toutes les Fonctionnalités":
+            from telegram_bot.completions_handlers import creer_menu_catalogue
+            bot.send_message(
+                message.chat.id,
+                "🗂️ <b>CATALOGUE COMPLET DES FONCTIONNALITÉS</b>",
+                reply_markup=creer_menu_catalogue(),
+                parse_mode="HTML",
+            )

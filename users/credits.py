@@ -9,7 +9,7 @@ même si la demande est répétée ou faite en parallèle.
 Principe : on réserve la référence AVANT d'ajouter les jours. Si l'ajout
 échoue, la réservation est libérée pour permettre une nouvelle tentative.
 """
-from users.db import db_execute, db_fetchone
+from users.database import db_execute, db_fetchone
 from core.utils.logs import log_error, log_info
 
 _TABLE_SQL = """

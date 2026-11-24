@@ -4,14 +4,14 @@
 # =========================================================
 # BASE DE DONNÉES
 # =========================================================
-from users.db import (
+from users.database import (
     get_connection,
-    initialiser_tables,
     get_taille_base,
     get_detail_tables,
     nettoyer_logs_anciens,
-    nettoyer_paiements_anciens
+    nettoyer_paiements_anciens,
 )
+from users.db import initialiser_tables
 
 # =========================================================
 # COMPTES UTILISATEURS (BASE + PREMIUM)

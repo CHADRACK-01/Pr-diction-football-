@@ -1,4 +1,4 @@
-from users.db import get_connection
+from users.database import get_connection
 from core.utils.logs import log_info, log_error
 
 

@@ -123,6 +123,12 @@ TURSO_TOKEN = os.environ.get("TURSO_TOKEN", "")
 # =========================================================
 FOOTBALL_DATA_KEY = os.environ.get("FOOTBALL_DATA_KEY", "")
 BZZOIRO_API_KEY = os.environ.get("BZZOIRO_API_KEY", "")
+AIRTEL_API_KEY = os.environ.get("AIRTEL_API_KEY", "")
+ORANGE_API_KEY = os.environ.get("ORANGE_API_KEY", "")
+MPESA_API_KEY = os.environ.get("MPESA_API_KEY", "")
+AIRTEL_API_URL = os.environ.get("AIRTEL_API_URL", "")
+ORANGE_API_URL = os.environ.get("ORANGE_API_URL", "")
+MPESA_API_URL = os.environ.get("MPESA_API_URL", "")
 
 API_FOOTBALL_KEYS = [
     os.environ.get("API_FOOTBALL_KEY_1", ""),

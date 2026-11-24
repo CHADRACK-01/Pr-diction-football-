@@ -1,0 +1,4902 @@
+[
+  {
+    "id": 1,
+    "name": "Alertes Live / But en direct",
+    "group": "Live",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 2,
+    "name": "Détecteur de Value Bet",
+    "group": "Paris",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 3,
+    "name": "Tracker de Chute de Cotes",
+    "group": "Paris",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 4,
+    "name": "Alerte Compo Officielle / Absents",
+    "group": "Données",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 5,
+    "name": "Simulateur de Cash-Out",
+    "group": "Paris",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 6,
+    "name": "Mode Lingala + Français",
+    "group": "Expérience",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 7,
+    "name": "Historique Vérifiable Public",
+    "group": "Prédiction",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 8,
+    "name": "Filtre Anti-Piège",
+    "group": "Paris",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 9,
+    "name": "Prono Spécial Corners / Cartons",
+    "group": "Prédiction",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 10,
+    "name": "Calendrier Perso Mes Équipes",
+    "group": "Utilisateur",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 11,
+    "name": "Ticket de la Semaine en PDF",
+    "group": "Contenu",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 12,
+    "name": "Quiz / Sondage Avant Match",
+    "group": "Engagement",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 13,
+    "name": "Mode Sans Internet / SMS Résumé",
+    "group": "Expérience",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 14,
+    "name": "Comparateur de Bookmakers RDC",
+    "group": "Paris",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 15,
+    "name": "Analyse Vidéo Courte Auto",
+    "group": "Contenu",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 16,
+    "name": "Avertissement Jeu Responsable",
+    "group": "Sécurité",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 17,
+    "name": "Groupe VIP Auto-Modéré",
+    "group": "Paiement",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 18,
+    "name": "Prono Championnats Africains",
+    "group": "Données",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 19,
+    "name": "Copier le Ticket en 1 Clic",
+    "group": "Paris",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 20,
+    "name": "Statistiques de l'IA en Temps Réel",
+    "group": "Prédiction",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 21,
+    "name": "Coach IA en Chat Libre",
+    "group": "Prédiction",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 22,
+    "name": "Détecteur de Série / Momentum",
+    "group": "Données",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 23,
+    "name": "Spécialiste Match Nul",
+    "group": "Paris",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 24,
+    "name": "Alerte But Tardif",
+    "group": "Live",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 25,
+    "name": "Stats Arbitre",
+    "group": "Données",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 26,
+    "name": "Modèle xG",
+    "group": "Prédiction",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 27,
+    "name": "Impact Transfert / Entraîneur",
+    "group": "Données",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 28,
+    "name": "Comparateur Domicile / Extérieur",
+    "group": "Données",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 29,
+    "name": "Prono Buteur + Passeur",
+    "group": "Prédiction",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 30,
+    "name": "Mini App Telegram Visuelle",
+    "group": "Expérience",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 31,
+    "name": "Paiement Auto Airtel / M-Pesa / Orange",
+    "group": "Paiement",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 32,
+    "name": "Essai Premium 24h Automatique",
+    "group": "Paiement",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 33,
+    "name": "Programme Revendeur",
+    "group": "Paiement",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 34,
+    "name": "Classement par Quartier / Ville",
+    "group": "Engagement",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 35,
+    "name": "Alerte Météo Pelouse",
+    "group": "Données",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 36,
+    "name": "Mode Duo / Pari à 2",
+    "group": "Engagement",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 37,
+    "name": "Résumé Vocal / Audio",
+    "group": "Contenu",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 38,
+    "name": "Historique Face-à-Face Visuel",
+    "group": "Données",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 39,
+    "name": "Alerte Underdog",
+    "group": "Paris",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 40,
+    "name": "Export TikTok / Statut en 1 Clic",
+    "group": "Contenu",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 41,
+    "name": "Gestion Kelly Automatique",
+    "group": "Gestion du risque",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 42,
+    "name": "Plan de Mise Fixe / Progressif",
+    "group": "Gestion du risque",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 43,
+    "name": "Constructeur de Combiné par Risque",
+    "group": "Paris",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 44,
+    "name": "Double Sûr du Jour",
+    "group": "Paris",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 45,
+    "name": "Assurance Combiné",
+    "group": "Paris",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 46,
+    "name": "Cash-Out Partiel Simulé",
+    "group": "Paris",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 47,
+    "name": "Plan Anti-Perte",
+    "group": "Sécurité",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 48,
+    "name": "Filtre Réussite par Ligue",
+    "group": "Prédiction",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 49,
+    "name": "Dashboard ROI Personnel",
+    "group": "Utilisateur",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 50,
+    "name": "Notifications Heure Kinshasa",
+    "group": "Distribution",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 51,
+    "name": "Résumé Vocal IA 30s",
+    "group": "Contenu",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 52,
+    "name": "Commentaire Live IA",
+    "group": "Live",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 53,
+    "name": "Débrief Auto Après-Match",
+    "group": "Prédiction",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 54,
+    "name": "Checklist Avant de Parier",
+    "group": "Sécurité",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 55,
+    "name": "Base Blessés / Suspendus",
+    "group": "Données",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 56,
+    "name": "Compo Prédite vs Officielle",
+    "group": "Données",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 57,
+    "name": "Effet Altitude / Voyage",
+    "group": "Données",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 58,
+    "name": "Fatigue Calendrier",
+    "group": "Données",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 59,
+    "name": "Détecteur de Derby / Rivalité",
+    "group": "Données",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 60,
+    "name": "Indice de Motivation",
+    "group": "Données",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 61,
+    "name": "Tactique Entraîneur",
+    "group": "Données",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 62,
+    "name": "xG + xA + xPoints",
+    "group": "Prédiction",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 63,
+    "name": "Elo Live qui Bouge",
+    "group": "Live",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 64,
+    "name": "Simulation Monte Carlo 10.000x",
+    "group": "Prédiction",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 65,
+    "name": "Explication du Prono",
+    "group": "Prédiction",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 66,
+    "name": "Backtest de Ta Stratégie",
+    "group": "Prédiction",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 67,
+    "name": "Paris Virtuels Argent Fictif",
+    "group": "Engagement",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 68,
+    "name": "Ligue Privée Entre Amis",
+    "group": "Engagement",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 69,
+    "name": "Bataille IA vs Humains",
+    "group": "Engagement",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 70,
+    "name": "Boutique XP",
+    "group": "Engagement",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 71,
+    "name": "Bonus Connexion Quotidienne",
+    "group": "Engagement",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 72,
+    "name": "Roue Quotidienne Gratuite",
+    "group": "Engagement",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 73,
+    "name": "Classement Parrains",
+    "group": "Affiliation",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 74,
+    "name": "Lien d'Affiliation Suivi",
+    "group": "Affiliation",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 75,
+    "name": "Sync Auto Canal WhatsApp",
+    "group": "Distribution",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 76,
+    "name": "Post Auto Facebook",
+    "group": "Distribution",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 77,
+    "name": "Générateur Légende TikTok",
+    "group": "Contenu",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 78,
+    "name": "Template Story Instagram",
+    "group": "Contenu",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 79,
+    "name": "Rapport Mensuel PDF",
+    "group": "Utilisateur",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 80,
+    "name": "Résumé Email Hebdo",
+    "group": "Distribution",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 81,
+    "name": "Notifications Silencieuses",
+    "group": "Distribution",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 82,
+    "name": "Mode Swahili",
+    "group": "Expérience",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 83,
+    "name": "Commande Vocale",
+    "group": "Expérience",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 84,
+    "name": "Recherche par Emoji",
+    "group": "Expérience",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 85,
+    "name": "Alertes Équipe Favorite Ultra-Ciblée",
+    "group": "Distribution",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 86,
+    "name": "Sync Calendrier Google",
+    "group": "Expérience",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 87,
+    "name": "Graphique Évolution des Cotes",
+    "group": "Paris",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 88,
+    "name": "Mode Nuit / Économie Data",
+    "group": "Expérience",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 89,
+    "name": "Détecteur de Match Truqué Suspect",
+    "group": "Sécurité",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 90,
+    "name": "Mode Expert Débloquable",
+    "group": "Abonnement",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 91,
+    "name": "Dashboard Admin Temps Réel",
+    "group": "Administration",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 92,
+    "name": "Gestion Utilisateurs par Statut",
+    "group": "Administration",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 93,
+    "name": "Recherche Utilisateur",
+    "group": "Administration",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 94,
+    "name": "Bannir / Débannir en 1 Clic",
+    "group": "Administration",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 95,
+    "name": "Offrir Premium Manuellement",
+    "group": "Administration",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 96,
+    "name": "Prolonger / Raccourcir Abonnement",
+    "group": "Administration",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 97,
+    "name": "Historique Paiements par Utilisateur",
+    "group": "Paiement",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 98,
+    "name": "Vérification Paiement Mobile Money Auto",
+    "group": "Paiement",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 99,
+    "name": "Générateur de Codes en Masse",
+    "group": "Administration",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 100,
+    "name": "Codes par Lot / Campagne",
+    "group": "Administration",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 101,
+    "name": "Codes Usage Unique / Multi-Usage",
+    "group": "Paiement",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 102,
+    "name": "Codes avec Date d'Expiration",
+    "group": "Paiement",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 103,
+    "name": "Tableau de Bord Revenus",
+    "group": "Administration",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 104,
+    "name": "Graphique Croissance Abonnés",
+    "group": "Administration",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 105,
+    "name": "Taux de Conversion Gratuit -> Premium",
+    "group": "Administration",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 106,
+    "name": "Alerte Churn",
+    "group": "Administration",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 107,
+    "name": "Offre de Relance Auto",
+    "group": "Distribution",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 108,
+    "name": "Broadcast Ciblé",
+    "group": "Distribution",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 109,
+    "name": "Broadcast Programmé",
+    "group": "Distribution",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 110,
+    "name": "Broadcast avec Boutons",
+    "group": "Distribution",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 111,
+    "name": "Statistiques de Broadcast",
+    "group": "Distribution",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 112,
+    "name": "Modération Mots Interdits",
+    "group": "Modération",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 113,
+    "name": "Anti-Spam Auto",
+    "group": "Modération",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 114,
+    "name": "Journal d'Activité Admin",
+    "group": "Administration",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 115,
+    "name": "Rôles Admin",
+    "group": "Administration",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 116,
+    "name": "Panneau Pronos Manuel",
+    "group": "Administration",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 117,
+    "name": "Validation Pronos Avant Envoi",
+    "group": "Administration",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 118,
+    "name": "Corriger un Résultat",
+    "group": "Administration",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 119,
+    "name": "Annuler / Reporter un Match",
+    "group": "Administration",
+    "status": "a_implanter",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 120,
+    "name": "Gestion des Ligues Actives",
+    "group": "Administration",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 121,
+    "name": "Gestion des Marchés Actifs",
+    "group": "Administration",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 122,
+    "name": "Seuils de Confiance Réglables",
+    "group": "Administration",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 123,
+    "name": "Mode Maintenance",
+    "group": "Administration",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 124,
+    "name": "Message de Bienvenue Personnalisable",
+    "group": "Administration",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 125,
+    "name": "FAQ Dynamique Admin",
+    "group": "Administration",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 126,
+    "name": "Tickets Support avec Statut",
+    "group": "Support",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 127,
+    "name": "Réponses Rapides Admin",
+    "group": "Support",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 128,
+    "name": "Export Utilisateurs CSV / Excel",
+    "group": "Administration",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 129,
+    "name": "Export Revenus pour Compta",
+    "group": "Administration",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 130,
+    "name": "Sauvegarde Manuelle en 1 Clic",
+    "group": "Administration",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 131,
+    "name": "Restauration Backup",
+    "group": "Administration",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 132,
+    "name": "Logs d'Erreurs Lisibles",
+    "group": "Administration",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 133,
+    "name": "Alerte Admin si API Morte",
+    "group": "Administration",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 134,
+    "name": "Alerte si Pic d'Erreurs",
+    "group": "Administration",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 135,
+    "name": "Contrôle Consommation API",
+    "group": "Administration",
+    "status": "complete",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 136,
+    "name": "Gestion des Sources Prioritaires",
+    "group": "Administration",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 137,
+    "name": "Planificateur de Tâches",
+    "group": "Administration",
+    "status": "partielle",
+    "source": "core/catalog/catalogue_fonctionnalites.py"
+  },
+  {
+    "id": 138,
+    "name": "Test A/B des Messages",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 139,
+    "name": "Gestion des Prix",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 140,
+    "name": "Promo Flash Admin",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 141,
+    "name": "Gestion Revendeurs",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 142,
+    "name": "Paiement Commission Revendeur Auto",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 143,
+    "name": "Tableau de Bord Revendeur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 144,
+    "name": "Bannir un Revendeur Tricheur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 145,
+    "name": "Gestion des Concours",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 146,
+    "name": "Tirage au Sort Auto",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 147,
+    "name": "Blacklist Numéros / Appareils",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 148,
+    "name": "Limite de Comptes par Numéro",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 149,
+    "name": "Mode Audit Complet",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 150,
+    "name": "Bouton Panique Admin",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 151,
+    "name": "Admin sur Mobile Web",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 152,
+    "name": "Connexion Admin par Code PIN",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 153,
+    "name": "Double Authentification Admin",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 154,
+    "name": "Session Admin Expirable",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 155,
+    "name": "Historique de Connexion Admin",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 156,
+    "name": "Mode Admin Fantôme",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 157,
+    "name": "Créer des Comptes Test",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 158,
+    "name": "Simulateur de Paiement",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 159,
+    "name": "Centre de Notifications Admin",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 160,
+    "name": "Notifications Admin par Priorité",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 161,
+    "name": "Résumé Quotidien Admin à 07h00",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 162,
+    "name": "Résumé Hebdo PDF Admin",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 163,
+    "name": "Comparaison Mois vs Mois",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 164,
+    "name": "Prévision Revenus IA",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 165,
+    "name": "Cohorte Utilisateurs",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 166,
+    "name": "Analyse d’Abandon",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 167,
+    "name": "Carte des Utilisateurs",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 168,
+    "name": "Heures de Pointe",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 169,
+    "name": "Appareils Utilisés",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 170,
+    "name": "Langue des Utilisateurs",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 171,
+    "name": "Gestion des Abonnements par Durée",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 172,
+    "name": "Abonnement Famille / Groupe",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 173,
+    "name": "Abonnement Cadeau",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 174,
+    "name": "Code Promo Pourcentage",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 175,
+    "name": "Code Promo Montant Fixe",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 176,
+    "name": "Limite d’Utilisation Code Promo",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 177,
+    "name": "Remboursement en 1 Clic",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 178,
+    "name": "Crédit / Avoir Utilisateur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 179,
+    "name": "Facture / Reçu Auto",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 180,
+    "name": "Litiges Paiements",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 181,
+    "name": "Réconciliation Manuelle",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 182,
+    "name": "Taux de Paiement Échoué",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 183,
+    "name": "Gestion des Opérateurs",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 184,
+    "name": "Frais Opérateurs",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 185,
+    "name": "Seuil d’Alerte Solde",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 186,
+    "name": "Modération des Pronos IA",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 187,
+    "name": "Boost Manuel d’un Prono",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 188,
+    "name": "Masquer un Marché",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 189,
+    "name": "Ajouter une Note Admin sur un Match",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 190,
+    "name": "Historique des Pronos Envoyés",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 191,
+    "name": "Taux de Réussite par Admin",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 192,
+    "name": "Gestion des Canaux",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 193,
+    "name": "Auto-Post Résultats",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 194,
+    "name": "Nettoyage Auto des Anciens Messages",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 195,
+    "name": "Gestion des Épinglés",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 196,
+    "name": "Anti-Fuite Pronos Premium",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 197,
+    "name": "Détection de Capture d’Écran",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 198,
+    "name": "Limite de Partage",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 199,
+    "name": "Gestion des Signalements",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 200,
+    "name": "Sondage Admin",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 201,
+    "name": "Gestion des Mises à Jour",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 202,
+    "name": "Rollback en 1 Clic",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 203,
+    "name": "Environnement Test / Prod",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 204,
+    "name": "Gestion des Variables",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 205,
+    "name": "Sauvegarde des Paramètres",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 206,
+    "name": "Export des Logs Admin",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 207,
+    "name": "Quota d’Envoi Telegram",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 208,
+    "name": "File d’Attente d’Envoi",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 209,
+    "name": "Priorité d’Envoi",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 210,
+    "name": "Mode Catastrophe",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 211,
+    "name": "Tableau de Bord Temps Réel V2",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 212,
+    "name": "Alertes Telegram Admin Silencieuses",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 213,
+    "name": "Gestion des Fuseaux Horaires",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 214,
+    "name": "Mode Vacances Admin",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 215,
+    "name": "Délégation Temporaire",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 216,
+    "name": "Journal d’Actions Admin",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 217,
+    "name": "Annuler une Action Admin",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 218,
+    "name": "Corbeille Admin",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 219,
+    "name": "Recherche Globale Admin",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 220,
+    "name": "Filtres Avancés Utilisateurs",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 221,
+    "name": "Segments Sauvegardés",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 222,
+    "name": "Export CSV Segment",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 223,
+    "name": "Import CSV Utilisateurs",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 224,
+    "name": "Fusion de Doublons",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 225,
+    "name": "Nettoyage Auto Comptes Fantômes",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 226,
+    "name": "Vérification Numéro Téléphone OTP",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 227,
+    "name": "Blacklist Numéros",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 228,
+    "name": "Whitelist VIP",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 229,
+    "name": "Limite de Comptes par Téléphone",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 230,
+    "name": "Gestion des Langues par Utilisateur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 231,
+    "name": "Notes Privées sur Utilisateur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 232,
+    "name": "Tags Utilisateurs",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 233,
+    "name": "Score de Fidélité",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 234,
+    "name": "Score de Risque",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 235,
+    "name": "Historique de Paiement Complet",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 236,
+    "name": "Historique de Messages",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 237,
+    "name": "Gestion des Réclamations",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 238,
+    "name": "Réponses Types Admin",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 239,
+    "name": "Traduction Auto Support",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 240,
+    "name": "Support par Vocal",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 241,
+    "name": "Création de Pronos Manuels",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 242,
+    "name": "Dupliquer un Prono",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 243,
+    "name": "Planification de Pronos",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 244,
+    "name": "Calendrier des Pronos",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 245,
+    "name": "Validation en 2 Étapes des Pronos",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 246,
+    "name": "Aperçu Avant Envoi",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 247,
+    "name": "Test d’Envoi à Toi-Même",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 248,
+    "name": "Gestion des Cotes Manuelles",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 249,
+    "name": "Verrouillage des Pronos",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 250,
+    "name": "Archivage des Pronos",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 251,
+    "name": "Gestion des Ligues",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 252,
+    "name": "Gestion des Équipes",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 253,
+    "name": "Gestion des Saisons",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 254,
+    "name": "Gestion des Stades",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 255,
+    "name": "Gestion des Arbitres",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 256,
+    "name": "Gestion des Bookmakers",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 257,
+    "name": "Taux de Change FC / USD",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 258,
+    "name": "Gestion des Taxes",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 259,
+    "name": "Budget Pub",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 260,
+    "name": "ROI par Canal d’Acquisition",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 261,
+    "name": "Gestion des Partenaires",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 262,
+    "name": "Paiement des Partenaires",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 263,
+    "name": "Contrats Partenaires",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 264,
+    "name": "Gestion des Concours",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 265,
+    "name": "Tirage au Sort Auto",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 266,
+    "name": "Gestion des Badges",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 267,
+    "name": "Gestion des Notifications Push",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 268,
+    "name": "Gestion des Modèles IA",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 269,
+    "name": "Entraînement Manuel du Modèle",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 270,
+    "name": "Bouton STOP D’Urgence",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 271,
+    "name": "TikTok 15s “Ticket du Jour”",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 272,
+    "name": "TikTok “Avant / Après”",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 273,
+    "name": "TikTok Réaction Live But",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 274,
+    "name": "Statut WhatsApp Quotidien",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/03_Fonctionnalites_138_a_274.txt"
+  },
+  {
+    "id": 275,
+    "name": "Statut WhatsApp Résultats",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 276,
+    "name": "Canal WhatsApp Public",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 277,
+    "name": "Groupe WhatsApp “Pronos Gratuits”",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 278,
+    "name": "Groupe Facebook “Parieurs RDC”",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 279,
+    "name": "Page Facebook Auto-Post",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 280,
+    "name": "Reels Instagram Ticket",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 281,
+    "name": "Story Instagram Sondage",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 282,
+    "name": "Shorts YouTube",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 283,
+    "name": "Commentaires TikTok Stratégiques",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 284,
+    "name": "Duo TikTok avec Parieur Connu",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 285,
+    "name": "Live TikTok Avant Match",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 286,
+    "name": "Live TikTok Après Victoire",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 287,
+    "name": "Influenceur Micro Kinshasa",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 288,
+    "name": "Influenceur Football Local",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 289,
+    "name": "Joueur de Linafoot Ambassadeur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 290,
+    "name": "Bar / Nganda Partenaire",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 291,
+    "name": "Boutique Paris Sportif Partenaire",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 292,
+    "name": "Cybercafé Partenaire",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 293,
+    "name": "Flyer QR Code Marché",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 294,
+    "name": "Affiche Taxi / Moto",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 295,
+    "name": "Parrainage Double Récompense",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 296,
+    "name": "Parrainage WhatsApp 1 Clic",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 297,
+    "name": "Concours “Invite 5 Amis”",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 298,
+    "name": "Giveaway TikTok",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 299,
+    "name": "Giveaway WhatsApp Statut",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 300,
+    "name": "Preuve de Gain Floutée",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 301,
+    "name": "Série “7 Jours, 7 Tickets”",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 302,
+    "name": "Défi Public “100.000 FC en 30 Jours”",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 303,
+    "name": "Comparaison “Sans Bot vs Avec Bot”",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 304,
+    "name": "Témoignage Vidéo Utilisateur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 305,
+    "name": "Capture d’Écran Avis Telegram",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 306,
+    "name": "Nom de Bot Facile à Retenir",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 307,
+    "name": "Bio TikTok / Insta Optimisée",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 308,
+    "name": "Lien Unique dans Toutes les Bios",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 309,
+    "name": "QR Code Personnalisé avec Logo",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 310,
+    "name": "Carte de Visite Numérique",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 311,
+    "name": "Pub TikTok 5.000 FC / Jour",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 312,
+    "name": "Pub Facebook 10.000 FC",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 313,
+    "name": "Pub WhatsApp Click-to-Chat",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 314,
+    "name": "Retargeting",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 315,
+    "name": "Offre de Bienvenue Limitée",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 316,
+    "name": "Compte à Rebours",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 317,
+    "name": "Prono Gratuit du Jour Public",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 318,
+    "name": "Prono Gratuit du Week-End",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 319,
+    "name": "Groupe “Résultats du Jour”",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 320,
+    "name": "Podcast Audio 2 Min",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 321,
+    "name": "Collaboration avec Page Meme Football",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 322,
+    "name": "Collaboration avec Page Linafoot",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 323,
+    "name": "SEO Telegram",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 324,
+    "name": "Annuaire de Bots Telegram",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 325,
+    "name": "Forum / Reddit RDC",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 326,
+    "name": "Signature Email / WhatsApp",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 327,
+    "name": "Vocal de Bienvenue Personnalisé",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 328,
+    "name": "Anniversaire Utilisateur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 329,
+    "name": "Programme “Ambassadeur de Quartier”",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 330,
+    "name": "Événement “Soirée Match”",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 331,
+    "name": "Fuzzy Matching Dynamique des Noms d’Équipes",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 332,
+    "name": "Calcul 100 % Dynamique des Saisons et Années",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 333,
+    "name": "Garbage Collection Nocturne (03h15)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 334,
+    "name": "Verrouillage des Dépendances & Format Natif ML",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 335,
+    "name": "Circuit Breaker sur les APIs Externes",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 336,
+    "name": "Fallback Mathématique Pur (Loi de Poisson)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 337,
+    "name": "Échappement HTML Strict (nettoyer_html)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 338,
+    "name": "Auto-Réentraînement Semestriel du Modèle",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 339,
+    "name": "Apprentissage Auto-Adaptatif des Alias d’Équipes",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 340,
+    "name": "Health Score Dynamique des Sources",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 341,
+    "name": "Pré-génération Nocturne (predictions_cache)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 342,
+    "name": "Calibration Adaptative des Seuils (Top Affiches)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 343,
+    "name": "Backup Hebdomadaire Automatique",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 344,
+    "name": "Hachage SHA-256 des Codes Premium",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 345,
+    "name": "Health Check Externe (/ping + UptimeRobot)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 346,
+    "name": "Watchdog Interne & Auto-Guérison",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 347,
+    "name": "Verrou Distribué Anti-Doublons (cron_locks)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 348,
+    "name": "Idempotence Stricte des Paiements & Rate-Limit",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 349,
+    "name": "Optimisation RAM (512 Mo Render) & Mode Survie Read-Only",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 350,
+    "name": "Mode Dégradé Intelligent (/status)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 351,
+    "name": "Profils de Parieurs Personnalisés",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 352,
+    "name": "Suivi de Bankroll & Bilan Financier",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 353,
+    "name": "Coffre-Fort à Codes (🎟️ Mes codes achetés)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 354,
+    "name": "Mode Expert (Analyse Tactique Humaine)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 355,
+    "name": "Bouton d’Urgence / Support Intégré (🆘 Support)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 356,
+    "name": "Pari du Jour Gratuit (Produit d’Appel)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 357,
+    "name": "Classement Mensuel des Parieurs (🏆 Top 10)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 358,
+    "name": "Défi Quotidien “Challenger vs IA”",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 359,
+    "name": "Indice Météo Tactique",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 360,
+    "name": "Bouton “⚡ Flash Prono” & Générateur de Combinés Magiques",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 361,
+    "name": "Parrainage à Paliers & Roue de la Fortune Telegram",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 362,
+    "name": "Intégration IA Multimodale (Analyse de Photo de Coupon)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 363,
+    "name": "Assistant Vocal Telegram (STT/TTS Lingala & Français)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 364,
+    "name": "Mode Prono entre IA (Duel d’Algorithmes)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 365,
+    "name": "Analyse Tactique Détaillée",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 366,
+    "name": "Simulateur de Match Virtuel Minute par Minute",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 367,
+    "name": "Détecteur de Compo Inédite / Rotation",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 368,
+    "name": "Indice de Pression Psychologique",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 369,
+    "name": "Historique Arbitres Spécial Derbys",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 370,
+    "name": "Analyse des Conférences de Presse",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 371,
+    "name": "Système de Badges de Profil",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 372,
+    "name": "Duels Quotidiens 1v1 entre Abonnés",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 373,
+    "name": "Tournoi Hebdomadaire à Élimination Directe",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 374,
+    "name": "Cagnotte Communautaire Mensuelle",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 375,
+    "name": "Mini-Jeu de Penalty Virtuel dans le Chat",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 376,
+    "name": "Mode “Chasseur de Value Bets”",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 377,
+    "name": "Alerte Live “But en Approche”",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 378,
+    "name": "Infographie Bilan du Week-end",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 379,
+    "name": "Mode “Copilote de Paris”",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 380,
+    "name": "Paiement Crypto (USDT / Toncoin) & Cartes Internationales",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 381,
+    "name": "Parrainage Multi-Niveaux & QR Code Personnel",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 382,
+    "name": "Analyseur de Billet Papier Kiosque",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 383,
+    "name": "Statistiques Arbitre VAR",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 384,
+    "name": "Indice de Fatigue des Voyages (Vols & Décalage)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 385,
+    "name": "Salons “Fan Zone” par Club",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 386,
+    "name": "Alerte Changement Brutal de Cote Pré-Match",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 387,
+    "name": "Prono Spécial “Remontada”",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 388,
+    "name": "Alerte “Cash-Out Conseillé” en Direct",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 389,
+    "name": "Impact Pelouse (Synthétique vs Naturelle)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 390,
+    "name": "Graphique Visuel des Confrontations Directes (H2H)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 391,
+    "name": "Combiné avec Couverture Mutuelle",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 392,
+    "name": "Indicateur Visuel de Série (🟢🔴🟢🟢🟡)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 393,
+    "name": "Alerte “Coup de Sûr Hebdomadaire” (Confiance > 90%)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 394,
+    "name": "Analyse Fine des Tirs Cadrés & Conversion",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 395,
+    "name": "Prono Spécial “Clean Sheet”",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 396,
+    "name": "Verrou Émotionnel (Conseiller Financier)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 397,
+    "name": "Prédiction de Cartons Rouges",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 398,
+    "name": "Impact Absences Longue Durée",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 399,
+    "name": "Couverture Spéciale Petites Ligues Africaines",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 400,
+    "name": "Planification Horaire Personnalisée des Alertes",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 401,
+    "name": "Ticket “Frisson du Week-end” (Cote 10.00+)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 402,
+    "name": "Analyseur de Forme Mentale & Enjeu",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 403,
+    "name": "Simulateur de Classement Live",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 404,
+    "name": "Statistiques Spéciales “Money Time” (75e - 90e min)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 405,
+    "name": "Mode “Chasseur de Matchs Nuls”",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 406,
+    "name": "Facteur “Stade à Guichets Fermés”",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 407,
+    "name": "Détecteur d’Équipes Vernies / Malchanceuses (xG vs Réel)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 408,
+    "name": "Génération de Ticket Express en 2 Secondes",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 409,
+    "name": "Courbe de Progression Financière",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 410,
+    "name": "Comparaison Saison Actuelle vs Saison Précédente",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 411,
+    "name": "Détection Automatique de la Langue",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/04_Fonctionnalites_275_a_411.txt"
+  },
+  {
+    "id": 412,
+    "name": "Alerte “Match Piège Identifié”",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 413,
+    "name": "Module Spécial 1ère Mi-Temps",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 414,
+    "name": "Accès Pro aux Matrices de Poisson & Monte Carlo",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 415,
+    "name": "Le Grand Livre d’Or Infalsifiable",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 416,
+    "name": "Gestion des Devises Multiples (CDF / USD / EUR)",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 417,
+    "name": "Suivi des Frais de Retrait Mobile Money",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 418,
+    "name": "Calculateur de Seuil de Rentabilité Serveur",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 419,
+    "name": "Affiliation Bookmakers & Tracking Campagnes",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 420,
+    "name": "Paiement Automatisé des Commissions Partenaires",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 421,
+    "name": "Score de Satisfaction Support (CSAT 1 à 5)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 422,
+    "name": "Diagnostics Serveur & Alerte RAM Critique",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 423,
+    "name": "Comparateur de Modèles IA en Production (Shadow Testing)",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 424,
+    "name": "Interrupteur Dynamique des Features ML",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 425,
+    "name": "Mode Trêve Internationale",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 426,
+    "name": "Blacklist Dynamique de Matchs Suspects",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 427,
+    "name": "Module Jackpot Winner.bet",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 428,
+    "name": "Ensemble probabiliste multi-modèles",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 429,
+    "name": "Modèles spécialisés par compétition",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 430,
+    "name": "Modèles spécialisés par marché",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 431,
+    "name": "Méta-modèle de combinaison",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 432,
+    "name": "Registre des modèles versionné",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 433,
+    "name": "Entraînement reproductible",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 434,
+    "name": "Validation temporelle automatisée",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 435,
+    "name": "Détection de dérive du modèle",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 436,
+    "name": "Déploiement progressif des modèles",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 437,
+    "name": "Explication locale des prédictions",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 438,
+    "name": "Surveillance des variables d’entrée",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 439,
+    "name": "Retour arrière du modèle",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 440,
+    "name": "Catalogue central des sources",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 441,
+    "name": "Identifiants sportifs canoniques",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 442,
+    "name": "Historique des changements d’équipe",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 443,
+    "name": "Score de qualité des données",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 444,
+    "name": "Détection de doublons de matchs",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 445,
+    "name": "Réconciliation multi-sources",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 446,
+    "name": "Historisation des instantanés",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 447,
+    "name": "Pipeline d’import incrémental",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 448,
+    "name": "Contrôle de fraîcheur des données",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 449,
+    "name": "Validation de schéma fournisseur",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 450,
+    "name": "Journal de provenance des statistiques",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 451,
+    "name": "Jeux de données de référence",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 452,
+    "name": "Référentiel mondial des compétitions",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 453,
+    "name": "Couverture des divisions inférieures",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 454,
+    "name": "Gestion des formats de compétition",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 455,
+    "name": "Indice de fiabilité par championnat",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 456,
+    "name": "Profil statistique d’équipe",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 457,
+    "name": "Gestion des équipes promues",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 458,
+    "name": "Gestion des équipes renommées",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 459,
+    "name": "Détection des matchs sur terrain neutre",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 460,
+    "name": "Calendrier et congestion",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 461,
+    "name": "Contexte de classement",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 462,
+    "name": "Contexte des coupes",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 463,
+    "name": "Couverture géographique contrôlée",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 464,
+    "name": "Calibration par marché",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 465,
+    "name": "Courbes de fiabilité",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 466,
+    "name": "Score de Brier par marché",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 467,
+    "name": "Log-loss par compétition",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 468,
+    "name": "Intervalle d’incertitude",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 469,
+    "name": "Détection de prédictions incohérentes",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 470,
+    "name": "Seuil d’abstention adaptatif",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 471,
+    "name": "Calibration après changement de saison",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 472,
+    "name": "Comparaison modèle et fréquence de base",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 473,
+    "name": "Rapport de confiance documenté",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 474,
+    "name": "Détection de surconfiance",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 475,
+    "name": "Contrôle de cohérence inter-marchés",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 476,
+    "name": "Normalisation de la marge bookmaker",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 477,
+    "name": "Calcul de valeur espérée",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 478,
+    "name": "Historique des cotes horodaté",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 479,
+    "name": "Suivi Closing Line Value",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 480,
+    "name": "Détection d’écarts inter-bookmakers",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 481,
+    "name": "Gestion de bankroll plafonnée",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 482,
+    "name": "Kelly fractionné prudent",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 483,
+    "name": "Exposition cumulée par match",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 484,
+    "name": "Exposition par compétition",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 485,
+    "name": "Simulation de scénarios de pertes",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 486,
+    "name": "Journal des recommandations de cotes",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 487,
+    "name": "Alerte de cote périmée",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 488,
+    "name": "Backtesting chronologique",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 489,
+    "name": "Séparation entraînement validation test",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 490,
+    "name": "Registre des expériences",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 491,
+    "name": "Rapport de performance par saison",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 492,
+    "name": "Rapport par tranche de cote",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 493,
+    "name": "Rapport par niveau de confiance",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 494,
+    "name": "Détection de fuite de données",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 495,
+    "name": "Test de robustesse",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 496,
+    "name": "Bootstrap des métriques",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 497,
+    "name": "Surveillance de dérive des performances",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 498,
+    "name": "Publication de bilans vérifiables",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 499,
+    "name": "Audit de reproductibilité",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 500,
+    "name": "Modèle corners équipe",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 501,
+    "name": "Modèle cartons équipe",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 502,
+    "name": "Modèle tirs cadrés",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 503,
+    "name": "Modèle fautes",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 504,
+    "name": "Modèle hors-jeu",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 505,
+    "name": "Modèle mi-temps",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 506,
+    "name": "Modèle premier but",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 507,
+    "name": "Modèle joueur buteur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 508,
+    "name": "Modèle joueur passeur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 509,
+    "name": "Marchés combinés cohérents",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 510,
+    "name": "Catalogue de disponibilité par fournisseur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 511,
+    "name": "Validation des règlements de marché",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 512,
+    "name": "Collecte live à fréquence adaptative",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 513,
+    "name": "État du match normalisé",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 514,
+    "name": "Détection d’événements live",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 515,
+    "name": "Recalcul après événement majeur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 516,
+    "name": "Contrôle de latence live",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 517,
+    "name": "Détection de flux live bloqué",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 518,
+    "name": "Probabilité conditionnelle au score",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 519,
+    "name": "Gestion des interruptions",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 520,
+    "name": "Historique des états live",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 521,
+    "name": "Limitation des alertes live",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 522,
+    "name": "Mode dégradé live",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 523,
+    "name": "Validation rétrospective live",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 524,
+    "name": "Authentification des webhooks",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 525,
+    "name": "Idempotence des événements",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 526,
+    "name": "Chiffrement des sauvegardes",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 527,
+    "name": "Restauration testée",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 528,
+    "name": "Politique de conservation des données",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 529,
+    "name": "Journal d’accès aux données sensibles",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 530,
+    "name": "Gestion des secrets centralisée",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 531,
+    "name": "Contrôle d’accès par rôle",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 532,
+    "name": "Validation des entrées externes",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 533,
+    "name": "Protection contre l’injection",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 534,
+    "name": "Plan de réponse aux incidents",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 535,
+    "name": "Conformité et transparence des prédictions",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 536,
+    "name": "Cache prédictif avec expiration",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 537,
+    "name": "Cache par fournisseur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 538,
+    "name": "Limitation de débit centralisée",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 539,
+    "name": "File de tâches persistante",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 540,
+    "name": "Verrous distribués des tâches",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 541,
+    "name": "Traitement par lots",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 542,
+    "name": "Mesure du coût par prédiction",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 543,
+    "name": "Optimisation des requêtes",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 544,
+    "name": "Surveillance de la mémoire",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 545,
+    "name": "Arrêt gracieux",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 546,
+    "name": "Circuit breaker configurable",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 547,
+    "name": "Tableau de bord de disponibilité",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/05_Fonctionnalites_412_a_547.txt"
+  },
+  {
+    "id": 548,
+    "name": "Registre des blessures par joueur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 549,
+    "name": "Suivi des retours de blessure",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 550,
+    "name": "Détection des blessures non annoncées",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 551,
+    "name": "Impact des absences sur la force d’équipe",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 552,
+    "name": "Suspensions par accumulation de cartons",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 553,
+    "name": "Suspensions pour carton rouge",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 554,
+    "name": "Retour de suspension et remise en forme",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 555,
+    "name": "Absences pour sélection nationale",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 556,
+    "name": "Joueurs incertains et doutes d’avant-match",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 557,
+    "name": "Fiabilité des sources médicales",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 558,
+    "name": "Fraîcheur des informations de blessure",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 559,
+    "name": "Historique des indisponibilités",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 560,
+    "name": "Durée moyenne d’indisponibilité par type de blessure",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 561,
+    "name": "Rotation et gestion de la charge",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 562,
+    "name": "Alerte de composition médicale incomplète",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 563,
+    "name": "Corrélation blessures et calendrier chargé",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 564,
+    "name": "Contradiction entre fournisseurs sur les absents",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 565,
+    "name": "Pondération des absents clés",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 566,
+    "name": "Prévision de disponibilité à court terme",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 567,
+    "name": "Journal des changements de statut médical",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 568,
+    "name": "Profil de cartons de l’arbitre désigné",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 569,
+    "name": "Tendance de l’arbitre aux penaltys",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 570,
+    "name": "Moyenne de fautes sifflées par arbitre",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 571,
+    "name": "Sévérité de l’arbitre selon la compétition",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 572,
+    "name": "Historique des cartons rouges directs",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 573,
+    "name": "Avantage maison de l’arbitre",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 574,
+    "name": "Temps additionnel moyen selon l’arbitre",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 575,
+    "name": "Arbitre et VAR",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 576,
+    "name": "Style de gestion des contestations",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 577,
+    "name": "Stabilité du profil arbitral dans le temps",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 578,
+    "name": "Comparaison arbitre contre moyenne de la ligue",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 579,
+    "name": "Alerte de changement d’arbitre",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 580,
+    "name": "xG avancé par tir (post-shot xG)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 581,
+    "name": "xG contre par match",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 582,
+    "name": "Écart xG et buts réels",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 583,
+    "name": "Calibration par Brier score",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 584,
+    "name": "Calibration par log-loss",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 585,
+    "name": "Courbe de fiabilité des probabilités",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 586,
+    "name": "Décomposition de Brier (fiabilité, résolution)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 587,
+    "name": "Recalibration isotonique",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 588,
+    "name": "Recalibration par Platt scaling",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 589,
+    "name": "Calibration par marché et par compétition",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 590,
+    "name": "Détection de surconfiance du modèle",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 591,
+    "name": "Détection de sous-confiance du modèle",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 592,
+    "name": "xG ajusté à la qualité de l’adversaire",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 593,
+    "name": "xG ajusté au temps de jeu",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 594,
+    "name": "xG par situation de jeu",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 595,
+    "name": "xG et finition au-dessus de la moyenne",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 596,
+    "name": "Suivi de la dérive de calibration",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 597,
+    "name": "Score de calibration par segment",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 598,
+    "name": "Composition probable par équipe",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 599,
+    "name": "Probabilité de titularisation par joueur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 600,
+    "name": "Schéma tactique probable",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 601,
+    "name": "Incertitude de composition",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 602,
+    "name": "Impact de la composition sur les marchés",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 603,
+    "name": "Détection des changements de dispositif",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 604,
+    "name": "Rotation probable selon le calendrier",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 605,
+    "name": "Première composition et banc",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 606,
+    "name": "Fiabilité des sources de composition",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 607,
+    "name": "Horodatage de la composition probable",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 608,
+    "name": "Composition probable et blessures",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 609,
+    "name": "Confrontation des compositions (duel tactique)",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 610,
+    "name": "Bankroll réelle synchronisée",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 611,
+    "name": "Mise fixe plafonnée",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 612,
+    "name": "Mise proportionnelle au risque",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 613,
+    "name": "Mise selon Kelly fractionné",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 614,
+    "name": "ROI réel par compétition",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 615,
+    "name": "ROI ajusté de la marge",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 616,
+    "name": "Rendement par marché",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 617,
+    "name": "Rendement par type de pari",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 618,
+    "name": "Suivi du drawdown maximal",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 619,
+    "name": "Courbe de capital vérifiable",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 620,
+    "name": "Espérance de gain nette",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 621,
+    "name": "Comparaison ROI modèle contre marché",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 622,
+    "name": "Seuil de rentabilité par cote",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 623,
+    "name": "Répartition des mises par compétition",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 624,
+    "name": "Alerte de perte de bankroll",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/06_Fonctionnalites_548_a_624.txt"
+  },
+  {
+    "id": 625,
+    "name": "Jeu de tests de non-régression des prédictions",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 626,
+    "name": "Tests de bout en bout du parcours utilisateur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 627,
+    "name": "Couverture des cas limites de saisie",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 628,
+    "name": "Vérification des contrats d'API internes",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 629,
+    "name": "Tests de charge légère du service de prédiction",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 630,
+    "name": "Contrôle de stabilité des réponses aux commandes Discord",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 631,
+    "name": "Détection des sorties non déterministes",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 632,
+    "name": "Rapport de couverture par module",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 633,
+    "name": "Rejeu des incidents passés comme tests",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 634,
+    "name": "Tests de compatibilité des migrations de base",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 635,
+    "name": "Vérification des valeurs par défaut des configurations",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 636,
+    "name": "Journal de santé des tests en intégration continue",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 637,
+    "name": "Registre des versions de modèle",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 638,
+    "name": "Comparaison A/B de deux variantes",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 639,
+    "name": "Évaluation hors échantillon d'une variante",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 640,
+    "name": "Métadonnées de modèle",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 641,
+    "name": "Promotion d'une variante en production",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 642,
+    "name": "Retour arrière vers une version antérieure",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 643,
+    "name": "Mesure de l'écart entre variantes",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 644,
+    "name": "Évaluation de la robustesse aux données manquantes",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 645,
+    "name": "Historique des métriques par version",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 646,
+    "name": "Critères d'acceptation d'une nouvelle variante",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 647,
+    "name": "Source de vérité du catalogue de fonctionnalités",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 648,
+    "name": "Métadonnées d'interrupteur (propriétaire, date)",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 649,
+    "name": "Historique des bascules d'interrupteurs",
+    "group": "Extension",
+    "status": "complete",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 650,
+    "name": "Interrupteurs par environnement",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 651,
+    "name": "Interrupteurs avec date d'expiration",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 652,
+    "name": "Validation des identifiants de fonctionnalité",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 653,
+    "name": "Interrupteurs dépendants",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 654,
+    "name": "Audit des interrupteurs orphelins",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 655,
+    "name": "Rôle et propriétaire d'un interrupteur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 656,
+    "name": "Documentation générée depuis le catalogue",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 657,
+    "name": "Interrupteurs par segment d'utilisateurs",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 658,
+    "name": "Alerte sur interrupteur inactif depuis longtemps",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 659,
+    "name": "Suivi du coût par appel fournisseur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 660,
+    "name": "Quota journalier par fournisseur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 661,
+    "name": "Alerte de dépassement de budget",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 662,
+    "name": "Répartition des coûts par fonctionnalité",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 663,
+    "name": "Mesure de la latence par fournisseur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 664,
+    "name": "Repli automatique entre fournisseurs",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 665,
+    "name": "Fenêtre de disponibilité des fournisseurs",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 666,
+    "name": "Journal des erreurs fournisseur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 667,
+    "name": "Limitation de débit par utilisateur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 668,
+    "name": "Estimation préalable du coût d'une requête",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 669,
+    "name": "Rapport mensuel de consommation",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 670,
+    "name": "Priorisation des requêtes en cas de saturation",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 671,
+    "name": "Fiches pédagogiques des fonctionnalités",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 672,
+    "name": "Glossaire des termes métier",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 673,
+    "name": "Exemples d'utilisation par commande",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 674,
+    "name": "Messages d'aide contextuels",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 675,
+    "name": "Tutoriel de prise en main",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 676,
+    "name": "FAQ intégrée",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 677,
+    "name": "Révision éditoriale des libellés",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 678,
+    "name": "Localisation des messages utilisateur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 679,
+    "name": "Notes de version lisibles",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 680,
+    "name": "Aide à la lecture des statistiques",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 681,
+    "name": "Inventaire des données personnelles traitées",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 682,
+    "name": "Durée de conservation des données",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 683,
+    "name": "Droit à l'effacement des données utilisateur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 684,
+    "name": "Anonymisation des journaux",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 685,
+    "name": "Consentement explicite au stockage",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 686,
+    "name": "Journalisation minimale par défaut",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 687,
+    "name": "Accès restreint aux données sensibles",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 688,
+    "name": "Export des données d'un utilisateur",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 689,
+    "name": "Purge automatique des données expirées",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 690,
+    "name": "Registre des traitements",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 691,
+    "name": "Suppression du paquet mort core/betting/",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 692,
+    "name": "Inventaire des modules non importés",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 693,
+    "name": "Nettoyage des scripts obsolètes",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 694,
+    "name": "Détection du code dupliqué",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 695,
+    "name": "Mise à jour des dépendances obsolètes",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 696,
+    "name": "Normalisation de l'arborescence",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 697,
+    "name": "Vérification des fichiers volumineux versionnés",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 698,
+    "name": "Documentation des modules sans docstring",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 699,
+    "name": "Suppression des migrations inutiles",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  },
+  {
+    "id": 700,
+    "name": "Tableau de bord de la dette technique",
+    "group": "Extension",
+    "status": "a_implanter",
+    "source": "docs/07_Fonctionnalites_625_a_700.txt"
+  }
+]

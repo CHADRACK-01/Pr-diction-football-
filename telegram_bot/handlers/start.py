@@ -33,6 +33,9 @@ BOUTONS_MENU = frozenset({
     "🏆 Top Affiches", "📜 Historique", "📊 Statistiques",
     "🔔 Notifications", "💎 Premium", "🤝 Parrainage",
     "🌍 Langue", "💎 Devise", "👑 Panneau Admin",
+    "🎁 Bonus Quotidien", "🎡 Roue", "⭐ Mes XP",
+    "🎲 Monte Carlo", "🔴 Derby", "📈 Elo Live",
+    "📅 Fatigue", "🛡️ Anti-perte", "💸 Cash-out Partiel",
     # Menu admin (boutons paramétrés + boutons simples)
     "📊 Fiabilité", "🔍 Comparer", "⚽ Série",
     "💰 Cotes", "📈 Bankroll", "💸 Cash-out", "⚠️ Piège",
@@ -59,6 +62,10 @@ BOUTONS_UTILISATEUR = [
     "🏆 Top Affiches", "📜 Historique", "📊 Statistiques",
     "🔔 Notifications", "💎 Premium", "🤝 Parrainage",
     "🌍 Langue", "💎 Devise",
+    "🎁 Bonus Quotidien", "🎡 Roue", "⭐ Mes XP",
+    "🎲 Monte Carlo", "🔴 Derby", "📈 Elo Live",
+    "📅 Fatigue", "🛡️ Anti-perte", "💸 Cash-out Partiel",
+    "🗂️ Toutes les Fonctionnalités",
 ]
 
 # Boutons réservés à l'administrateur, ajoutés sous le menu utilisateur

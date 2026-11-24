@@ -8,9 +8,13 @@ Gestion de base des comptes utilisateurs.
 
 from datetime import datetime, timedelta
 
-from users.db import (
-    db_execute, db_fetchall, db_fetchone, db_fetchone_dict,
-    db_fetchone_strict, DatabaseError,
+from users.database import (
+    db_execute,
+    db_fetchall,
+    db_fetchone,
+    db_fetchone_dict,
+    db_fetchone_strict,
+    DatabaseError,
 )
 from core.utils.logs import log_info, log_error, log_warning
 

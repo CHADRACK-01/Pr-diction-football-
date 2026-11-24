@@ -3,7 +3,7 @@ import json
 import requests
 from datetime import datetime, timedelta
 
-from users.db import db_execute, db_fetchone, db_fetchall, get_connection
+from users.database import db_execute, db_fetchone, db_fetchall, get_connection
 from core.utils.logs import log_info, log_error, log_warning
 from config import MAPPING_COMPETITIONS, FOOTBALL_DATA_KEY
 
@@ -71,8 +71,10 @@ def inserer_matchs(liste_matchs):
             log_error(message="Erreur commit insertion", module="MATCHS", exception=e)
         finally:
             if conn is not None:
-                try: conn.close()
-                except: pass
+                try:
+                    conn.close()
+                except Exception as e:
+                    log_warning("Impossible de fermer la connexion match", "MATCHS", exception=e)
 
     log_info(f"{total_traites} match(s) traité(s) ({erreurs} erreurs).", "MATCHS")
     return total_traites

@@ -162,6 +162,58 @@ def enregistrer_admin_handlers(bot):
         cmd_taux(bot, message)
 
     # =========================================================
+    # GOUVERNANCE MODELE & QA (432-439, 625-646)
+    # =========================================================
+    @bot.message_handler(commands=['modele'])
+    def handle_modele(message):
+        if not est_administrateur(message.from_user.id):
+            bot.reply_to(message, "Accès refusé.")
+            return
+        from core.model_governance import lister_versions
+        versions = lister_versions()
+        if not versions:
+            bot.reply_to(message, "⚙️ Aucun modèle enregistré.")
+            return
+        lignes = [f"• {v['version']} — {v['statut']}" for v in versions[:10]]
+        bot.reply_to(message, "⚙️ <b>VERSIONS DE MODELE</b>\n" + "\n".join(lignes), parse_mode="HTML")
+
+    @bot.message_handler(commands=['modele_promouvoir'])
+    def handle_modele_promouvoir(message):
+        if not est_administrateur(message.from_user.id):
+            bot.reply_to(message, "Accès refusé.")
+            return
+        args = message.text.split()
+        if len(args) != 2:
+            bot.reply_to(message, "Usage : <code>/modele_promouvoir 1.2.0</code>", parse_mode="HTML")
+            return
+        from core.model_governance import promouvoir_modele
+        resultat = promouvoir_modele(args[1])
+        bot.reply_to(message, f"✅ Modèle promu : {resultat['version']}" if resultat else "❌ Promotion impossible")
+
+    @bot.message_handler(commands=['modele_rollback'])
+    def handle_modele_rollback(message):
+        if not est_administrateur(message.from_user.id):
+            bot.reply_to(message, "Accès refusé.")
+            return
+        args = message.text.split()
+        if len(args) != 2:
+            bot.reply_to(message, "Usage : <code>/modele_rollback 1.1.0</code>", parse_mode="HTML")
+            return
+        from core.model_governance import rollback_modele
+        resultat = rollback_modele(args[1])
+        bot.reply_to(message, f"↩️ Rollback effectué : {resultat['version']}" if resultat else "❌ Rollback impossible")
+
+    @bot.message_handler(commands=['qa'])
+    def handle_qa(message):
+        if not est_administrateur(message.from_user.id):
+            bot.reply_to(message, "Accès refusé.")
+            return
+        from core.qa_extension import executer_checks_qa
+        resultat = executer_checks_qa()
+        statut = "✅ QA valide" if resultat["valide"] else "⚠️ QA avec anomalies"
+        bot.reply_to(message, statut)
+
+    # =========================================================
     # GESTIONNAIRE DES BOUTONS DU CLAVIER ADMIN (Texte UNIQUEMENT)
     # =========================================================
     @bot.message_handler(func=lambda m: est_administrateur(m.from_user.id) and m.content_type == 'text' and m.text in [
@@ -173,7 +225,7 @@ def enregistrer_admin_handlers(bot):
         "Gen 10 jours", "Gen 30 jours", "Gen 90 jours", "Gen custom", "👁️ Voir codes dispo",
         "Heure notifs", "Limite Free", "Prix Stars", "Message accueil", "Mode maintenance", "👁️ Voir parametres",
         "Taille BDD", "Detail tables", "🧹 Nettoyer",
-        "⚙️ Gérer les Fonctionnalités", "💰 Revenus"
+        "🧪 QA", "⚙️ Versions Modèle",
     ])
     def handle_admin_buttons_text(message):
         text = message.text
@@ -256,6 +308,12 @@ def enregistrer_admin_handlers(bot):
                 return
             if text == "⚙️ Gérer les Fonctionnalités":
                 cmd_features(bot, message)
+                return
+            if text == "🧪 QA":
+                handle_qa(message)
+                return
+            if text == "⚙️ Versions Modèle":
+                handle_modele(message)
                 return
             if text == "💰 Revenus":
                 envoyer_revenus_mois(bot, message.chat.id)

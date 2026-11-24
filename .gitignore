@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+.env
+
+# Tests and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Generated application data
+backups_ia/
+*.bak
+models_cache/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -9,8 +9,8 @@ import time
 from datetime import datetime, timezone, timedelta
 
 from config import CANAL_ID
-from core.daily_matches import get_matchs_du_jour, formater_matchs_du_jour
-from core.paris_builder import generer_coupons_du_jour, formater_coupon
+from core.data.daily_matches import get_matchs_du_jour, formater_matchs_du_jour
+from core.betting.paris_builder import generer_coupons_du_jour, formater_coupon
 from core.utils.logs import log_info, log_error, log_warning
 
 TZ_KINSHASA = timezone(timedelta(hours=1))

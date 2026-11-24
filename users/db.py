@@ -530,108 +530,16 @@ def initialiser_tables():
 
 
 # =========================================================
-# UTILITAIRES ADMIN
+# UTILITAIRES ADMIN — compatibilité historique
 # =========================================================
-def get_taille_base():
-    try:
-        row = db_fetchone("""
-            SELECT page_count * page_size as size
-            FROM pragma_page_count(), pragma_page_size()
-        """, db_context={"table": "pragma"})
-        if row and row[0]:
-            return f"{row[0] / 1024 / 1024:.2f} MB"
-        return "Inconnue"
-    except Exception as e:
-        log_error(
-            message="Impossible de calculer la taille de la base",
-            module="DATABASE",
-            exception=e,
-        )
-        return "Erreur"
-
-
-def get_detail_tables():
-    tables = [
-        "utilisateurs", "matchs", "models_cache",
-        "paiements_attente", "codes_premium", "logs_admin",
-        "resultats_pronostics", "sessions_pronostic",
-        "fonctionnalites_actives",
-        "bankroll", "equipes_favorites", "codes_promo",
-    ]
-    resultats = []
-    for table in tables:
-        try:
-            if table not in tables:
-                continue
-            row = db_fetchone(
-                f"SELECT COUNT(*) FROM {table}",
-                db_context={"table": table},
-            )
-            count = row[0] if row else 0
-            resultats.append({"table_name": table, "size": f"{count} lignes"})
-        except Exception as e:
-            log_warning(
-                message=f"Impossible de lire la table '{table}'",
-                module="DATABASE",
-                db_context={"table": table},
-                exception=e,
-            )
-            resultats.append({"table_name": table, "size": "❌ erreur"})
-    return resultats
-
-
-def nettoyer_logs_anciens(jours: int = 30) -> int:
-    if not isinstance(jours, int) or jours <= 0 or jours > 3650:
-        log_warning(
-            message=f"Paramètre 'jours' invalide : {jours}",
-            module="DATABASE",
-            extra={"jours": jours},
-        )
-        return 0
-    query = "DELETE FROM logs_admin WHERE date_action < datetime('now', ?)"
-    rowcount = db_execute(
-        query,
-        params=[f"-{jours} days"],
-        db_context={"table": "logs_admin", "operation": "cleanup"},
-    )
-    if rowcount is None:
-        return 0
-    log_info(f"{rowcount} logs de plus de {jours}j supprimés.", "DATABASE")
-    return rowcount
-
-
-def nettoyer_paiements_anciens(jours: int = 90) -> int:
-    if not isinstance(jours, int) or jours <= 0 or jours > 3650:
-        log_warning(
-            message=f"Paramètre 'jours' invalide : {jours}",
-            module="DATABASE",
-            extra={"jours": jours},
-        )
-        return 0
-    query = """
-        DELETE FROM paiements_attente
-        WHERE statut != 'en_attente'
-        AND date_validation < datetime('now', ?)
-    """
-    rowcount = db_execute(
-        query,
-        params=[f"-{jours} days"],
-        db_context={"table": "paiements_attente", "operation": "cleanup"},
-    )
-    if rowcount is None:
-        return 0
-    log_info(f"{rowcount} paiements de plus de {jours}j supprimés.", "DATABASE")
-    return rowcount
-
-
-# =========================================================
-# VERSIONS STRICTES (ajoutées pour les chemins critiques)
-# Contrairement aux helpers ci-dessus, ces fonctions ne renvoient JAMAIS une
-# valeur vide en cas d'erreur : elles lèvent DatabaseError. Ainsi, une panne
-# ne peut pas être prise pour « aucune donnée » (ex. compteur à 0).
-# =========================================================
-class DatabaseError(Exception):
-    """Erreur de base de données remontée explicitement."""
+from users.database.exceptions import DatabaseError
+from users.database.maintenance import (
+    get_detail_tables,
+    get_taille_base,
+    nettoyer_logs_anciens,
+    nettoyer_paiements_anciens,
+)
+from users.database.queries import db_fetchone_strict
 
 
 def db_fetchone_strict(query, params=None, db_context=None):
@@ -639,28 +547,26 @@ def db_fetchone_strict(query, params=None, db_context=None):
     ctx = dict(db_context or {})
     ctx.setdefault("query", query)
     ctx.setdefault("params", params)
-
     conn = None
     try:
         conn = get_connection()
-        cur = conn.execute(query, params or [])
-        return cur.fetchone()
-    except Exception as e:
+        return conn.execute(query, params or []).fetchone()
+    except Exception as exc:
         log_error(
             message="Échec de lecture SQL (fetchone_strict)",
             module="DATABASE",
             db_context=ctx,
-            exception=e,
+            exception=exc,
         )
-        raise DatabaseError(str(e)) from e
+        raise DatabaseError(str(exc)) from exc
     finally:
         if conn is not None:
             try:
                 conn.close()
-            except Exception as e:
+            except Exception as exc:
                 log_warning(
                     message="Impossible de fermer la connexion DB",
                     module="DATABASE",
                     db_context=ctx,
-                    exception=e,
+                    exception=exc,
                 )

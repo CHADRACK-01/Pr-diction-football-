@@ -14,7 +14,7 @@ Usage :
 """
 import datetime as _dt
 
-from core.contrat_modele import (
+from core.predictions.contrat_modele import (
     ELO_AVANTAGE_DOMICILE,
     ELO_INITIAL,
     ELO_K,

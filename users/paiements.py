@@ -9,9 +9,14 @@ Gestion des demandes de paiement et codes Premium.
 import random
 import string
 
-from users.db import (
-    db_execute, db_fetchone, db_fetchall, db_fetchone_dict,
-    db_fetchone_strict, DatabaseError,
+from users.database import (
+    db_execute,
+    db_fetchone,
+    db_fetchall,
+    db_fetchone_dict,
+    db_fetchone_strict,
+    DatabaseError,
+    get_connection,
 )
 from core.utils.logs import log_info, log_error, log_warning
 
@@ -30,7 +35,6 @@ def creer_demande_paiement(user_id, abonnement, montant, preuve_photo_id):
         return None
 
     try:
-        from users.db import get_connection
         conn = get_connection()
         try:
             conn.execute(
@@ -82,7 +86,6 @@ def get_demande(demande_id):
 
 def get_demandes_en_attente(limite=20):
     """Récupère les demandes en attente."""
-    from users.db import get_connection
     conn = None
     try:
         conn = get_connection()
@@ -260,7 +263,6 @@ def generer_code(jours, prefix="PREM"):
         )
         return None
 
-    from users.db import get_connection
     conn = None
     try:
         conn = get_connection()
@@ -403,7 +405,6 @@ def utiliser_code(code, user_id):
 
 def get_codes_disponibles(limite=50):
     """Récupère les codes non utilisés."""
-    from users.db import get_connection
     conn = None
     try:
         conn = get_connection()
@@ -436,7 +437,6 @@ def get_codes_disponibles(limite=50):
 
 def get_codes_utilises(limite=50):
     """Récupère les codes utilisés."""
-    from users.db import get_connection
     conn = None
     try:
         conn = get_connection()

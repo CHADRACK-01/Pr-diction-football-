@@ -61,8 +61,13 @@ def enregistrer_ai_dev_handlers(bot):
         # Test du code généré
         test_ok, message_test = tester_code(chemin_test)
         if not test_ok:
-            try: os.remove(chemin_test)
-            except: pass
+            try:
+                os.remove(chemin_test)
+            except FileNotFoundError:
+                pass
+            except OSError as e:
+                from core.utils.logs import log_warning
+                log_warning("Impossible de supprimer le fichier temporaire IA", "AI_DEV", exception=e)
             bot.reply_to(message, f"❌ L'IA a généré du code invalide.\n\n{message_test}\n\n🚫 La mise à jour est annulée.")
             return
             
@@ -123,8 +128,11 @@ def enregistrer_ai_dev_handlers(bot):
         else:
             try:
                 os.remove(prop["test_file"])
-            except:
+            except FileNotFoundError:
                 pass
+            except OSError as e:
+                from core.utils.logs import log_warning
+                log_warning("Impossible de nettoyer une proposition IA refusée", "AI_DEV", exception=e)
             bot.answer_callback_query(call.id, "❌ Annulé")
             bot.edit_message_text(
                 "❌ **Modification annulée.**\nAucun changement n'a été effectué sur le bot.",

@@ -1,6 +1,6 @@
 # core/top_matches.py
 from datetime import datetime, timezone, timedelta
-from core.paris_builder import get_tous_pronostics_disponibles
+from core.betting.paris_builder import get_tous_pronostics_disponibles
 from core.utils.logs import log_info, log_warning, log_error
 from config import SEUIL_CONF_SUR
 
@@ -32,10 +32,10 @@ def get_top_affiches(limite=10):
 
 def formater_top_affiches(affiches, langue="fr", montrer_details=True):
     if not affiches:
-        return "🏆 Aucun match sûr aujourd'hui, reviens plus tard !"
+        return "🏆 Aucun match ne dépasse actuellement le seuil de confiance configuré."
 
     texte = f"👋 <b>Voici les matchs que je te conseille aujourd'hui.</b>\n"
-    texte += f"J'ai analysé les statistiques et voici où tu as le plus de chances de gagner :\n\n"
+    texte += f"Voici les options qui dépassent le seuil statistique configuré :\n\n"
 
     for i, m in enumerate(affiches, 1):
         try:
@@ -52,12 +52,12 @@ def formater_top_affiches(affiches, langue="fr", montrer_details=True):
             
             if montrer_details:
                 texte += f"   👉 Je te conseille de jouer : {phrase_conseil}\n"
-                texte += f"   (J'ai <b>{round(m.get('reco_pct', 0) * 100, 1)}%</b> de certitude)\n\n"
+                texte += f"   (Probabilité estimée : <b>{round(m.get('reco_pct', 0) * 100, 1)}%</b>)\n\n"
             else:
                 texte += f"   👉 Conseillé\n\n"
         except Exception:
             continue
 
     if not montrer_details:
-        texte += "⭐ <i>Passe Premium pour voir mes conseils détaillés et mes certitudes.</i>\n"
+        texte += "⭐ <i>Passe Premium pour consulter l’analyse détaillée et les probabilités estimées.</i>\n"
     return texte

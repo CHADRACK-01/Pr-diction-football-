@@ -12,7 +12,7 @@ Gestion des compteurs et limites de pronostics.
 
 from datetime import datetime
 
-from users.db import db_execute, db_fetchone, db_fetchone_strict
+from users.database import db_execute, db_fetchone, db_fetchone_strict
 from users.account_base import est_premium
 from core.utils.logs import log_info, log_error, log_warning
 
