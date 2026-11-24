@@ -28,12 +28,13 @@ try:
     from config import TOKEN, ADMIN_ID, LOG_DEDUP_WINDOW_SEC, LOG_RECAP_INTERVAL_SEC
 except ImportError:
     TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
+    ADMIN_ID_RAW = os.environ.get("ADMIN_ID", "").strip()
     try:
-        ADMIN_ID = int(os.environ.get("ADMIN_ID", "8653408729"))
+        ADMIN_ID = int(ADMIN_ID_RAW) if ADMIN_ID_RAW else None
     except (ValueError, TypeError):
-        ADMIN_ID = 8653408729
-    LOG_DEDUP_WINDOW_SEC = 60
-    LOG_RECAP_INTERVAL_SEC = 3600
+        ADMIN_ID = None
+    LOG_DEDUP_WINDOW_SEC = int(os.environ.get("LOG_DEDUP_WINDOW_SEC", "60"))
+    LOG_RECAP_INTERVAL_SEC = int(os.environ.get("LOG_RECAP_INTERVAL_SEC", "3600"))
 
 TZ_KINSHASA = timezone(timedelta(hours=1))
 
@@ -263,11 +264,11 @@ def _envoyer_recap_supprimees():
 # API PUBLIQUE
 # =========================================================
 def log_info(message: str, module: str = "BOT",
-             user_context: Optional[Dict] = None,
-             api_context: Optional[Dict] = None,
-             db_context: Optional[Dict] = None,
-             handler: Optional[str] = None,
-             extra: Optional[Dict] = None):
+             user_context: dict[str, Any] | None = None,
+             api_context: dict[str, Any] | None = None,
+             db_context: dict[str, Any] | None = None,
+             handler: str | None = None,
+             extra: dict[str, Any] | None = None) -> None:
     """Log une information normale (print seulement, pas de Telegram)."""
     prefixe = f"[{module}]"
     if handler:
@@ -278,12 +279,12 @@ def log_info(message: str, module: str = "BOT",
 
 
 def log_warning(message: str, module: str = "BOT",
-                user_context: Optional[Dict] = None,
-                api_context: Optional[Dict] = None,
-                db_context: Optional[Dict] = None,
-                handler: Optional[str] = None,
-                exception: Optional[Exception] = None,
-                extra: Optional[Dict] = None):
+                user_context: dict[str, Any] | None = None,
+                api_context: dict[str, Any] | None = None,
+                db_context: dict[str, Any] | None = None,
+                handler: str | None = None,
+                exception: Exception | None = None,
+                extra: dict[str, Any] | None = None) -> None:
     """Log un avertissement + envoi Telegram (avec anti-flood)."""
     prefixe = f"[{module}]"
     if handler:
@@ -323,12 +324,12 @@ def log_warning(message: str, module: str = "BOT",
 
 
 def log_error(message: str, module: str = "BOT",
-              user_context: Optional[Dict] = None,
-              api_context: Optional[Dict] = None,
-              db_context: Optional[Dict] = None,
-              handler: Optional[str] = None,
-              exception: Optional[Exception] = None,
-              extra: Optional[Dict] = None):
+              user_context: dict[str, Any] | None = None,
+              api_context: dict[str, Any] | None = None,
+              db_context: dict[str, Any] | None = None,
+              handler: str | None = None,
+              exception: Exception | None = None,
+              extra: dict[str, Any] | None = None) -> None:
     """Log une erreur + envoi Telegram détaillé (avec anti-flood)."""
     prefixe = f"[{module}]"
     if handler:
@@ -381,12 +382,12 @@ def log_error(message: str, module: str = "BOT",
 
 
 def log_critical(message: str, module: str = "BOT",
-                 user_context: Optional[Dict] = None,
-                 api_context: Optional[Dict] = None,
-                 db_context: Optional[Dict] = None,
-                 handler: Optional[str] = None,
-                 exception: Optional[Exception] = None,
-                 extra: Optional[Dict] = None):
+                 user_context: dict[str, Any] | None = None,
+                 api_context: dict[str, Any] | None = None,
+                 db_context: dict[str, Any] | None = None,
+                 handler: str | None = None,
+                 exception: Exception | None = None,
+                 extra: dict[str, Any] | None = None) -> None:
     """Log une erreur critique (TOUJOURS envoyé, 3 fois, même en flood)."""
     prefixe = f"[{module}]"
     if handler:
@@ -430,7 +431,7 @@ def log_critical(message: str, module: str = "BOT",
 
 
 def log_canal_action(action: str, succes: bool, details: str = "",
-                     user_context: Optional[Dict] = None):
+                     user_context: dict[str, Any] | None = None) -> None:
     """Log spécifique pour les actions sur le canal."""
     statut = "✅" if succes else "❌"
     print(f"[CANAL] {statut} {action} - {details}")
