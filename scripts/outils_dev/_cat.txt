@@ -1,0 +1,6 @@
+L'argument ®ÿ_stats_catalogue.ps1ÿ¯ du paramŠtre -File n'existe pas. Indiquez le chemin d'accŠs vers un fichier ®ÿ.ps1ÿ¯ existant pour l'argument du paramŠtre -File.
+Windows PowerShell
+Copyright (C) Microsoft Corporation. Tous droits r‚serv‚s.
+
+Testez le nouveau systŠme multiplateforme PowerShell https://aka.ms/pscore6
+

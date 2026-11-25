@@ -1,0 +1,293 @@
+# telegram_bot/handlers/pronostic.py
+import telebot
+
+from users import (
+    get_langue, est_banni, peut_faire_pronostic, get_limite_jour,
+    est_administrateur, est_premium,
+)
+from users.account_limits import reserver_pronostic, annuler_pronostic
+from core.translations import get_text
+from config import CHAMPIONNATS, INFOS_COMPETITIONS, MAPPING_COMPETITIONS
+from core.session import (
+    creer_session, get_session, maj_session_etape, clear_session,
+)
+from users.matchs import get_equipes_saison_en_cours
+from core.utils.logs import log_info, log_error, log_warning
+
+# IMPORTATION DU CLAVIER CENTRALISÉ
+from telegram_bot.handlers.start import creer_clavier_utilisateur
+
+
+def _creer_clavier_competitions():
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    boutons = []
+    for code, nom_propre in CHAMPIONNATS.items():
+        infos = INFOS_COMPETITIONS.get(nom_propre, {})
+        emoji = infos.get("emoji", "🏆")
+        boutons.append(telebot.types.KeyboardButton(f"{emoji} {nom_propre}"))
+    markup.add(*boutons)
+    markup.add(telebot.types.KeyboardButton("↩️ Retour au Menu"))
+    return markup
+
+
+def _creer_clavier_equipes(equipes):
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=3)
+    boutons = [telebot.types.KeyboardButton(eq) for eq in equipes[:60]]
+    markup.add(*boutons)
+    markup.add(telebot.types.KeyboardButton("↩️ Retour au Menu"))
+    return markup
+
+
+def _detecter_competition(texte):
+    for code, nom in CHAMPIONNATS.items():
+        if nom in texte:
+            return code, nom
+    return None, None
+
+
+def _get_contexte_user(message, langue):
+    user = message.from_user
+    return {
+        "user_id": user.id, "user_name": user.first_name or "",
+        "username": user.username or "", "chat_id": message.chat.id,
+        "langue": langue, "message_text": (message.text or "")[:100],
+    }
+
+
+def enregistrer_pronostic_handlers(bot):
+
+    @bot.message_handler(commands=["bilan"])
+    def cmd_bilan(message):
+        """Bilan vérifiable : uniquement sur les estimations enregistrées avant match."""
+        try:
+            from core.bilans import resoudre_estimations, statistiques
+            resoudre_estimations()
+            s = statistiques()
+            if s["resolues"] == 0:
+                texte = (
+                    f"📈 <b>Bilan</b>\n\n{s['enregistrees']} estimation(s) enregistrée(s) "
+                    "avant match, aucune n'est encore résolue."
+                )
+            else:
+                texte = (
+                    "📈 <b>Bilan vérifiable</b>\n\n"
+                    f"Matchs résolus : {s['resolues']} sur {s['enregistrees']} enregistrés\n"
+                    f"🎯 Choix le plus probable correct : {s['precision'] * 100:.1f} %\n"
+                    f"📉 Log-loss : {s['log_loss']:.3f} (plus bas = mieux)\n\n"
+                    "<i>Calculé uniquement sur des estimations enregistrées avant le match.</i>"
+                )
+            bot.reply_to(message, texte, parse_mode="HTML")
+        except Exception as e:
+            log_error("Erreur bilan", "PRONOSTIC", exception=e)
+            bot.reply_to(message, "❌ Bilan indisponible pour le moment.")
+
+
+    @bot.message_handler(func=lambda m: m.text == "⚽ Faire un Pronostic")
+    def handle_pronostic(message):
+        user_id = message.from_user.id
+        langue = get_langue(user_id)
+        ctx = _get_contexte_user(message, langue)
+        log_info("Menu pronostic demandé", "PRONOSTIC", user_context=ctx)
+
+        try:
+            if est_banni(user_id):
+                bot.reply_to(message, get_text("banni", langue))
+                return
+            # Vérification indicative pour l'affichage du menu.
+            # La décision réelle est prise par reserver_pronostic() au calcul.
+            if not peut_faire_pronostic(user_id):
+                limite = get_limite_jour(user_id)
+                bot.reply_to(message, get_text("limite_atteinte", langue, limite=limite))
+                return
+        except Exception as e:
+            log_error("Erreur vérification", "PRONOSTIC", user_context=ctx, exception=e)
+            return
+
+        try:
+            bot.reply_to(message, "⚽ <b>Choisis la compétition</b> :",
+                         reply_markup=_creer_clavier_competitions(), parse_mode="HTML")
+        except Exception as e:
+            log_error("Erreur affichage compétitions", "PRONOSTIC", user_context=ctx, exception=e)
+
+    @bot.message_handler(func=lambda m: m.text == "↩️ Retour au Menu")
+    def retour_menu(message):
+        user_id = message.from_user.id
+        clear_session(user_id)
+        # Sélection admin en cours : on l'annule (le menu admin est renvoyé par annuler_selection)
+        if _selection_admin_active(user_id):
+            try:
+                from telegram_bot.admin.selection import annuler_selection
+                annuler_selection(user_id, bot, message.chat.id)
+            except Exception as e:
+                log_error("Erreur annulation sélection admin", "PRONOSTIC", exception=e)
+            return
+        try:
+            from telegram_bot.handlers.start import envoyer_menu_principal
+            envoyer_menu_principal(message.chat.id, user_id, bot)
+        except Exception as e:
+            log_error("Erreur retour menu", "PRONOSTIC", exception=e)
+
+    @bot.message_handler(func=lambda m: m.text and _detecter_competition(m.text)[0] is not None
+                                       and not _selection_admin_active(m.from_user.id))
+    def handle_choix_competition(message):
+        user_id = message.from_user.id
+        langue = get_langue(user_id)
+        ctx = _get_contexte_user(message, langue)
+        comp_code, nom_propre = _detecter_competition(message.text)
+
+        if not comp_code:
+            return
+
+        log_info(f"Compétition choisie : {nom_propre}", "PRONOSTIC", user_context=ctx)
+        try:
+            equipes = get_equipes_saison_en_cours(nom_propre)
+        except Exception as e:
+            log_error("Erreur récupération équipes", "PRONOSTIC", exception=e)
+            bot.reply_to(message, "❌ Erreur lors de la récupération des équipes.")
+            return
+
+        if not equipes:
+            bot.reply_to(message, f"⚠️ Aucune équipe trouvée pour <b>{nom_propre}</b> cette saison.", parse_mode="HTML")
+            return
+
+        if not creer_session(user_id, comp_code, nom_propre, equipes):
+            bot.reply_to(message, "❌ Impossible de démarrer la session. Réessaie.")
+            return
+
+        bot.send_message(
+            message.chat.id,
+            f"⚽ Compétition : <b>{nom_propre}</b>\n\n🏠 Sélectionne l'équipe <b>à domicile</b> :",
+            reply_markup=_creer_clavier_equipes(equipes), parse_mode="HTML"
+        )
+
+    @bot.message_handler(func=lambda m: _est_en_session(m.from_user.id, "domicile"))
+    def handle_choix_domicile(message):
+        user_id = message.from_user.id
+        langue = get_langue(user_id)
+        ctx = _get_contexte_user(message, langue)
+        session = get_session(user_id)
+        if not session:
+            return
+
+        equipe_dom = (message.text or "").strip()
+        if equipe_dom not in session["equipes"]:
+            return
+
+        maj_session_etape(user_id, "exterieur", equipe_dom=equipe_dom)
+        equipes_ext = [eq for eq in session["equipes"] if eq != equipe_dom]
+
+        bot.send_message(
+            message.chat.id,
+            f"🏠 Domicile : <b>{equipe_dom}</b>\n\n✈️ Sélectionne l'équipe <b>à l'extérieur</b> :",
+            reply_markup=_creer_clavier_equipes(equipes_ext), parse_mode="HTML"
+        )
+
+    @bot.message_handler(func=lambda m: _est_en_session(m.from_user.id, "exterieur"))
+    def handle_choix_exterieur(message):
+        user_id = message.from_user.id
+        langue = get_langue(user_id)
+        ctx = _get_contexte_user(message, langue)
+        session = get_session(user_id)
+        if not session:
+            return
+
+        equipe_ext = (message.text or "").strip()
+        if equipe_ext not in session["equipes"] or equipe_ext == session.get("equipe_dom"):
+            return
+
+        equipe_dom = session.get("equipe_dom", "")
+        comp_code = session["competition"]
+        competition_reelle = MAPPING_COMPETITIONS.get(comp_code, comp_code)
+
+        # RÉSERVATION DE LA PLACE AVANT LE CALCUL (atomique : la limite est
+        # vérifiée et appliquée dans la même requête SQL, donc pas de
+        # dépassement même avec des demandes simultanées).
+        if not reserver_pronostic(user_id):
+            clear_session(user_id)
+            log_warning("Pronostic refusé : limite atteinte ou base indisponible",
+                        "PRONOSTIC", user_context=ctx)
+            bot.reply_to(message, get_text("limite_atteinte", langue,
+                                           limite=get_limite_jour(user_id)))
+            return
+
+        clear_session(user_id)
+
+        # UTILISATION DU CLAVIER CENTRALISÉ ICI
+        bot.send_message(
+            message.chat.id,
+            f"⏳ Calcul de la prédiction pour <b>{equipe_dom} vs {equipe_ext}</b>...",
+            reply_markup=creer_clavier_utilisateur(user_id), parse_mode="HTML"
+        )
+
+        try:
+            from core.predictions.prediction import predire_match, sauvegarder_historique
+            resultat = predire_match(equipe_dom, equipe_ext, competition=competition_reelle)
+        except Exception as e:
+            # Calcul en échec : on rend la place réservée
+            annuler_pronostic(user_id)
+            log_error("Erreur prédiction", "PRONOSTIC", user_context=ctx, exception=e)
+            bot.send_message(message.chat.id, "❌ Erreur lors du calcul.")
+            return
+
+        if not resultat or "erreur" in resultat:
+            # Calcul sans résultat : on rend la place réservée
+            annuler_pronostic(user_id)
+            erreur_msg = resultat.get("erreur", "Erreur inconnue") if resultat else "Erreur inconnue"
+            bot.send_message(message.chat.id, f"❌ {erreur_msg}")
+            return
+
+        # --- ENVOI DU BULLETIN FORMATÉ (HTML) ---
+        try:
+            from telegram_bot.prediction_handlers import _formater_bulletin_premium, _formater_bulletin_free
+            is_prem = est_premium(user_id)
+            bulletin = _formater_bulletin_premium(resultat) if is_prem else _formater_bulletin_free(resultat)
+            # ⚠️ L'IMPORTANT EST ICI : parse_mode="HTML"
+            from core.administration.jeu_responsable import ajouter_mention
+            bulletin = ajouter_mention(bulletin)
+            bot.send_message(message.chat.id, bulletin, parse_mode="HTML")
+        except Exception as e:
+            log_error("Erreur affichage bulletin", "PRONOSTIC", user_context=ctx, exception=e)
+            bot.send_message(message.chat.id, "⚠️ Prédiction calculée mais affichage échoué.")
+
+        # --- SAUVEGARDE HISTORIQUE ---
+        try:
+            top_scores = resultat.get("top_scores", [(1, 0, 0)])
+            best_i, best_j = top_scores[0][0], top_scores[0][1]
+
+            sauvegarder_historique(
+                resultat["home_team"], resultat["away_team"], competition_reelle,
+                resultat["p_h"], resultat["p_d"], resultat["p_a"],
+                best_i, best_j
+            )
+        except Exception as e:
+            log_error("Erreur sauvegarde historique", "PRONOSTIC", exception=e)
+
+        # --- ESTIMATION VÉRIFIABLE (avant match, pour le bilan) ---
+        try:
+            from core.bilans import enregistrer_estimation
+            enregistrer_estimation(
+                resultat["home_team"], resultat["away_team"],
+                resultat["p_h"], resultat["p_d"], resultat["p_a"],
+                competition_reelle,
+            )
+        except Exception as e:
+            log_error("Erreur enregistrement estimation", "PRONOSTIC", exception=e)
+
+        # Le compteur a déjà été incrémenté par reserver_pronostic() ; rien à faire ici.
+
+
+def _selection_admin_active(user_id):
+    """True si l'utilisateur est en pleine sélection admin (boutons paramétrés)."""
+    try:
+        from telegram_bot.admin.selection import ADMIN_SELECTIONS
+        return user_id in ADMIN_SELECTIONS
+    except Exception:
+        return False
+
+
+def _est_en_session(user_id, etape):
+    try:
+        s = get_session(user_id)
+        return s is not None and s.get("etape") == etape
+    except Exception:
+        return False
