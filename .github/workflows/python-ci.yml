@@ -1,0 +1,38 @@
+name: Python CI
+
+on:
+  push:
+    branches: [main, 'release/**']
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Compile sources
+        run: python -m compileall -q app.py config.py ai_dev core scripts telegram_bot users tests entrainement
+
+      - name: Run Ruff
+        run: ruff check app.py config.py ai_dev core scripts telegram_bot users tests entrainement
+
+      - name: Run tests
+        run: pytest --cov=core --cov=users --cov=telegram_bot --cov-report=term-missing --cov-fail-under=80

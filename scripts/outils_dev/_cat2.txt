@@ -1,0 +1,21 @@
+Fichier : core\catalog\catalogue_fonctionnalites.py
+  entrees detectees : 137
+    complete       48
+    partielle      48
+    a_implanter    41
+
+Fichier : core\catalog\catalogue_extensions.py
+  entrees detectees : 0
+
+Fichier : core\catalog\fonctionnalites_700.py
+  entrees detectees : 0
+
+=== TAILLE DES FICHIERS CATALOGUE ===
+    61 lignes  catalogue_extensions.py
+   194 lignes  catalogue_fonctionnalites.py
+   141 lignes  features.py
+   120 lignes  fonctionnalites_700.py
+    32 lignes  qa_extension.py
+    77 lignes  runtime_700.py
+    63 lignes  top_matches.py
+     5 lignes  __init__.py

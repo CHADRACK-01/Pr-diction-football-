@@ -44,8 +44,10 @@ def _inserer_matchs_en_base(all_rows):
                 inseres += 1
             except Exception:
                 pass
-        try: conn.commit()
-        except: pass
+        try:
+            conn.commit()
+        except Exception as e:
+            log_error("Impossible de valider le lot de matchs", "SCRIPTS", exception=e)
 
     conn.close()
     return inseres
@@ -88,8 +90,12 @@ def telecharger_tout():
                     'competition': DIVS[div],
                     'saison': saison_str
                 })
-            except Exception:
-                continue
+            except Exception as e:
+                log_warning(f"Match ignoré lors du téléchargement : {e}", "SCRIPTS")
+        try:
+            conn.commit()
+        except Exception as e:
+            log_error("Impossible de valider le lot de matchs", "SCRIPTS", exception=e)
 
         inseres = _inserer_matchs_en_base(all_rows)
         log_info(f"✅ {inseres} matchs traités pour la saison {saison_str}", "SCRIPTS")

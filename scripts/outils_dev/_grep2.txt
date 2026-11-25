@@ -1,0 +1,60 @@
+### MOTIF: _assurer_schema_catalogue
+  users\db.py:252: def _assurer_schema_catalogue(conn):
+  -- total: 1
+
+### MOTIF: ^\s*def db_execute|^\s*def db_fetchall|^\s*def db_fetchone
+  tests\test_bilans.py:9: def db_execute(q, params=None, db_context=None):
+  tests\test_bilans.py:14: def db_fetchone(q, params=None, db_context=None):
+  tests\test_bilans.py:16: def db_fetchall(q, params=None, db_context=None):
+  tests\test_cotes_historiques.py:6: def db_execute(q, params=None, db_context=None):
+  tests\test_cotes_historiques.py:11: def db_fetchall(q, params=None, db_context=None):
+  tests\test_credits.py:8: def db_execute(q, params=None, db_context=None):
+  tests\test_credits.py:16: def db_fetchone(q, params=None, db_context=None):
+  users\db.py:60: def db_execute(query, params=None, db_context=None, commit=True):
+  users\db.py:93: def db_fetchone(query, params=None, db_context=None):
+  users\db.py:124: def db_fetchall(query, params=None, db_context=None):
+  users\db.py:155: def db_fetchone_dict(query, params=None, db_context=None):
+  users\db.py:545: def db_fetchone_strict(query, params=None, db_context=None):
+  users\database\queries.py:21: def db_execute(query, params=None, db_context=None, commit=True):
+  users\database\queries.py:39: def db_fetchone(query, params=None, db_context=None):
+  users\database\queries.py:54: def db_fetchall(query, params=None, db_context=None):
+  users\database\queries.py:69: def db_fetchone_dict(query, params=None, db_context=None):
+  users\database\queries.py:89: def db_fetchone_strict(query, params=None, db_context=None):
+  -- total: 17
+
+### MOTIF: ^from users\.db import|^from users\.database import
+  core\metriques_utilisateur.py:5: from users.db import db_fetchall
+  core\session.py:12: from users.db import db_execute, db_fetchone
+  core\administration\feature_flags.py:2: from users.database import db_execute, db_fetchone, db_fetchall
+  core\administration\support_extension.py:5: from users.database import db_execute, db_fetchall, db_fetchone
+  core\betting\bankroll.py:7: from users.database import db_execute, db_fetchone
+  core\data\comparateur.py:7: from users.db import db_fetchall
+  core\data\consultation.py:9: from users.db import db_fetchall
+  core\data\registre_sportif.py:5: from users.db import db_execute, db_fetchall, db_fetchone
+  core\data\results_checker.py:14: from users.db import db_fetchone, db_fetchall, db_execute
+  core\engagement\codes_promo.py:13: from users.database import db_execute, db_fetchone, get_connection
+  core\engagement\engagement_local.py:5: from users.db import db_execute, db_fetchone
+  core\engagement\equipes_favorites.py:7: from users.db import db_execute, db_fetchone, db_fetchall
+  core\engagement\gouvernance_extension.py:7: from users.db import db_execute, db_fetchall
+  core\predictions\ml_model.py:15: from users.database import db_fetchone
+  core\predictions\model_governance.py:5: from users.database import db_execute, db_fetchall, db_fetchone
+  core\predictions\nouveau_prediction.py:16: from users.database import db_fetchall
+  scripts\mettre_a_jour_resultats.py:10: from users.db import get_connection, db_execute, db_fetchall
+  scripts\telecharger_matchs.py:11: from users.db import get_connection
+  telegram_bot\consultation_handlers.py:24: from users.db import db_fetchall
+  telegram_bot\consultation\devises.py:7: from users.db import db_execute, db_fetchone
+  telegram_bot\consultation\preuves.py:5: from users.db import db_fetchall
+  telegram_bot\handlers\historique.py:3: from users.db import get_connection
+  telegram_bot\handlers\statistiques.py:4: from users.db import db_fetchone
+  users\account_base.py:11: from users.database import (
+  users\account_limits.py:15: from users.database import db_execute, db_fetchone, db_fetchone_strict
+  users\account_notifications.py:1: from users.database import get_connection
+  users\account_referral.py:1: from users.database import get_connection
+  users\admin.py:3: from users.database import DatabaseError, db_fetchone_strict, get_connection
+  users\credits.py:12: from users.database import db_execute, db_fetchone
+  users\matchs.py:6: from users.database import db_execute, db_fetchone, db_fetchall, get_connection
+  users\paiements.py:12: from users.database import (
+  users\__init__.py:7: from users.database import (
+  users\__init__.py:14: from users.db import initialiser_tables
+  -- total: 33
+

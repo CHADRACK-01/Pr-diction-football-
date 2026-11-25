@@ -1,0 +1,27 @@
+### MOTIF: FICHIERS_INTERDITS
+  ai_dev\agent.py:16: FICHIERS_INTERDITS = [
+  -- total: 1
+
+### MOTIF: gemini-
+  ai_dev\agent.py:4: Utilise Google Gemini (gemini-3.8-flash) en principal, et Groq (openai/gpt-oss-120b) en fallback.
+  ai_dev\agent.py:81: url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent"
+  -- total: 2
+
+### MOTIF: 8653408729
+  core\utils\logs.py:32: ADMIN_ID = int(os.environ.get("ADMIN_ID", "8653408729"))
+  core\utils\logs.py:34: ADMIN_ID = 8653408729
+  tests\test_config.py:74: assert "8653408729" not in source
+  -- total: 3
+
+### MOTIF: subprocess
+  ai_dev\updater.py:10: import subprocess
+  ai_dev\updater.py:51: subprocess.run(["git", "config", "user.email", "bot@pronostic.com"], cwd=projet_dir, check=True)
+  ai_dev\updater.py:52: subprocess.run(["git", "config", "user.name", "Bot Auto-Update"], cwd=projet_dir, check=True)
+  ai_dev\updater.py:55: subprocess.run(["git", "add", chemin_fichier], cwd=projet_dir, check=True)
+  ai_dev\updater.py:58: subprocess.run(["git", "commit", "-m", f"dY- IA Update: {message}"], cwd=projet_dir, check=True)
+  ai_dev\updater.py:69: subprocess.run(["git", "push", auth_url, "HEAD:main"], cwd=projet_dir, check=True)
+  ai_dev\updater.py:72: except subprocess.CalledProcessError as e:
+  tests\conftest.py:10: import subprocess
+  tests\conftest.py:71: return subprocess.run(
+  -- total: 9
+

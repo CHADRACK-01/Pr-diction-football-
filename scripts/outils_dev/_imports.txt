@@ -1,0 +1,278 @@
+=== UTILISATION DES MODULES PLATS core/*.py ===
+   0  core.__init__
+   2  core.alerte_apis
+   2  core.alertes_live
+   3  core.analyses_avancees
+   1  core.backtest
+   1  core.bankroll
+   2  core.bilans
+   1  core.bookmakers
+   1  core.cashout
+   1  core.catalogue_extensions
+   5  core.catalogue_fonctionnalites
+   2  core.codes_promo
+   1  core.comparateur
+   0  core.configuration
+   1  core.consultation
+   2  core.contrat_modele
+   1  core.controle_quota
+   1  core.cotes_historiques
+   2  core.daily_matches
+   4  core.devises
+   1  core.engagement_local
+   1  core.equipes
+   1  core.equipes_favorites
+   7  core.feature_flags
+   3  core.fonctionnalites_700
+   3  core.formatting
+   3  core.gestion_risques
+   0  core.gouvernance_extension
+   1  core.jeu_responsable
+   1  core.libelles_confiance
+   1  core.meteo
+   0  core.metriques_utilisateur
+   5  core.ml_model
+   4  core.model_governance
+   0  core.notifications_programmees
+   2  core.nouveau_prediction
+   1  core.outils_locaux_avances
+   0  core.paiement_auto
+   2  core.paiement_validation
+   2  core.paris_builder
+   5  core.payments
+   2  core.pic_erreurs
+   0  core.poisson
+   1  core.prediction
+   1  core.registre
+   0  core.registre_sportif
+   0  core.results_checker
+   1  core.revenus
+   2  core.runtime_700
+   0  core.sauvegarde_backup
+   0  core.scheduler
+   0  core.scheduler_jobs
+   2  core.securite
+   1  core.services_prioritaires
+   2  core.session
+   1  core.socles_tiers
+   0  core.support_extension
+   8  core.translations
+   2  core.urgence
+   1  core.validation_prediction
+   1  core.value_bet
+
+=== UTILISATION DES SOUS-PAQUETS ===
+  11  core.administration
+   5  core.api
+  12  core.betting
+  10  core.catalog
+  11  core.data
+   6  core.engagement
+   8  core.features
+   3  core.notifications
+  20  core.predictions
+   8  core.scheduling
+ 147  core.utils
+
+=== MARQUEURS STUB PAR FICHIER (core) ===
+Fichiers core avec marqueurs : 61
+
+Stub Pass Todo Module                                
+---- ---- ---- ------                                
+  46    0    0 core.features.admin                   
+  41    1    0 core.catalog.catalogue_fonctionnalites
+   5    0    0 core.features.reseaux_sociaux         
+   5    0    0 core.features.logs                    
+   5    0    0 core.features.alertes                 
+   4    0    0 core.features.marches                 
+   4    0    0 core.features.engagement              
+   4    0    0 core.features.broadcast               
+   4    0    0 core.features.cotes                   
+   3    0    0 core.features.matchs                  
+   3    0    0 core.features.filtres                 
+   3    0    0 core.features.ticket                  
+   3    0    0 core.features.conditions              
+   3    0    0 core.features.interface               
+   2    0    0 core.features.combines                
+   2    0    0 core.features.equipes                 
+   2    0    0 core.features.moderation              
+   2    0    0 core.features.stats                   
+   2    0    0 core.features.historique              
+   2    0    0 core.features.cashout                 
+
+
+
+
+=== TOTAL MARQUEURS PAR DOSSIER ===
+
+Dossier                              Fichiers AImplanter Pass TODO
+-------                              -------- ---------- ---- ----
+core.features                              54        148    0    1
+core.catalog                                8         42    2    0
+(racine)                                    4          2    1    1
+telegram_bot.completions_handlers           1          2    1    0
+telegram_bot.features_handlers              1          2    0    0
+tests.test_catalogue_fonctionnalites        1          1    0    0
+telegram_bot.menu_commandes_handlers        1          0    0    0
+tests.test_pic_erreurs                      1          0    0    0
+payments.__init__                           1          0    0    0
+tests.test_poisson                          1          0    0    0
+tests.test_alerte_apis                      1          0    0    0
+tests.test_completions_handlers             1          0    0    0
+users.paiements                             1          0    3    0
+tests.test_backtest                         1          0    0    0
+telegram_bot.payment_handlers               1          0    0    0
+tests.test_bilans                           1          0    0    0
+tests.test_runtime_700                      1          0    0    0
+core.gouvernance_extension                  1          0    0    0
+core.cotes_historiques                      1          0    0    0
+tests.test_value_bet                        1          0    0    0
+core.urgence                                1          0    0    0
+tests.conftest                              1          0    0    0
+tests.test_model_governance                 1          0    0    0
+tests.test_feature_flags                    1          0    0    0
+core.runtime_700                            1          0    0    0
+tests.test_catalogue_complet_700            1          0    0    0
+tests.test_jeu_responsable                  1          0    0    0
+web.routes_admin                            1          0    0    0
+core.nouveau_prediction                     1          0    0    0
+tests.test_ia                               1          0    0    0
+core.translations                           1          0    0    0
+core.bankroll                               1          0    0    0
+core.engagement_local                       1          0    0    0
+core.revenus                                1          0    0    0
+tests.test_registre                         1          0    0    0
+core.notifications                          2          0    0    0
+core.notifications_programmees              1          0    0    0
+core.socles_tiers                           1          0    0    0
+core.paris_builder                          1          0    0    0
+core.equipes                                1          0    0    0
+core.gestion_risques                        1          0    0    0
+tests.test_codes_promo_integration          1          0    2    0
+web.security                                1          0    0    0
+core.payments                               1          0    1    0
+scripts.__init__                            1          0    0    0
+telegram_bot.premium_handlers               1          0    1    0
+tests.test_menu_completions                 1          0    0    0
+core.ml_model                               1          0    0    0
+tests.test_fonctionnalites_700              1          0    0    0
+core.__init__                               1          0    0    0
+core.prediction                             1          0    0    0
+tests.test_migrations                       1          0    0    0
+tests.test_determinisme                     1          0    0    0
+tests.test_payment_flow                     1          0    0    0
+core.services_prioritaires                  1          0    0    0
+users.account_referral                      1          0    0    0
+core.bookmakers                             1          0    0    0
+tests.test_config_defauts                   1          0    0    0
+core.feature_flags                          1          0    0    0
+tests.test_support_extension                1          0    0    0
+core.jeu_responsable                        1          0    0    0
+tests.test_libelles_confiance               1          0    0    0
+tests.test_equipes                          1          0    0    0
+core.codes_promo                            1          0    0    0
+core.poisson                                1          0    0    0
+users.account_limits                        1          0    0    0
+core.cashout                                1          0    0    0
+web.application                             1          0    0    0
+users.matchs                                1          0    1    0
+users.account_base                          1          0    0    0
+telegram_bot.admin_handlers                 1          0    1    0
+core.scheduler                              1          0    0    0
+core.model_governance                       1          0    0    0
+payments.mobile_provider                    1          0    0    0
+core.sauvegarde_backup                      1          0    0    0
+ai_dev.__init__                             1          0    0    0
+core.alerte_apis                            1          0    0    0
+users.credits                               1          0    0    0
+scripts.mettre_a_jour_resultats             1          0    0    0
+core.registre_sportif                       1          0    0    0
+tests.test_completions_locales              1          0    0    0
+core.configuration                          1          0    0    0
+tests.test_services_prioritaires            1          0    0    0
+web.routes_public                           1          0    0    0
+core.catalogue_fonctionnalites              1          0    0    0
+telegram_bot.admin                          6          0    2    0
+tests.test_outils_locaux_avances            1          0    0    0
+core.administration                        12          0    3    0
+users.account_notifications                 1          0    0    0
+tests.test_notifications_programmees        1          0    0    0
+tests.test_scheduler                        1          0    0    0
+telegram_bot.handlers                       9          0    4    0
+tests.test_registre_sportif                 1          0    0    0
+core.api                                    7          0    4    0
+scripts.telecharger_matchs                  1          0    1    0
+core.catalogue_extensions                   1          0    0    0
+core.securite                               1          0    0    0
+core.daily_matches                          1          0    0    0
+telegram_bot.payments                       3          0    4    0
+users.db                                    1          0    0    0
+core.libelles_confiance                     1          0    0    0
+core.devises                                1          0    0    0
+core.backtest                               1          0    0    0
+core.pic_erreurs                            1          0    0    0
+core.engagement                             7          0    1    0
+users.__init__                              1          0    0    0
+tests.test_consultation_exports             1          0    0    0
+core.outils_locaux_avances                  1          0    0    0
+core.results_checker                        1          0    0    0
+core.validation_prediction                  1          0    0    0
+core.contrat_modele                         1          0    0    0
+core.utils                                  4          0    3    0
+core.meteo                                  1          0    0    0
+core.betting                                8          0    0    0
+core.predictions                           11          0    0    0
+core.paiement_auto                          1          0    0    0
+ai_dev.updater                              1          0    0    0
+users.database                              5          0    0    0
+tests.test_credits                          1          0    0    0
+telegram_bot.consultation                   4          0    0    0
+entrainement.entrainer_modele               1          0    0    0
+core.data                                   9          0    0    0
+tests.test_predictions_regression           1          0    0    0
+tests.test_probabilites                     1          0    0    0
+telegram_bot.panique_handlers               1          0    0    0
+core.formatting                             1          0    0    0
+users.admin                                 1          0    4    0
+core.equipes_favorites                      1          0    0    0
+telegram_bot.payment_flow                   1          0    0    0
+core.value_bet                              1          0    0    0
+tests.test_features                         1          0    3    0
+ai_dev.agent                                1          0    0    0
+core.consultation                           1          0    0    0
+telegram_bot.consultation_handlers          1          0    0    0
+telegram_bot.__init__                       1          0    0    0
+telegram_bot.inline_handlers                1          0    0    0
+tests.test_adaptateurs_externes             1          0    0    0
+tests.test_catalogue_telegram               1          0    1    0
+core.comparateur                            1          0    0    0
+ai_dev.tester                               1          0    0    0
+core.registre                               1          0    0    0
+tests.test_controle_quota                   1          0    0    0
+core.analyses_avancees                      1          0    0    0
+tests.test_validation_prediction            1          0    0    0
+tests.test_database_exports                 1          0    0    0
+tests.test_nouvelles_completions            1          0    0    0
+core.alertes_live                           1          0    0    0
+core.session                                1          0    0    0
+tests.test_gouvernance_extension            1          0    0    0
+telegram_bot.predictions                    1          0    0    0
+telegram_bot.prediction_handlers            1          0    0    0
+tests.test_cotes_historiques                1          0    0    0
+tests.test_config                           1          0    0    0
+telegram_bot.ai_dev_handlers                1          0    2    0
+core.controle_quota                         1          0    0    0
+core.paiement_validation                    1          0    0    0
+tests.test_web_routes_exports               1          0    0    0
+tests.test_revenus                          1          0    1    0
+core.scheduling                             3          0    0    0
+core.metriques_utilisateur                  1          0    0    0
+core.scheduler_jobs                         1          0    0    0
+tests.test_application_runtime              1          0    2    0
+core.bilans                                 1          0    0    0
+core.support_extension                      1          0    0    0
+tests.test_menu_admin_selection             1          0    0    0
+core.fonctionnalites_700                    1          0    0    0
+
+
+

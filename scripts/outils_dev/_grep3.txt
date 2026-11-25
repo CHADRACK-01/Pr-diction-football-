@@ -1,0 +1,44 @@
+### MOTIF: fonctionnalites_actives
+  core\administration\feature_flags.py:9: "SELECT actif FROM fonctionnalites_actives WHERE feature_id = ?",
+  core\administration\feature_flags.py:17: "INSERT INTO fonctionnalites_actives "
+  core\administration\feature_flags.py:22: "libelle = COALESCE(excluded.libelle, fonctionnalites_actives.libelle), "
+  core\administration\feature_flags.py:23: "categorie = COALESCE(excluded.categorie, fonctionnalites_actives.categorie), "
+  core\administration\feature_flags.py:24: "proprietaire = COALESCE(excluded.proprietaire, fonctionnalites_actives.proprietaire)",
+  core\administration\feature_flags.py:59: rows = db_fetchall("SELECT feature_id, actif FROM fonctionnalites_actives")
+  core\administration\feature_flags.py:66: "date_creation, date_expiration FROM fonctionnalites_actives"
+  tests\test_feature_flags.py:25: if "insert into fonctionnalites_actives" in q:
+  tests\test_feature_flags.py:55: if "from fonctionnalites_actives" in q and "where feature_id" in q:
+  tests\test_feature_flags.py:62: if "from fonctionnalites_actives" in q:
+  tests\test_migrations.py:60: assert {"utilisateurs", "matchs", "fonctionnalites_actives"} <= tables
+  users\db.py:268: "CREATE TABLE IF NOT EXISTS fonctionnalites_actives ("
+  users\db.py:293: _ajouter_colonnes_manquantes(conn, "fonctionnalites_actives", colonnes_features)
+  users\db.py:431: "fonctionnalites_actives": """
+  users\db.py:432: CREATE TABLE IF NOT EXISTS fonctionnalites_actives (
+  users\database\maintenance.py:29: "sessions_pronostic", "fonctionnalites_actives", "bankroll",
+  -- total: 16
+
+### MOTIF: historique_features
+  core\administration\feature_flags.py:32: "INSERT INTO historique_features (feature_id, actif, auteur_id, date_bascule) "
+  tests\test_feature_flags.py:41: elif "insert into historique_features" in q:
+  tests\test_feature_flags.py:149: if "historique_features" in query:
+  users\db.py:279: "CREATE TABLE IF NOT EXISTS historique_features ("
+  -- total: 4
+
+### MOTIF: est_active\(
+  core\administration\feature_flags.py:6: def est_active(feature_id):
+  core\betting\paris_builder.py:168: if est_active("2") and cotes_book:
+  core\betting\paris_builder.py:182: if est_active("9"):
+  core\betting\paris_builder.py:377: if m.get("is_value_bet") and est_active("2"):
+  core\betting\paris_builder.py:381: if est_active("9"):
+  core\betting\paris_builder.py:388: if est_active("413"):
+  core\engagement\jeu_responsable.py:22: def _est_active():
+  core\engagement\jeu_responsable.py:24: return bool(est_active(FEATURE_ID))
+  core\engagement\jeu_responsable.py:37: if not texte_html or not _est_active():
+  core\engagement\services_prioritaires.py:10: if not est_active("32"):
+  telegram_bot\prediction_handlers.py:60: if est_active("414"):
+  tests\test_feature_flags.py:96: assert feature_flags.est_active("647") is False
+  tests\test_feature_flags.py:103: assert feature_flags.est_active("647") is True
+  tests\test_feature_flags.py:155: assert feature_flags.est_active("649") is True
+  tests\test_ia.py:3: if est_active("999"):
+  -- total: 15
+
