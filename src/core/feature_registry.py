@@ -546,11 +546,11 @@ FEATURE_IMPL: dict[str, dict[str, Any]] = {
         "note": "Boutique XP : échange des points contre Premium ou analyses VIP.",
     },
     "71": {
-        "impl_module": "core.services.engagement",
-        "impl_function": "ServiceEngagement.bonus_connexion_quotidienne",
+        "impl_module": "core.engagement.engagement_local",
+        "impl_function": "bonus_connexion_quotidienne",
         "dependances_externes": [],
         "statut_impl": "complete",
-        "note": "Bonus de connexion quotidienne : XP et récompenses cumulées.",
+        "note": "Bonus de connexion quotidienne avec persistance et série de connexion.",
     },
     "72": {
         "impl_module": "core.services.engagement",

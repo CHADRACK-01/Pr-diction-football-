@@ -88,48 +88,8 @@ class ServiceEngagement:
 
     # --- Bonus de connexion quotidienne ---
 
-    def bonus_connexion_quotidienne(
-        self,
-        user_id: int,
-        derniere_connexion: str | None = None,
-    ) -> dict[str, Any]:
-        """Attribue le bonus de connexion quotidienne (une fois par jour).
-
-        Args:
-            user_id: ID de l'utilisateur Telegram.
-            derniere_connexion: Date de la dernière connexion (YYYY-MM-DD) ou None.
-
-        Returns:
-            Dictionnaire {bonus_attribue, xp, recompense, message, peut_recevoir}.
-        """
-        maintenant = datetime.now(TZ_KINSHASA).strftime("%Y-%m-%d")
-
-        if derniere_connexion == maintenant:
-            return {
-                "bonus_attribue": False,
-                "xp": 0,
-                "recompense": "Aucune",
-                "message": "Bonus quotidien déjà récupéré aujourd'hui.",
-                "peut_recevoir": False,
-            }
-
-        xp = 20
-        recompense = "20 XP + ticket gratuit"
-
-        log_info(
-            f"Bonus quotidien attribué à l'user {user_id} : {xp} XP",
-            "ENGAGEMENT",
-            extra={"user_id": user_id, "xp": xp},
-        )
-
-        return {
-            "bonus_attribue": True,
-            "xp": xp,
-            "recompense": recompense,
-            "message": f"✅ Bonus quotidien : {recompense}",
-            "peut_recevoir": True,
-            "date": maintenant,
-        }
+    # Déprécié : utilisez core.engagement.engagement_local.bonus_connexion_quotidienne
+    # (source de vérité avec persistance et série de connexion).
 
     # --- Roue quotidienne ---
 

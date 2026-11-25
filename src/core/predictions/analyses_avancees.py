@@ -5,7 +5,12 @@ import random
 from datetime import datetime
 
 
-def calculer_elo_live(elo_home, elo_away, score_actuel=(0, 0), but_equipe=None, k=24):
+def calculer_elo_live_simple(elo_home, elo_away, score_actuel=(0, 0), but_equipe=None, k=24):
+    """Version simplifiée du calcul Élo (dépréciée).
+
+    Déprécié : utilisez ``core.experience.fonctionnalites_restantes.calculer_elo_live``
+    qui est la source de vérité (retourne variations, score et statut).
+    """
     expected_home = 1 / (1 + 10 ** ((elo_away - elo_home) / 400))
     home_goals, away_goals = score_actuel
     if but_equipe == "home":

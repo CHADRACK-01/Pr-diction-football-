@@ -1,5 +1,16 @@
-"""Compatibilité historique : importez depuis core.payments."""
+# core/paiement_auto.py
+"""
+Shim de compatibilité historique.
 
-from core.payments.mobile_provider import verifier_paiement_auto
+L'adaptateur de paiement Mobile Money vit désormais dans
+``core.adaptateurs.paiements.AdaptateurPaiementMobileMoney``.
+"""
 
-__all__ = ["verifier_paiement_auto"]
+from core.adaptateurs.paiements import AdaptateurPaiementMobileMoney  # noqa: F401
+
+__all__ = ["AdaptateurPaiementMobileMoney"]
+
+def verifier_paiement_auto(*args, **kwargs):
+    """Déprécié : utilisez AdaptateurPaiementMobileMoney.verifier_reference."""
+    adaptateur = AdaptateurPaiementMobileMoney()
+    return adaptateur.verifier_reference(*args, **kwargs)

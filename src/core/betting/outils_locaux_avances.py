@@ -32,14 +32,22 @@ def detecter_match_nul(proba_nul, cote_nul):
     return {"eligible": valide, "proba_nul": proba_nul, "cote_nul": cote_nul, "niveau": "eleve" if valide else "normal"}
 
 
-def detecter_underdog(proba, cote):
-    """Fonctionnalité 39 : signale un outsider seulement sur des critères explicites."""
+def detecter_underdog_simple(proba, cote):
+    """Fonctionnalité 39 : signale un outsider seulement sur des critères explicites.
+
+    Déprécié : utilisez ``core.betting.outils_paris.detecter_underdog``
+    qui est la source de vérité.
+    """
     eligible = 0 <= proba <= 1 and cote >= 4.0 and proba >= 0.20
     return {"eligible": eligible, "fun_bet": eligible, "proba": proba, "cote": cote}
 
 
-def checklist_avant_pari(match, mise, bankroll):
-    """Fonctionnalité 54 : checklist locale avec blocage en cas de risque élevé."""
+def checklist_avant_pari_locale(match, mise, bankroll):
+    """Fonctionnalité 54 : checklist locale avec blocage en cas de risque élevé.
+
+    Déprécié : utilisez ``core.betting.gestion_risques.checklist_avant_pari``
+    qui est la source de vérité pour cette fonctionnalité.
+    """
     controles = {
         "composition_verifiee": bool(match.get("composition_verifiee")),
         "meteo_verifiee": bool(match.get("meteo_verifiee")),
@@ -47,6 +55,11 @@ def checklist_avant_pari(match, mise, bankroll):
         "cote_disponible": float(match.get("cote", 0)) > 1,
     }
     return {"controles": controles, "pret": all(controles.values())}
+
+
+# Alias de rétrocompatibilité pour core.outils_locaux_avances (shim historique)
+checklist_avant_pari = checklist_avant_pari_locale
+detecter_underdog = detecter_underdog_simple
 
 
 def calculer_mise_progressive(mise_initiale, resultat_precedent, strategie="fibonacci"):

@@ -13,8 +13,6 @@ from __future__ import annotations
 from typing import Any
 
 from core.domaine import Bankroll
-from core.exceptions import BankrollInsuffisanteError
-from core.utils.logs import log_info, log_error
 
 
 class ServiceRisque:
@@ -56,8 +54,7 @@ class ServiceRisque:
     ) -> dict[str, Any]:
         """Calcule la mise optimale selon la formule de Kelly fractionné.
 
-        Kelly : f = (p * b - q) / b  où b = cote - 1, p = proba, q = 1 - p
-        Kelly fractionné : f * fraction_kelly (par défaut 25% pour prudence).
+        Délègue à :func:`core.betting.bankroll.calculer_mise_kelly` (source de vérité).
 
         Args:
             bankroll: État de la bankroll.
@@ -66,29 +63,17 @@ class ServiceRisque:
             fraction_kelly: Fraction de Kelly à appliquer (0.0 à 1.0).
 
         Returns:
-            Dictionnaire {mise_kelly, mise_recommandee, autorisee, plafond}.
+            Dictionnaire {mise_kelly, mise_recommandee, autorisee, plafond, kelly_pct}.
         """
-        if not (0.0 <= proba <= 1.0) or cote <= 1.0:
-            return {"mise_kelly": 0.0, "mise_recommandee": 0.0, "autorisee": False, "plafond": 0.0}
+        from core.betting.bankroll import calculer_mise_kelly as _calculer_mise_kelly
 
-        b = cote - 1.0
-        p = proba
-        q = 1.0 - p
-        kelly_fraction = (p * b - q) / b if b > 0 else 0.0
-
-        if kelly_fraction <= 0:
-            return {"mise_kelly": 0.0, "mise_recommandee": 0.0, "autorisee": False, "plafond": 0.0}
-
-        mise_kelly = bankroll.montant_total * kelly_fraction * fraction_kelly
-        mise_recommandee = min(mise_kelly, bankroll.plafond_mise())
-        autorisee = mise_recommandee > 0
-
+        res = _calculer_mise_kelly(bankroll, proba, cote, fraction_kelly)
         return {
-            "mise_kelly": round(mise_kelly, 2),
-            "mise_recommandee": round(mise_recommandee, 2),
-            "autorisee": autorisee,
-            "plafond": bankroll.plafond_mise(),
-            "kelly_pct": round(kelly_fraction * 100, 2),
+            "mise_kelly": res["mise_kelly"],
+            "mise_recommandee": res["mise_recommandee"],
+            "autorisee": res["autorisee"],
+            "plafond": res["plafond_bankroll"],
+            "kelly_pct": round(res["kelly_fraction"] * 100, 2),
         }
 
     def verifier_plan_anti_perte(
