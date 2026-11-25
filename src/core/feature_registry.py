@@ -468,13 +468,6 @@ FEATURE_IMPL: dict[str, dict[str, Any]] = {
         "statut_impl": "partielle",
         "note": "Résumé vocal IA 30s, nécessite clé TTS.",
     },
-    "82": {
-        "impl_module": "core.experience.fonctionnalites_restantes",
-        "impl_function": "activer_mode_swahili",
-        "dependances_externes": [],
-        "statut_impl": "complete",
-        "note": "Mode Swahili (Est de la RDC).",
-    },
     "83": {
         "impl_module": "core.experience.fonctionnalites_restantes",
         "impl_function": "executer_commande_vocale",
